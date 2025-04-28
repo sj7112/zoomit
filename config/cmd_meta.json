@@ -1,0 +1,63 @@
+/**
+* 命令行选项META_Command
+*/
+{
+    "i18n_main": {
+        "name": "初始化语言包",
+        "options": [
+            {
+                "key": "-y",
+                "desc": "自动覆盖语言包"
+            },
+            {
+                "long": "--lang",
+                "desc": "指定语言包名"
+            }
+        ]
+    },
+    "msg_parse_param": {
+        "name": "消息自动翻译",
+        "options": [
+            {
+                "key": "-e",
+                "long": "--error",
+                "desc": "返回错误 $?=1"
+            },
+            {
+                "key": "-i",
+                "long": "--ignore",
+                "desc": "跳过多语言翻译"
+            },
+            {
+                "key": "-p",
+                "long": "--position",
+                "desc": "手动设置序号（出现在函数中的序号）"
+            },
+            {
+                "key": "-o",
+                "long": "--order",
+                "desc": "手动设置行序号（同一行中出现多个的情况）"
+            },
+            {
+                "key": "-s",
+                "long": "--stack",
+                "desc": "出错时打印stack"
+            }
+        ]
+    },
+    "cmd_exec": {
+        "name": "动态执行命令，支持日志记录、静默模式",
+        "options": [
+            {
+                "key": "-q",
+                "long": "--quiet",
+                "desc": "安静模式（控制台不输出）"
+            },
+            {
+                "key": "-f",
+                "long": "--file",
+                "desc": "日志模式（结果写入日志文件）"
+            }
+        ]
+    }
+}

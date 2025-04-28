@@ -1,0 +1,21 @@
+# Config file search...system reported as: linux
+# Testing: .perltidyrc
+# Dump of file: '.perltidyrc'
+
+# .perltidyrc - Perl Best Practices 配置
+
+-l=78   # 最大行长度
+-i=4    # 缩进宽度为4个空格
+-ci=4   # 延续缩进宽度为4个空格
+-nst    # 不使用标准输出
+-se     # 错误输出到标准错误
+-vt=2   # 垂直紧凑度中等
+-cti=0  # 不缩进闭合令牌
+-pt=1   # 紧凑级别为中等
+-bt=1   # 括号紧凑度为中等
+-sbt=1  # 方括号紧凑度为中等
+-bbt=1  # 大括号紧凑度为中等
+-nsfs   # 不要在for循环分号后添加空格
+-nolq   # 不要在引号样式操作符左侧加空格
+-wbb="% + - * / x != == >= <= =~ !~ < > | & >= < = **= += *= &= <<= &&= -= /= |= >>= ||= .= %= ^= x="  # 在这些操作符前断行
+-b      # 在原文件处进行备份并重写 (.bak文件)

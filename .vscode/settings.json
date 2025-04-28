@@ -1,0 +1,42 @@
+{
+    "search.useIgnoreFiles": true, // 是否使用版本控制系统的忽略文件(.gitignore等)来过滤搜索结果
+    "editor.fontSize": 14, // 设置编辑器字体大小为14像素
+    "editor.rulers": [
+        120
+    ], // 添加第120列标尺，辅助控制代码宽度
+    "workbench.editor.wrapTabs": true, // 启用标签页换行显示，使多个标签页可以在多行显示
+    "terminal.integrated.confirmOnExit": "always", // 关闭终端时总是显示确认提示
+    "editor.formatOnSave": true, // 保存文件时自动格式化代码
+    // Shell specific settings
+    "shellformat.path": "shfmt", // 指定shell格式化工具shfmt的路径
+    "shellformat.flag": "-i 2 -ci -bn", // -i 2：缩进；-ci：缩进case；-bn：&&和||之后允许换行
+    "shellcheck.enable": true, // 启用ShellCheck工具进行shell脚本语法检查
+    "shellcheck.useWorkspaceRootAsCwd": true, // 使用工作区根目录作为ShellCheck的当前工作目录
+    "shellcheck.run": "onSave", // 设置ShellCheck在文件保存时自动运行
+    // File associations
+    "files.associations": {
+        "*.sh": "shellscript",
+        "*.bash": "shellscript",
+        "*.json": "jsonc"
+    },
+    // Shell script settings
+    "shellscript.enableQuoting": true, // 启用shell脚本中的引号自动补全
+    "C_Cpp.default.includePath": [
+        "${workspaceFolder}/lib/args_parser",
+    ],
+    "C_Cpp.default.compilerPath": "D:\\mingw64\\bin\\g++.exe",
+    // Perl specific settings
+    "[perl]": {
+        "editor.defaultFormatter": "richterger.perl", // 为Perl文件设置默认格式化工具
+        "editor.formatOnSave": true // 保存Perl文件时自动格式化
+    },
+    "python.defaultInterpreterPath": "/root/.venv/bin/python", // 设置 Python 解释器路径
+    "black-formatter.args": [
+        "--line-length",
+        "120"
+    ], // 设置Black最大行宽为120
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.black-formatter", // 使用Black作为Python文件的格式化工具
+        "editor.formatOnSave": true // 保存时自动格式化Python文件
+    }
+}

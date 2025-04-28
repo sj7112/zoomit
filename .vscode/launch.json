@@ -1,0 +1,137 @@
+{
+    "configurations": [
+        {
+            "type": "bashdb",
+            "request": "launch",
+            "name": "Bash-Debug (type in script name)",
+            "cwd": "${workspaceFolder}",
+            "program": "${command:AskForScriptName}",
+            "args": []
+        },
+        {
+            "type": "bashdb",
+            "request": "launch",
+            "name": "Bash-Debug (select script from list of sh files)",
+            "cwd": "${workspaceFolder}",
+            "program": "${command:SelectScriptName}",
+            "args": []
+        },
+        {
+            "type": "bashdb",
+            "request": "launch",
+            "name": "Bash-Debug (i18n add/delete)",
+            "cwd": "${workspaceFolder}",
+            // "program": "${workspaceFolder}/bin/deb/init_debian.sh",
+            "program": "${workspaceFolder}/bin/i18n.sh",
+            "args": [
+                "del",
+                "-y",
+                "--lang=zh"
+            ],
+            "env": {
+                "DEBUG": "1"
+            }
+        },
+        {
+            "type": "bashdb",
+            "request": "launch",
+            "name": "Bash-Debug (i18n update)",
+            "cwd": "${workspaceFolder}",
+            "program": "${workspaceFolder}/bin/i18n.sh",
+            "args": [
+                // "--lang=zh",
+                "bin/init_main.sh"
+            ],
+            "env": {
+                "DEBUG": "1"
+            }
+            // ,
+            // "pathBash": "/bin/bash", // 确保指向正确的bash路径
+            // "showDebugOutput": true, // 增加这一行来查看更多调试信息
+            // "trace": true
+        },
+        {
+            "type": "bashdb",
+            "request": "launch",
+            "name": "Bash-Debug (ast_parser)",
+            "cwd": "${workspaceFolder}",
+            "program": "${workspaceFolder}/lib/ast_parser.sh",
+            "args": [
+                // "bin/init_main.sh"
+                "bin/i18n.sh"
+            ],
+            "env": {
+                "DEBUG": "1"
+            }
+        },
+        {
+            "type": "bashdb",
+            "request": "launch",
+            "name": "Bash-Debug (hash_util)",
+            "cwd": "${workspaceFolder}",
+            "program": "${workspaceFolder}/lib/hash_util.sh",
+            "args": [],
+            "env": {
+                "DEBUG": "1"
+            }
+        },
+        {
+            "type": "debugpy",
+            "name": "Python: 启动 lang_util.py",
+            "request": "launch",
+            "program": "${workspaceFolder}/python/lang_util.py",
+            "args": [
+                "--file=bin/i18n.sh bin/init_main.sh",
+                "--debug"
+            ],
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "debugpy",
+            "name": "Python: 启动 hash_util.py",
+            "request": "launch",
+            "program": "${workspaceFolder}/python/hash_util.py",
+            "args": [
+                "--debug"
+            ],
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "debugpy",
+            "name": "Python: 启动 ast_parser.py",
+            "request": "launch",
+            "program": "${workspaceFolder}/python/ast_parser.py",
+            "args": [
+                "bin/init_main.sh",
+                "bin/i18n.sh"
+            ],
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "debugpy",
+            "name": "Python: 启动 msg_handler.py",
+            "request": "launch",
+            "program": "${workspaceFolder}/python/msg_handler.py",
+            "args": [
+                "-s7",
+                "-ie",
+                "bin/i18n.sh",
+                "bin/init_main.sh",
+            ],
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "debugpy",
+            "name": "Python: 启动 json_handler.py",
+            "request": "launch",
+            "program": "${workspaceFolder}/python/json_handler.py",
+            "args": [
+                "-s7",
+                "-ie",
+                "bin/i18n.sh",
+                "bin/init_main.sh",
+            ],
+            "console": "integratedTerminal"
+        }
+    ]
+}
