@@ -1,0 +1,23 @@
+# Python 编译文件
+python/__pycache__/
+*.py[cod]
+*$py.class
+
+# 虚拟环境
+venv/
+env/
+.venv/
+ENV/
+
+# Python打包产物
+build/
+dist/
+*.egg-info/
+
+# 忽略测试目录
+tests/
+# 忽略 VSCode 工作区文件
+sh.code-workspace
+# 忽略配置子目录
+config/lang/
+build/
