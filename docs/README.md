@@ -1,3 +1,8 @@
+## zoomIT
+
+A quick/rapid deployment toolkit for newly installed Linux systems
+
+---
 /my_shell_project/
 │── bin/ # 可执行脚本（主程序）
 │ ├── init.sh # 入口脚本（主程序）
