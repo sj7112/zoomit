@@ -5,8 +5,7 @@ if [[ -z "${LOADED_MATH_UTIL:-}" ]]; then
   LOADED_MATH_UTIL=1
 
   : "${LIB_DIR:=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}" # lib direcotry
-  TESTS_DIR="$(dirname "$LIB_DIR")/tests"                       # test direcotry
-  source "$TESTS_DIR/debug_tool.sh"
+  source "$LIB_DIR/debug_tool.sh"
 
   # ==============================================================================
   # 语言包hash计算规则（支持20w+函数；每个函数<=4096个消息）

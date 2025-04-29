@@ -5,8 +5,8 @@ if [[ -z "${LOADED_JSON_HANDLER:-}" ]]; then
   LOADED_JSON_HANDLER=1
 
   CONF_DIR="$(dirname "$BIN_DIR")/config" # config direcotry
-  TESTS_DIR="$(dirname "$BIN_DIR")/tests" # test direcotry
-  source "$TESTS_DIR/debug_tool.sh"
+  LIB_DIR="$(dirname "$BIN_DIR")/lib"     # lib direcotry
+  source "$LIB_DIR/debug_tool.sh"
 
   # 从 config 加载 json文件
   json_load_data() {

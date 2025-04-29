@@ -18,6 +18,5 @@ dist/
 tests/
 # 忽略 VSCode 工作区文件
 sh.code-workspace
-# 忽略配置子目录
-config/lang/
+# 忽略其他子目录
 build/
