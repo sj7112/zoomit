@@ -1,31 +1,33 @@
 #!/usr/bin/env python3
 
 import hashlib
-import re
 import os
 import sys
+from ruamel.yaml import YAML
 
 # 动态添加当前目录到 sys.path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from debug_tool import (
-    print_array,
     test_assertion,
 )
 
 BASE64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+_"  # url安全
-SEPARATOR = "@@"
+HASH = "Z-HASH"
+HASH_YML = "hash"
+PROP_FILE = {}  # key=path/program; value = Hash Code
 PROP_FUNC = {}  # key=Hash Code; value = path/program func_name
 PROP_MSG = {}  # key=Hash Code + "_" + LineNo + "_" + order; value = message
+YML_PATH = "/usr/local/shell/config/lang/_lang.yml"
 
 
 # ==============================================================================
-# _hash_djb2                计算hash code
+# _djb2_with_salt           计算hash code
 # _number_to_base64         数值 => 64进制
 # _padded_number_to_base64  数值_位数 => 64进制
 # _base64_to_number         64进制 => 数值
-# get_prop_func             获取hash code（True/False 是否找到了匹配节点）
-# set_prop_func             hash code => 全局字典 PROP_FUNC
+# get_prop_files            获取hash code（True/False 是否找到了匹配节点）
+# set_prop_file             hash code => 全局字典 PROP_FILE
 # get_prop_msg              hash code + order => 64进制hash code
 # set_prop_msg              hash code + order => 全局字典 PROP_MSG
 # ==============================================================================
@@ -122,143 +124,106 @@ def _base64_to_number(s):
     return result
 
 
-# ==============================================================================
-# 程序 + 函数的hash code计算（6位字符串：线性探测解决冲突）
-# ==============================================================================
-def _hash_djb2(s):
-    """
-    DJB2哈希函数
-
-    参数:
-        s: 要哈希的字符串
-
-    返回:
-        整数哈希值，范围在0到(64^3-1)之间
-    """
-    hash_val = 5381
-    mask = 64 * 64 * 64 - 1  # 相当于 64^3-1 = 262,144
-
-    for c in s:
-        hash_val = ((hash_val * 33) + ord(c)) & mask
-
-    return hash_val
-
-
-def get_prop_func(file, func):
-    """
-    查找哈希表索引位置
-
-    参数:
-        file_name: 文件名（示例格式: "bin/init_base_func.sh"）
-        func_name: 函数名（示例格式: "select_mirror"）
-
-    返回:
-        如果找到匹配的键，返回(索引, True)
-        如果找到可用的空位，返回(索引, False)
-    """
-    key = f"{file}{SEPARATOR}{func}"  # 格式: "bin/init_base_func.sh@@select_mirror"
-    mask = 64 * 64 * 64 * 64 - 1  # 取模掩码
-    idx = (_hash_djb2(key) * 64) & mask  # 起始索引，64对齐
-
-    while True:
-        if idx not in PROP_FUNC:
-            return idx, False  # 空位，说明没找到
-
-        if PROP_FUNC[idx] == key:
-            return idx, True  # 找到匹配，说明存在
-
-        # 探测下一个索引（跳过64倍数）
-        idx = (idx + (2 if idx & 63 == 63 else 1)) & mask
-
-
-def set_prop_func(file, func):
-    """
-    存储到全局字典 PROP_FUNC ，并返回其哈希索引位置
-
-    参数:
-        file_name: 文件名（示例格式: "bin/init_base_func.sh"）
-        func_name: 函数名（示例格式: "select_mirror"）
-
-    返回:
-        字符串在字典中的索引位置
-    """
-    key = f"{file}{SEPARATOR}{func}"  # 格式: "bin/init_base_func.sh@@select_mirror"
-    mask = 64 * 64 * 64 * 64 - 1  # 相当于 64^4-1 = 16,777,215
-    idx = (_hash_djb2(key) * 64) & mask  # 初始索引（64对齐）
-
-    # Linear probing for collision resolution
-    while idx in PROP_FUNC:
-        if PROP_FUNC[idx] == key:
-            return idx  # 已存在，直接返回
-
-        # 探测下一个索引（跳过64倍数）
-        idx = (idx + (2 if idx & 63 == 63 else 1)) & mask
-
-    PROP_FUNC[idx] = key  # 写入新值
-    return idx
+def init_meta_props():
+    # 读yaml
+    with open(YML_PATH, "r") as f:
+        data = YAML().load(f)
+    file_yml = data["file"] = data["file"] if isinstance(data.get("file"), dict) else {}
+    # 重置全局变量
+    for item in file_yml.values():
+        PROP_FILE[item[HASH]] = True
 
 
 # ==============================================================================
 # 函数 字符串文本的hash code计算（6位字符串 | 22位字符串）
 # ==============================================================================
-def djb2_with_salt_10(text: str, salt: int = 0) -> int:
-    """均匀采样10个字符参与DJB2哈希计算，加上字符串长度作为salt"""
+def _djb2_with_salt(text: str, freq: int = 20) -> int:
+    """均匀采样若干个字符参与DJB2哈希计算，加上字符串长度作为salt"""
     hash_value = 5381
-    step = max(1, len(text) // 10)
-    for i in range(0, min(len(text), step * 10), step):
-        hash_value = ((hash_value << 5) + hash_value) + ord(text[i])
-    hash_value = ((hash_value << 5) + hash_value) + salt
-    return hash_value & 0xFFFFFFFF
+    step = max(1, len(text) // freq)
+    for i in range(0, min(len(text), step * freq), step):
+        hash_value = (((hash_value << 5) + hash_value) + ord(text[i])) & 0xFFFFFFFF
+    return (((hash_value << 5) + hash_value) + len(text)) & 0xFFFFFFFF
+
+
+def _djb2_with_salt_20(text: str) -> int:
+    """均匀采样20个字符参与DJB2哈希计算，字符串长度作为salt"""
+    return _djb2_with_salt(text, 20)
+
+
+def md5(text: str) -> int:
+    """返回MD5数值"""
+    return int.from_bytes(hashlib.md5(text.encode("utf-8")).digest(), byteorder="big")
+
+
+def set_prop_files(lang_data, file_yml):
+    hashes = {}
+    result = {}
+
+    for s in file_yml.keys():
+        h = _djb2_with_salt_20(s)
+
+        if h in hashes:
+            if hashes[h] == s:
+                continue  # 忽略重复
+            # 冲突但不相同，使用 MD5
+            for item in [hashes[h], s]:
+                result[md5(item)] = item  # 改用 MD5 覆盖原来的hash code
+            del result[h]  # 删除之前的 DJB2 冲突键
+        elif h not in result:
+            result[h] = s
+            hashes[h] = s
+
+    # 最后写回配置文件
+    for key, value in result.items():
+        PROP_FILE[key] = True  # 全局变量
+        file_yml[value][HASH_YML] = key  # yml配置
+        if value in lang_data:
+            lang_data[value][HASH] = key  # properties配置
+
+
+def get_prop_file(s):
+    if not PROP_FILE:
+        init_meta_props()
+
+    h = _djb2_with_salt_20(s)
+    if h in PROP_FILE:
+        return h  # 返回 hash code
+    else:
+        return md5(s)  # 改用 MD5
 
 
 def set_prop_msgs(content):
     hashes = {}
     result = {}
 
-    for str in content:
-        parts = str.split(None, 3)
+    for s in content:
+        parts = s.split(None, 3)
         type, lineno, order, msg = parts
 
-        h = djb2_with_salt_10(msg, len(msg))
+        h = _djb2_with_salt_20(msg)
 
         if h in hashes:
             if hashes[h] == msg:
                 continue  # 忽略重复
             # 冲突但不相同，使用 MD5
             for item in [hashes[h], msg]:
-                md5_val = int.from_bytes(hashlib.md5(item.encode("utf-8")).digest(), byteorder="big")  # 改用 MD5
-                result[md5_val] = item  # 存入后者，覆盖原来的
+                result[md5(item)] = item  # 改用 MD5 覆盖原来的hash code
             del result[h]  # 删除之前的 DJB2 冲突键
         elif h not in result:
-            result[h] = f"{msg} # {type}@{lineno}@{order.replace('-', '')}"  # 添加注释
+            result[h] = f"{msg} #{type}@{lineno}@{order.replace('-', '')}"  # 添加注释
             hashes[h] = msg
 
     # 最后循环 result，key 改为 64 进制
     result_base64 = {}
     for key, value in result.items():
-        result_base64[_number_to_base64(key)] = value
+        result_base64[_padded_number_to_base64(f"{key}_6")] = value
 
     return result_base64
 
 
-def get_prop_msg(hash, pos):
-    """
-    根据哈希码和计数获取消息
-
-    参数:
-        hash: 父函数的哈希码
-        pos: 查找的计数值
-
-    返回:
-        找到的消息，如果未找到则返回None
-    """
-    # key=6位base64编码
-    key = _padded_number_to_base64(f"{hash}_4", f"{pos}_2")
-    return PROP_MSG.get(key)
-
-
 # =============================================================================
-# 调试测试函数（base64转换、PROP_FUNC）
+# 调试测试函数（base64转换、PROP_FILE）
 # =============================================================================
 def main():
     # 测试1：base64转换
@@ -269,13 +234,13 @@ def main():
     d = _base64_to_number(b64[4:6])  # 后2位
     test_assertion("c == a and d == b", f"base64 convert: {b64}")
 
-    # 测试2：PROP_FUNC key / value
-    a = ["bin/init_base_func.sh", "select_mirror"]
-    idx = set_prop_func(*a)
-    test_assertion("idx == 9171520", f"set PROP_FUNC: {idx}")
+    # 测试2：PROP_FILE key / value
+    a = "bin/init_main.sh"
+    idx = _djb2_with_salt_20(a)
+    test_assertion("idx == 3525264606", f"set PROP_FILE: {idx}")
 
-    idx2, found = get_prop_func(*a)
-    test_assertion(lambda: found and idx == idx2, f"get PROP_FUNC: {idx2}")
+    idx2 = get_prop_file(a)
+    test_assertion(lambda: idx == idx2, f"get PROP_FILE: {idx2}")
 
 
 # =============================================================================

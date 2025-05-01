@@ -16,7 +16,7 @@ if [[ -z "${LOADED_PYTHON_BRIDGE:-}" ]]; then
     python3 -c "
 import sys
 sys.path.append('$PYTHON_DIR')
-from ast_parser import parse_shell_files
+from lang_util import parse_shell_files
 
 for item in parse_shell_files('$sh_file'):
     print(item)

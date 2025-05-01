@@ -3,9 +3,12 @@
 from pathlib import Path
 import shutil
 import sys
+from ruamel.yaml import YAML
 
 # 获取当前文件的绝对路径的父目录
 PARENT_DIR = Path(__file__).parent.parent.resolve()
+
+YML_PATH = "/usr/local/shell/config/lang/_lang.yml"
 
 
 def _path_resolve(path_str):
@@ -52,27 +55,32 @@ def copy_file(filepath1, filepath2):
         return None
 
 
-def read_config(prop_file):
+def read_config(fn):
     """读取配置文件为数组"""
-    with open(prop_file, "r", encoding="utf-8") as fh:
+    with open(fn, "r", encoding="utf-8") as fh:
         lines = fh.readlines()
     return [line.rstrip("\n") for line in lines]
 
 
-def read_configs(prop_files):
-    """读取多个配置文件，返回一组字符串数组"""
-    return [read_config(prop_file) for prop_file in prop_files]
+def read_lang_yml():
+    """读取yml语言文件为字典"""
+    yaml = YAML()  # 处理yaml文件
+    with open(YML_PATH, "r") as f:
+        data = yaml.load(f)  # 读yaml
+
+    return data, yaml
 
 
-def write_file(prop_file, content_list):
+def write_lang_yml(data, yaml):
+    """读取yml语言文件为字典"""
+    with open(YML_PATH, "w") as f:
+        yaml.dump(data, f)
+
+
+def write_config(fn, content_list):
     """写入配置文件内容"""
-    with open(prop_file, "w", encoding="utf-8") as fh:
+    with open(fn, "w", encoding="utf-8") as fh:
         fh.writelines(f"{line}\n" for line in content_list)
-
-
-def write_files(prop_files, content_lists):
-    """写入多个配置文件"""
-    [write_file(prop_file, content_list) for prop_file, content_list in zip(prop_files, content_lists)]
 
 
 def get_filename(file_args):

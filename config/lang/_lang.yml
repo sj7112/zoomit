@@ -1,0 +1,199 @@
+# ==============================================================================
+# 文档结构:
+# 1. djb2_len: 密钥计算长度默认=20，可手动修改
+# 1. lazy_load: properties文件懒加载（默认为false）
+# 2. hashcode: djb2算法，根据文件名自动计算
+# ==============================================================================
+
+# 全局配置
+config:
+  project: zoomIT-2025
+  created: 2025/4/25 09:19:01
+  changed: '2025-05-01 00:45:07'
+  djb2_len: 20
+  del_mode: 2 # 0=保留；1=注释；2=删除
+  lazy_load: false
+  # add relative path here
+  path_incl:
+  - bin/
+  - lib/
+  - python/
+  # add relative path here
+  path_excl:
+  file_types:
+    shell: sh
+    python: py
+  stats: # auto-generated, DO NOT UPDATE
+    file_nos: 19
+    zh: {count: 79}
+    en: {count: 79}
+file:
+  bin/i18n.sh:
+    type: shell
+    djb2_len: 20
+    created: '2025-04-29 16:56:55'
+    changed: '2025-05-01 00:45:07'
+    hash: 362709665
+    stats: #  auto-generated, DO NOT UPDATE
+
+  bin/init_main.sh:
+    type: shell
+    djb2_len: 20
+    created: '2025-04-29 16:56:55'
+    changed: '2025-05-01 00:45:07'
+    hash: 3525264606
+    stats: #  auto-generated, DO NOT UPDATE
+
+  bin/cmd_help.sh:
+    type: shell
+    djb2_len: 20
+    created: '2025-04-30 19:08:34'
+    changed: '2025-04-30 19:08:34'
+    stats:
+      zh: {count: 4, start: 72, end: 78}
+      en: {count: 4, start: 8, end: 14}
+    hash: 1288433313
+  bin/init_base_func.sh:
+    type: shell
+    djb2_len: 20
+    created: '2025-04-30 19:08:34'
+    changed: '2025-04-30 19:08:34'
+    stats:
+      zh: {count: 5, start: 80, end: 86}
+      en: {count: 5, start: 80, end: 86}
+    hash: 310052828
+  bin/suse/init_OpenSUSE.sh:
+    type: shell
+    djb2_len: 20
+    created: '2025-04-30 19:08:34'
+    changed: '2025-04-30 19:08:34'
+    stats:
+      zh: {count: 1, start: 88, end: 90}
+      en: {count: 1, start: 88, end: 90}
+    hash: 4213391458
+  bin/ubt/init_ubuntu.sh:
+    type: shell
+    djb2_len: 20
+    created: '2025-04-30 19:08:34'
+    changed: '2025-04-30 19:08:34'
+    stats:
+      zh: {count: 1, start: 92, end: 94}
+      en: {count: 1, start: 92, end: 94}
+    hash: 1625566433
+  bin/cos/init_centos.sh:
+    type: shell
+    djb2_len: 20
+    created: '2025-04-30 19:08:34'
+    changed: '2025-04-30 19:08:34'
+    stats:
+      zh: {count: 1, start: 96, end: 98}
+      en: {count: 1, start: 96, end: 98}
+    hash: 1130444324
+  bin/deb/init_debian.sh:
+    type: shell
+    djb2_len: 20
+    created: '2025-04-30 19:08:34'
+    changed: '2025-04-30 19:08:34'
+    stats:
+      zh: {count: 2, start: 100, end: 104}
+      en: {count: 2, start: 100, end: 104}
+    hash: 1407086785
+  bin/arc/init_arch.sh:
+    type: shell
+    djb2_len: 20
+    created: '2025-04-30 19:08:34'
+    changed: '2025-04-30 19:08:34'
+    stats:
+      zh: {count: 1, start: 106, end: 108}
+      en: {count: 1, start: 106, end: 108}
+    hash: 56750496
+  bin/rhl/init_RHEL.sh:
+    type: shell
+    djb2_len: 20
+    created: '2025-04-30 19:08:34'
+    changed: '2025-04-30 19:08:34'
+    stats:
+      zh: {count: 1, start: 110, end: 112}
+      en: {count: 1, start: 110, end: 112}
+    hash: 1181381341
+  lib/system.sh:
+    type: shell
+    djb2_len: 20
+    created: '2025-04-30 19:08:34'
+    changed: '2025-04-30 19:08:34'
+    stats:
+      zh: {count: 0, start: 114, end: 114}
+      en: {count: 0, start: 114, end: 114}
+    hash: 2828509190
+  lib/msg_handler.sh:
+    type: shell
+    djb2_len: 20
+    created: '2025-04-30 19:08:34'
+    changed: '2025-04-30 19:08:34'
+    stats:
+      zh: {count: 0, start: 116, end: 116}
+      en: {count: 0, start: 116, end: 116}
+    hash: 2733812138
+  lib/debug_tool.sh:
+    type: shell
+    djb2_len: 20
+    created: '2025-04-30 19:08:34'
+    changed: '2025-04-30 19:08:34'
+    stats:
+      zh: {count: 0, start: 118, end: 118}
+      en: {count: 0, start: 118, end: 118}
+    hash: 727462249
+  lib/ast_parser.sh:
+    type: shell
+    djb2_len: 20
+    created: '2025-04-30 19:08:34'
+    changed: '2025-04-30 19:08:34'
+    stats:
+      zh: {count: 2, start: 120, end: 123}
+      en: {count: 2, start: 120, end: 123}
+    hash: 499730681
+  lib/cmd_handler.sh:
+    type: shell
+    djb2_len: 20
+    created: '2025-04-30 19:08:34'
+    changed: '2025-04-30 19:08:34'
+    stats:
+      zh: {count: 8, start: 125, end: 138}
+      en: {count: 8, start: 125, end: 138}
+    hash: 4035570135
+  lib/json_handler.sh:
+    type: shell
+    djb2_len: 20
+    created: '2025-04-30 19:08:34'
+    changed: '2025-04-30 19:08:34'
+    stats:
+      zh: {count: 1, start: 140, end: 142}
+      en: {count: 1, start: 140, end: 142}
+    hash: 1101551806
+  lib/hash_util.sh:
+    type: shell
+    djb2_len: 20
+    created: '2025-04-30 19:08:34'
+    changed: '2025-04-30 19:08:34'
+    stats:
+      zh: {count: 0, start: 144, end: 144}
+      en: {count: 0, start: 144, end: 144}
+    hash: 959146949
+  lib/python_bridge.sh:
+    type: shell
+    djb2_len: 20
+    created: '2025-04-30 19:08:34'
+    changed: '2025-04-30 19:08:34'
+    stats:
+      zh: {count: 0, start: 146, end: 146}
+      en: {count: 0, start: 146, end: 146}
+    hash: 360797750
+  lib/bash_utils.sh:
+    type: shell
+    djb2_len: 20
+    created: '2025-04-30 19:08:34'
+    changed: '2025-04-30 19:08:34'
+    stats:
+      zh: {count: 8, start: 148, end: 158}
+      en: {count: 8, start: 148, end: 158}
+    hash: 4291987827

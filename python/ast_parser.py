@@ -12,22 +12,16 @@ PARENT_DIR = Path(__file__).parent.parent.resolve()
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from hash_util import (
-    set_prop_func,
     set_prop_msgs,
 )
 
 from file_util import (
     get_shell_files,
-    path_resolved,
 )
 
 from debug_tool import (
     print_array,
 )
-
-
-HASH = "hash"
-MSGS = "msgs"
 
 
 # ==============================================================================
@@ -290,10 +284,8 @@ def parse_function(lines, line_number, total_lines, sh_file, file_records):
                 brace_count -= 1  # 出现右括号，计数器-1
                 if brace_count <= 0:
                     # hash：转换"文件名@@函数名"；msgs：key=hash, value=msg # type@linNo@order
-                    file_records[func_name] = {
-                        HASH: set_prop_func(sh_file, func_name),
-                        **({MSGS: set_prop_msgs(result_lines)} if result_lines else {}),
-                    }
+                    if result_lines:
+                        file_records[func_name] = set_prop_msgs(result_lines)
                     return  # 函数结束
 
         # 解析匹配项
@@ -317,7 +309,7 @@ def parse_shell_files(target):
         with open(sh_file, "r") as f:
             lines = f.read().splitlines()
         sh_file = str(Path(sh_file).relative_to(PARENT_DIR))  # 相对工程的根路径
-        results[sh_file] = {}  # 结果数组
+        results[sh_file] = {}
 
         line_number = [0]  # 使用列表包装，以便函数可以修改
         total_lines = len(lines)

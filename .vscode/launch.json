@@ -39,7 +39,7 @@
             "cwd": "${workspaceFolder}",
             "program": "${workspaceFolder}/bin/i18n.sh",
             "args": [
-                // "--lang=zh",
+                "--lang=zh",
                 "bin/init_main.sh"
             ],
             "env": {
@@ -82,6 +82,7 @@
             "program": "${workspaceFolder}/python/lang_util.py",
             "args": [
                 "--file=bin/i18n.sh bin/init_main.sh",
+                "-lzh en",
                 "--debug"
             ],
             "console": "integratedTerminal"
@@ -122,15 +123,10 @@
         },
         {
             "type": "debugpy",
-            "name": "Python: 启动 json_handler.py",
+            "name": "Python: test.py",
             "request": "launch",
-            "program": "${workspaceFolder}/python/json_handler.py",
-            "args": [
-                "-s7",
-                "-ie",
-                "bin/i18n.sh",
-                "bin/init_main.sh",
-            ],
+            "program": "${workspaceFolder}/tests/test2.py",
+            "args": [],
             "console": "integratedTerminal"
         }
     ]
