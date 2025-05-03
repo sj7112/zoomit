@@ -3,11 +3,12 @@
 from datetime import datetime
 import sys
 import os
-import argparse
 import locale
 import re
-import click
 from ruamel.yaml.comments import CommentedMap
+import typer
+import re
+from typing import List, Optional
 
 # 动态添加当前目录到 sys.path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -54,22 +55,22 @@ MSG_MATCH_CHK = r"^\s*[A-Za-z0-9+_]+\s*=\s*.+?(\s*#.*)?\s*$"  # 不含捕获组�
 MSG_MATCH_G = r"^#?\s*([A-Za-z0-9+_]+)\s*=\s*(.+?)(\s*#.*)?\s*$"  # 含捕获组
 
 
-def get_current_time():
+def _current_time():
     """输出当前时间"""
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
 def _not_found():
     """输出提示信息 + 时间戳"""
-    return f"# NOT FOUND {get_current_time()}"
+    return f"# NOT FOUND {_current_time()}"
 
 
-def get_locale_code(fn):
+def _locale_code(fn):
     """获取系统语言代码"""
     return re.search(r"lang/([a-zA-Z]{2}(?:_[a-zA-Z]{2})?)\.properties", fn).group(1)
 
 
-def get_system_locale():
+def _system_locale():
     """
     获取系统区域设置代码
     从多个环境变量中依次尝试获取区域设置，并去除编码后缀
@@ -91,13 +92,13 @@ def get_system_locale():
     return "en"
 
 
-def get_file_type(fn):
+def _file_type(fn):
     """获取文件种类"""
     match = re.search(r"(?<=\.)[^./\\\s]+$", fn)
     return FILE_TYPE.get(match.group(0)) if match else None
 
 
-def file_lang_inline_format(stat_dict, lang_code, data):
+def file_lang_inline_format(file_yml_data, lang_code, data):
     """语言统计采用紧凑模式：写入到一行
 
     例子:
@@ -110,7 +111,7 @@ def file_lang_inline_format(stat_dict, lang_code, data):
     zh_data["start"] = data[START]  # 起始位置
     zh_data["end"] = data[END]  # 结束位置
     zh_data.fa.set_flow_style()  # 设置为流式样式 (内联格式)
-    stat_dict[lang_code] = zh_data
+    file_yml_data[STATS][lang_code] = zh_data
 
 
 def stat_file_yml(lang_code, lang_data, missing_lang_data, file_yml):
@@ -123,12 +124,12 @@ def stat_file_yml(lang_code, lang_data, missing_lang_data, file_yml):
     """
     for file_name in lang_data.keys():
         # 调整为流式样式 (内联格式)
-        file_lang_inline_format(file_yml[file_name][STATS], lang_code, lang_data[file_name])
+        file_lang_inline_format(file_yml[file_name], lang_code, lang_data[file_name])
 
     for file_name in missing_lang_data.keys():
         if file_name in file_yml:  # 如果在yml中未定义，则自动跳过（不负责错误数据清理）
             # 调整为流式样式 (内联格式)
-            file_lang_inline_format(file_yml[file_name][STATS], lang_code, missing_lang_data[file_name])
+            file_lang_inline_format(file_yml[file_name], lang_code, missing_lang_data[file_name])
 
 
 def config_lang_inline_format(stats):
@@ -321,7 +322,7 @@ def reset_lang_yml(lang_data, data):
     global DEL_MODE
 
     config_yml = data["config"]
-    config_yml["changed"] = get_current_time()
+    config_yml["changed"] = _current_time()
     if config_yml["del_mode"]:
         DEL_MODE = config_yml["del_mode"]  # 重置DEL_MODE
 
@@ -329,13 +330,13 @@ def reset_lang_yml(lang_data, data):
 
     for file_name in lang_data.keys():
         if file_name in file_yml:
-            file_yml[file_name]["changed"] = get_current_time()
-            if not STATS in file_yml[file_name]:
+            file_yml[file_name]["changed"] = _current_time()
+            if file_yml[file_name].get(STATS) is None:
                 file_yml[file_name][STATS] = {}
         else:
-            now = get_current_time()
+            now = _current_time()
             file_yml[file_name] = {
-                "type": get_file_type(file_name),
+                "type": _file_type(file_name),
                 "djb2_len": config_yml["djb2_len"],
                 "created": now,
                 "changed": now,
@@ -357,7 +358,7 @@ def reset_lang_yml(lang_data, data):
 # set_prop_files(lang_data, file_yml),  # hash code
 # for lang_file in lang_files:
 #     missing_lang_data = update_lang_properties(lang_file, lang_data, test_run)
-#     stat_file_yml(get_locale_code(lang_file), lang_data, missing_lang_data, file_yml)
+#     stat_file_yml(_locale_code(lang_file), lang_data, missing_lang_data, file_yml)
 # stat_config_yml(config_yml, file_yml)
 
 # # 写yaml
@@ -383,7 +384,7 @@ def yaml_file_interceptor(yaml_file_path):
 
             # 后置处理：只在数据变化且非测试运行时写入文件
             if not test_run:
-                write_lang_yml(data, yaml)
+                write_lang_yml(result, yaml)
 
             return result
 
@@ -407,7 +408,7 @@ def update_lang_files(lang_files, lang_data, test_run=False, data=None):
 
     for lang_file in lang_files:
         missing_lang_data = update_lang_properties(lang_file, lang_data, test_run)
-        stat_file_yml(get_locale_code(lang_file), lang_data, missing_lang_data, file_yml)
+        stat_file_yml(_locale_code(lang_file), lang_data, missing_lang_data, file_yml)
 
     stat_config_yml(config_yml, file_yml)
 
@@ -498,41 +499,46 @@ def run_test(opts):
     n = new_stat["en"]["count"]
     test_assertion("o == n", f"Number of en messages: {o} => {n}")
 
-    for lang_code in ["zh", "en"]:
-        for file_name in data.get("file", {}).keys():
-            # 检查文件是否存在于两个字典中
-            if file_name not in old_data.get("file", {}):
-                test_assertion("False", f"File not exists in yml: {file_name}")
-                continue
-            old = old_data["file"][file_name]["stats"]
-            new = data["file"][file_name]["stats"]
-            # 获取语言代码（中文、英文）
-            os = old[lang_code].get("start")
-            ns = new[lang_code].get("start")
+    for file_name in data.get("file", {}).keys():
+        # 检查文件是否存在于两个字典中
+        if file_name not in old_data.get("file", {}):
+            test_assertion("False", f"File not exists in yml: {file_name}")
+            continue
+
+        # 获取语言代码（中文、英文）
+        new = data["file"][file_name].get(STATS)
+        old = old_data["file"][file_name].get(STATS)
+        if old == None:
+            test_assertion("False", f"stats not exists in file yml: {file_name}")
+            continue
+
+        for lang_code in ["zh", "en"]:
+            os = old.get(lang_code).get("start")
             oe = old[lang_code].get("end")
+            ns = new[lang_code].get("start")
             ne = new[lang_code].get("end")
+
             if os != ns or oe != ne:  # 比较 start 和 end 值
                 test_assertion("False", f"{lang_code} {file_name} range: [{os} ~ {oe}] => [{ns} ~ {ne}]")
 
 
 # =============================================================================
-# 使用 Click 实现的命令行参数解析
+# 使用 Typer 实现的命令行参数解析
 # =============================================================================
 
 # 根据语言选择帮助文本
-
-if re.match(r"^zh(_[A-Z]{2})?$", get_system_locale()):
+if re.match(r"^zh(_[A-Z]{2})?$", _system_locale()):
     main_help = """语言属性文件更新工具
 不输入任何参数，则自动检查所有文件，并更新所有语言包"""
 else:
     main_help = """Language property file update tool
 If no parameters are entered, all files are automatically checked and all language packs are updated"""
 
+app = typer.Typer(pretty_exceptions_show_locals=False, pretty_exceptions_enable=False)
 
-def parse_multi_val(ctx, param, value):
-    # ctx: 命令上下文
-    # param: 当前处理的参数对象
-    # value: 参数的值
+
+def parse_multi_val(value: List[str]) -> List[str]:
+    """将包含分隔符的字符串列表拆分成单独的项目"""
     result = []
     # 如果包含逗号 | 空格 | 分号，予以拆分
     for item in value:
@@ -540,23 +546,30 @@ def parse_multi_val(ctx, param, value):
     return result
 
 
-@click.command(help=main_help)
-@click.option("-l", "--lang", multiple=True, callback=parse_multi_val, help="语言包")
-@click.option("-f", "--file", multiple=True, callback=parse_multi_val, help="待处理文件路径")
-@click.option("--debug", is_flag=True, help="调试模式")
-@click.argument("params", nargs=-1)
-def cli(**kwargs):
+@app.command(help=main_help)
+def main(
+    lang: Optional[List[str]] = typer.Option(None, "-l", "--lang", help="语言包"),
+    file: Optional[List[str]] = typer.Option(None, "-f", "--file", help="待处理文件路径"),
+    debug: bool = typer.Option(False, "--debug", help="调试模式"),
+    params: List[str] = typer.Argument(None),
+):
     """临时文档，将被替换"""
+    # 处理多值选项
+    lang_list = parse_multi_val(lang) if lang else []
+    file_list = parse_multi_val(file) if file else []
+
+    # 构建选项字典
+    opts = {"lang": lang_list, "file": file_list, "debug": debug, "params": params}
 
     # 根据 debug 标志决定运行测试还是执行
-    if kwargs["debug"]:
-        run_test(kwargs)
+    if debug:
+        run_test(opts)
     else:
-        run_exec(kwargs)
+        run_exec(opts)
 
 
 # =============================================================================
 # 命令行入口（只有直接运行本脚本才进入）
 # =============================================================================
 if __name__ == "__main__":
-    cli()  # 直接调用 Click 命令行入口
+    app()  # 直接调用 Typer 命令行入口

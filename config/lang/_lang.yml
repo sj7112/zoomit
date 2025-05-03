@@ -9,7 +9,7 @@
 config:
   project: zoomIT-2025
   created: 2025/4/25 09:19:01
-  changed: '2025-05-01 00:45:07'
+  changed: '2025-05-03 16:39:29'
   djb2_len: 20
   del_mode: 2 # 0=保留；1=注释；2=删除
   lazy_load: false
@@ -32,18 +32,22 @@ file:
     type: shell
     djb2_len: 20
     created: '2025-04-29 16:56:55'
-    changed: '2025-05-01 00:45:07'
+    changed: '2025-05-03 16:39:29'
     hash: 362709665
     stats: #  auto-generated, DO NOT UPDATE
 
+      zh: {count: 17, start: 8, end: 34}
+      en: {count: 17, start: 16, end: 42}
   bin/init_main.sh:
     type: shell
     djb2_len: 20
     created: '2025-04-29 16:56:55'
-    changed: '2025-05-01 00:45:07'
+    changed: '2025-05-03 16:39:29'
     hash: 3525264606
     stats: #  auto-generated, DO NOT UPDATE
 
+      zh: {count: 27, start: 36, end: 70}
+      en: {count: 27, start: 44, end: 78}
   bin/cmd_help.sh:
     type: shell
     djb2_len: 20
