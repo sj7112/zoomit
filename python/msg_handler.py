@@ -328,9 +328,9 @@ def msg_parse_tmpl(template, *args):
 # args - 消息和参数
 #
 # 选项：
-# i - 忽略翻译
-# s - 显示调用栈
-# e - 返回错误状态
+# ignore = i - 忽略翻译
+# stack = s - 显示调用栈
+# error = e - 返回错误状态
 #
 # 使用示例：
 # msg_parse_param({}, "How {0} {1} {0}!", "do", "you") ==> "How do you do!"
@@ -340,13 +340,16 @@ def msg_parse_tmpl(template, *args):
 # 1) 调试只能用print(..., file=sys.stderr) ！！！否则父函数接收返回值时，会出错
 # ==============================================================================
 def msg_parse_param(options, *args):
-    print_array(options)
-    print_array(args)
-    # options = args[0]
     template = msg_parse_tmpl(args[0], *args[1:])  # parse text by template
 
-    stackerr = ""
-    if json_getopt(options, "s"):
+    # 检查stack参数
+    if json_getopt(options, "stack"):
+        if len(options["stack"]) == 1:
+            print("警告: stack 参数需要2个数字，已自动使用默认值 6 3", file=sys.stderr)
+            options["stack"] = [6, 3]
+        elif len(options["stack"]) > 2:
+            print("警告: stack 参数最多只取前两个数字，多余的已忽略", file=sys.stderr)
+            options["stack"] = options["stack"][:2]
         stackerr = print_stack_err(6, 3)  # print stack error (level ≤ 6)
         template += f" {stackerr}"
 
@@ -354,24 +357,24 @@ def msg_parse_param(options, *args):
     caller_name = inspect.currentframe().f_back.f_code.co_name
 
     if caller_name in ["exiterr", "error"]:
-        result = f"{RED}❌ {MSG_ERROR}: {template}{NC}"
-        print(result, file=sys.stderr)
-    elif caller_name == "success":
-        result = f"{GREEN}✅ {MSG_SUCCESS}: {template}{NC}"
-        print(result)
-    elif caller_name == "warning":
-        result = f"{YELLOW}⚠️ {MSG_WARNING}: {template}{NC}"
-        print(result)
-    elif caller_name == "info":
-        result = f"{DARK_BLUE}🔷 {MSG_INFO}: {template}{NC}"
-        print(result)
-    elif caller_name == "string":
-        result = template  # normal text (no color)
-        return result
+        print(f"{RED}❌ {MSG_ERROR}: {template}{NC}")
+        return 1  # 报错
 
-    if json_getopt(options, "e"):
+    if caller_name == "success":
+        print(f"{GREEN}✅ {MSG_SUCCESS}: {template}{NC}")
+        return 0  # 成功
+
+    if caller_name == "string":
+        return template  # 转换 normal text (no color)
+
+    if caller_name == "warning":
+        print(f"{YELLOW}⚠️ {MSG_WARNING}: {template}{NC}")
+    elif caller_name == "info":
+        print(f"{DARK_BLUE}🔷 {MSG_INFO}: {template}{NC}")
+
+    if json_getopt(options, "error"):
         return 1  # 如有需要，返回错误，供调用者使用
-    return 0
+    return 0  # 警告或提示
 
 
 # 解析命令行选项
@@ -410,42 +413,49 @@ def parse_options(args):
 # 自动翻译 + 解析函数
 #
 # params:
-# -i : ignore (跳过多语言翻译)
-# -s : sequence (手动设置序号)
-# -o : line order (行内序号 - 需手动输入)
+# ignore = i - 忽略翻译
+# stack = s - 显示调用栈
+# error = e - 返回错误状态
 # ==============================================================================
-def string(*args):
-    """格式化字符串，支持参数替换"""
-    return msg_parse_param(*parse_args(args))
+def string(*args, **kwargs):
+    """格式化字符串，支持参数替换
+    直接返回字符串转换结果
+    """
+    return msg_parse_param(kwargs, *args)
 
 
-def exiterr(*args):
+def exiterr(*args, **kwargs):
     """输出错误消息并退出"""
-    return msg_parse_param(*parse_args())
+    msg_parse_param(kwargs, *args)
+    # raise typer.Exit(code=1)  # 替代 sys.exit(1)
     sys.exit(1)
 
 
-def error(*args):
-    """输出错误消息"""
-    return msg_parse_param(*parse_args())
+def error(*args, **kwargs):
+    """输出错误消息(消息种类=1)"""
+    return msg_parse_param(kwargs, *args)
 
 
-def success(*args):
-    """输出成功消息"""
-    return msg_parse_param(*parse_args())
+def success(*args, **kwargs):
+    """输出成功消息(消息种类=0)"""
+    return msg_parse_param(kwargs, *args)
 
 
-def warning(*args):
-    """输出警告消息"""
-    return msg_parse_param(*parse_args())
+def warning(*args, **kwargs):
+    """输出警告消息
+    返回消息种类（0=非error；1=error）
+    """
+    return msg_parse_param(kwargs, *args)
 
 
-def info(*args):
-    """输出信息消息"""
-    return msg_parse_param(*parse_args())
+def info(*args, **kwargs):
+    """输出信息消息
+    返回消息种类（0=非error；1=error）
+    """
+    return msg_parse_param(kwargs, *args)
 
 
-def parse_args(args):
+def parse_args(*args, kwargs):
     """参数解析（标准入口参数处理）"""
     parser = argparse.ArgumentParser(
         description="msg_parse_param 辅助参数解析器",
@@ -461,17 +471,16 @@ def parse_args(args):
     parser.add_argument("params", nargs="*", help="输入文件路径列表（多个路径通过空格分隔）")
 
     # 解析预处理后的参数
-    args = parser.parse_args()
+    args = parser.parse_args(args)
 
     # 检查stack参数
-    if args.stack is None or len(args.stack) == 0:
-        args.stack = [6, 3]
-    elif len(args.stack) == 1:
-        print("警告: -s 参数需要2个数字，已自动使用默认值 6 3", file=sys.stderr)
-        args.stack = [6, 3]
-    elif len(args.stack) > 2:
-        print("警告: -s 参数最多只取前两个数字，多余的已忽略", file=sys.stderr)
-        args.stack = args.stack[:2]
+    if args.stack is not None:
+        if len(args.stack) == 1:
+            print("警告: -s 参数需要2个数字，已自动使用默认值 6 3", file=sys.stderr)
+            args.stack = [6, 3]
+        elif len(args.stack) > 2:
+            print("警告: -s 参数最多只取前两个数字，多余的已忽略", file=sys.stderr)
+            args.stack = args.stack[:2]
 
     args_dict = vars(args)
     # 分离位置参数和选项参数

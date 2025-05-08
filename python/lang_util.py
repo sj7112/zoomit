@@ -20,8 +20,9 @@ from file_util import (
     read_lang_yml,
     write_config,
     write_lang_yml,
+    print_array as file_print_array,
 )
-from debug_tool import test_assertion
+from debug_tool import test_assertion, print_array
 
 # 多语言支持
 FILE_MODE = "c|cpp|java|js|py|sh|ts"
@@ -38,10 +39,11 @@ FILE_TYPE = {
 DEL_MODE = 1  # 0=保留；1=注释；2=删除
 
 HASH = "Z-HASH"
-COUNT = "Z-COUNT"
-START = "Z-START"
-END = "Z-END"
-STATS = "stats"
+FILE_STAT = "Z-STAT"
+COUNT = "count"
+START = "start"
+END = "end"
+YML_STAT = "stats"
 YML_PATH = "/usr/local/shell/config/lang/_lang.yml"
 
 # 文件匹配模式
@@ -56,12 +58,16 @@ MSG_MATCH_G = r"^#?\s*([A-Za-z0-9+_]+)\s*=\s*(.+?)(\s*#.*)?\s*$"  # 含捕获组
 
 
 def _current_time():
-    """输出当前时间"""
+    """输出当前时间
+
+    返回:
+        当前时间的字符串表示，格式为 YYYY-MM-DD HH:MM:SS
+    """
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
 def _not_found():
-    """输出提示信息 + 时间戳"""
+    """找不到数据时输出: NOT FOUND + 时间戳"""
     return f"# NOT FOUND {_current_time()}"
 
 
@@ -77,7 +83,7 @@ def _system_locale():
     如果都未找到，则返回默认值 'en'
 
     返回:
-        区域设置代码，例如 'zh_CN', 'en_US', 'en' 等
+        区域设置代码，例如 'zh_CN', 'en_US', 'zhzh', 'en' 等
     """
     # 按优先级顺序尝试不同的环境变量
     for var in ["LANG", "LC_ALL", "LC_MESSAGES"]:
@@ -98,20 +104,24 @@ def _file_type(fn):
     return FILE_TYPE.get(match.group(0)) if match else None
 
 
-def file_lang_inline_format(file_yml_data, lang_code, data):
+def _set_flow_style(parentObj, key, data):
+    """语言统计采用紧凑模式：写入到一行"""
+    zh_data = CommentedMap(data)
+    zh_data.fa.set_flow_style()  # 设置为流式样式 (内联格式)
+    parentObj[key] = zh_data
+
+
+def file_lang_inline_format(file_yml, file_name, lang_code, lang_data):
     """语言统计采用紧凑模式：写入到一行
 
+    数据:
+        count=有效消息数量；staart=起始位置；end=结束位置
     例子:
         stats:
             zh: {count: 17, start: 8, end: 34}
             en: {count: 17, start: 13, end: 39}
     """
-    zh_data = CommentedMap()
-    zh_data["count"] = data[COUNT]  # 有效消息数量
-    zh_data["start"] = data[START]  # 起始位置
-    zh_data["end"] = data[END]  # 结束位置
-    zh_data.fa.set_flow_style()  # 设置为流式样式 (内联格式)
-    file_yml_data[STATS][lang_code] = zh_data
+    _set_flow_style(file_yml[file_name][YML_STAT], lang_code, lang_data[file_name][FILE_STAT])
 
 
 def stat_file_yml(lang_code, lang_data, missing_lang_data, file_yml):
@@ -124,12 +134,12 @@ def stat_file_yml(lang_code, lang_data, missing_lang_data, file_yml):
     """
     for file_name in lang_data.keys():
         # 调整为流式样式 (内联格式)
-        file_lang_inline_format(file_yml[file_name], lang_code, lang_data[file_name])
+        file_lang_inline_format(file_yml, file_name, lang_code, lang_data)
 
     for file_name in missing_lang_data.keys():
         if file_name in file_yml:  # 如果在yml中未定义，则自动跳过（不负责错误数据清理）
             # 调整为流式样式 (内联格式)
-            file_lang_inline_format(file_yml[file_name], lang_code, missing_lang_data[file_name])
+            file_lang_inline_format(file_yml, file_name, lang_code, missing_lang_data)
 
 
 def config_lang_inline_format(stats):
@@ -142,10 +152,7 @@ def config_lang_inline_format(stats):
     """
     for lc in stats.keys():
         if lc != "file_nos":
-            zh_data = CommentedMap()
-            zh_data["count"] = stats[lc]["count"]  # 有效消息数量
-            zh_data.fa.set_flow_style()  # 设置为流式样式 (内联格式)
-            stats[lc] = zh_data
+            _set_flow_style(stats, lc, stats[lc])  # 有效消息数量
 
 
 def stat_config_yml(config_yml, file_yml):
@@ -160,18 +167,18 @@ def stat_config_yml(config_yml, file_yml):
     # 遍历所有文件
     for file_info in file_yml.values():
         stats["file_nos"] += 1
-        # 遍历stats中的键值对(lang_code, stats["count"])
-        for lc, stat in file_info[STATS].items():
+        # 遍历stats中的键值对(lang_code, stats[COUNT])
+        for lc, stat in file_info[YML_STAT].items():
             if isinstance(stat, dict):
                 # 将值累加到config_yml对应项
                 if not lc in stats:
-                    stats[lc] = {"count": stat["count"]}
+                    stats[lc] = {COUNT: stat[COUNT]}
                 else:
-                    stats[lc]["count"] += stat["count"]
+                    stats[lc][COUNT] += stat[COUNT]
 
     # 调整为流式样式 (内联格式)
     config_lang_inline_format(stats)
-    config_yml[STATS] = stats
+    config_yml[YML_STAT] = stats
 
 
 # =============================================================================
@@ -249,9 +256,8 @@ def skip_file_section(lines, i, new_lines, file_data):
             count += 1
         new_lines.append(lines[i])
         i += 1
-    file_data[COUNT] = count
-    file_data[START] = start
-    file_data[END] = len(new_lines) + 1  # 结束位置
+    end = len(new_lines) + 1  # 结束位置
+    file_data[FILE_STAT] = {COUNT: count, START: start, END: end}
     return i
 
 
@@ -288,9 +294,8 @@ def process_file_section(lines, i, new_lines, file_data):
                 case 2:
                     pass  # 直接跳过 = 删除
 
-    file_data[COUNT] = count
-    file_data[START] = start
-    file_data[END] = start = len(new_lines) + 1  # 结束位置
+    end = len(new_lines) + 1  # 结束位置
+    file_data[FILE_STAT] = {COUNT: count, START: start, END: end}
     return i
 
 
@@ -310,9 +315,8 @@ def append_file_msgs(new_lines, processed_files, lang_data):
                 for key, msg in func_data.items():
                     new_lines.append(f"{key}={msg}")
                     count += 1
-        file_data[COUNT] = count
-        file_data[START] = start
-        file_data[END] = len(new_lines) + 1  # 结束位置
+        end = len(new_lines) + 1  # 结束位置
+        file_data[FILE_STAT] = {COUNT: count, START: start, END: end}
 
 
 # =============================================================================
@@ -331,8 +335,8 @@ def reset_lang_yml(lang_data, data):
     for file_name in lang_data.keys():
         if file_name in file_yml:
             file_yml[file_name]["changed"] = _current_time()
-            if file_yml[file_name].get(STATS) is None:
-                file_yml[file_name][STATS] = {}
+            if file_yml[file_name].get(YML_STAT) is None:
+                file_yml[file_name][YML_STAT] = {}
         else:
             now = _current_time()
             file_yml[file_name] = {
@@ -340,38 +344,19 @@ def reset_lang_yml(lang_data, data):
                 "djb2_len": config_yml["djb2_len"],
                 "created": now,
                 "changed": now,
-                STATS: {},
+                YML_STAT: {},
             }
 
     return config_yml, file_yml
 
 
-# =============================================================================
-# 主函数：处理语言文件(元数据)
-# =============================================================================
-# def update_lang_files(lang_files, lang_data, test_run=False):
-
-# # 读yaml
-# data, yaml = read_lang_yml()
-
-# config_yml, file_yml = reset_lang_yml(lang_data, data)  # 重置yaml配置
-# set_prop_files(lang_data, file_yml),  # hash code
-# for lang_file in lang_files:
-#     missing_lang_data = update_lang_properties(lang_file, lang_data, test_run)
-#     stat_file_yml(_locale_code(lang_file), lang_data, missing_lang_data, file_yml)
-# stat_config_yml(config_yml, file_yml)
-
-# # 写yaml
-# if not test_run:
-#     write_lang_yml(data, yaml)
-
-# return data
-
-
-def yaml_file_interceptor(yaml_file_path):
+# 拦截器装饰器
+def yaml_file_interceptor():
     """
     拦截器装饰器，处理YAML文件的读取和写入
-    :param yaml_file_path: YAML文件路径
+    1) 前置处理：读取_lang.yml
+    2) 主程序：写入properties文件，并重构YAML文件内容
+    3）后置处理：写入_lang.yml
     """
 
     def decorator(main_func):
@@ -379,7 +364,7 @@ def yaml_file_interceptor(yaml_file_path):
             # 前置处理：读取YAML文件
             data, yaml = read_lang_yml()
 
-            # 执行主函数
+            # 执行主函数 update_lang_files
             result = main_func(lang_files, lang_data, test_run, data)
 
             # 后置处理：只在数据变化且非测试运行时写入文件
@@ -393,8 +378,8 @@ def yaml_file_interceptor(yaml_file_path):
     return decorator
 
 
-# 修改后的主函数
-@yaml_file_interceptor(YML_PATH)  # 替换为实际的YAML文件路径
+# 主函数
+@yaml_file_interceptor()
 def update_lang_files(lang_files, lang_data, test_run=False, data=None):
     """
     处理语言文件(元数据)
@@ -443,7 +428,6 @@ def update_lang_properties(lang_file, lang_data, test_run):
 
     # 子程序5：添加未出现的文件块
     append_file_msgs(new_lines, processed_files, lang_data)
-
     # 写文件
     if not test_run:
         write_config(lang_file, new_lines)
@@ -479,24 +463,30 @@ def run_test(opts):
         "/usr/local/shell/config/lang/zh.properties",
         "/usr/local/shell/config/lang/en.properties",
     ]  # 语言消息
+    lang_codes = ["zh", "en"]
     data = parse_shell_files(opts["file"])
-
     # 测试语言文件(yml和properties)
     data = update_lang_files(lang_files, data, True)
+    debug_assertion(data, lang_codes)
 
+
+# =============================================================================
+# 调试测试函数（对比新旧yml文件，如有差异，给出差异分析）
+# =============================================================================
+def debug_assertion(data, lang_codes):
     # 读yaml
     (old_data, yaml) = read_lang_yml()
 
-    old_stat = old_data["config"][STATS]
-    new_stat = data["config"][STATS]
+    old_stat = old_data["config"][YML_STAT]
+    new_stat = data["config"][YML_STAT]
     o = old_stat["file_nos"]
     n = new_stat["file_nos"]
     test_assertion("o == n", f"Number of files: {o} => {n}")
-    o = old_stat["zh"]["count"]
-    n = new_stat["zh"]["count"]
+    o = old_stat["zh"][COUNT]
+    n = new_stat["zh"][COUNT]
     test_assertion("o == n", f"Number of zh messages: {o} => {n}")
-    o = old_stat["en"]["count"]
-    n = new_stat["en"]["count"]
+    o = old_stat["en"][COUNT]
+    n = new_stat["en"][COUNT]
     test_assertion("o == n", f"Number of en messages: {o} => {n}")
 
     for file_name in data.get("file", {}).keys():
@@ -506,17 +496,17 @@ def run_test(opts):
             continue
 
         # 获取语言代码（中文、英文）
-        new = data["file"][file_name].get(STATS)
-        old = old_data["file"][file_name].get(STATS)
+        new = data["file"][file_name].get(YML_STAT)
+        old = old_data["file"][file_name].get(YML_STAT)
         if old == None:
             test_assertion("False", f"stats not exists in file yml: {file_name}")
             continue
 
-        for lang_code in ["zh", "en"]:
-            os = old.get(lang_code).get("start")
-            oe = old[lang_code].get("end")
-            ns = new[lang_code].get("start")
-            ne = new[lang_code].get("end")
+        for lang_code in lang_codes:
+            os = old.get(lang_code).get(START)
+            oe = old[lang_code].get(END)
+            ns = new[lang_code].get(START)
+            ne = new[lang_code].get(END)
 
             if os != ns or oe != ne:  # 比较 start 和 end 值
                 test_assertion("False", f"{lang_code} {file_name} range: [{os} ~ {oe}] => [{ns} ~ {ne}]")

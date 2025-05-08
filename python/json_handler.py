@@ -66,13 +66,12 @@ def fetch_options(json_str):
         sys.exit("JSON格式错误")
 
 
-def json_getopt(key, options):
+def json_getopt(options, key):
     """
     检查选项中是否存在指定键，并判断其值是否为真。
     如果值不是"0"且不是空字符串，则返回True。
     """
-    value = options.get(key, "")
-    return value != "0" and value != ""
+    return options.get(key, False)
 
 
 # 检查是否为合法的JSON格式

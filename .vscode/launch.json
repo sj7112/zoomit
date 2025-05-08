@@ -77,11 +77,27 @@
         },
         {
             "type": "debugpy",
+            "name": "Python: 启动 i18n.py",
+            "request": "launch",
+            "program": "${workspaceFolder}/python/i18n.py",
+            "args": [
+                //"add",
+                //"del",
+                // "-y",
+                // "--lang=ko fr",
+                "--lang=zh",
+                // "--lang=en",
+                // "--debug"
+            ],
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "debugpy",
             "name": "Python: 启动 lang_util.py",
             "request": "launch",
             "program": "${workspaceFolder}/python/lang_util.py",
             "args": [
-                "--file=bin/i18n.sh bin/init_main.sh",
+                "--file=bin/init_main.sh bin/i18n.sh",
                 "-lzh en",
                 "--debug"
             ],

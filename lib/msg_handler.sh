@@ -356,7 +356,9 @@ if [[ -z "${LOADED_MSG_HANDLER:-}" ]]; then
   #      string：  普通文本
   #
   # 参数：
-  # -n : 无需翻译
+  # -i : 无需翻译
+  # -s : 打印错误栈stack
+  # -e : 返回1（表示本条信息为错误提示）
   #
   # 使用示例：
   # msg_parse_param "How {0} {1} {0}!" "do" "you" ==> "How do you do!"

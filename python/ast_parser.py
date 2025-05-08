@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 import os
 from pathlib import Path
 import re
@@ -206,8 +207,8 @@ def extract_quoted_string(segment):
     if content_match:
         content = content_match.group(1)
 
-    # 拒绝纯变量引用
-    if re.match(r"^\$[a-zA-Z_][a-zA-Z0-9_]*$", content):
+    # 拒绝纯变量引用（如$abc; $abc123; $123）
+    if re.match(r"^\$([a-zA-Z][a-zA-Z0-9_]*|\d+)$", content):
         return None
 
     # 空内容视为无效
@@ -321,7 +322,6 @@ def parse_shell_files(target):
                 parse_function(lines, line_number, total_lines, sh_file, results[sh_file])
 
             line_number[0] += 1
-
     return results
 
 

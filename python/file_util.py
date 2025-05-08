@@ -1,9 +1,17 @@
 #!/usr/bin/env python3
 
+import os
 from pathlib import Path
+import pprint
 import shutil
 import sys
 from ruamel.yaml import YAML
+
+# 动态添加当前目录到 sys.path
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+
+from debug_tool import print_array
 
 # 获取当前文件的绝对路径的父目录
 PARENT_DIR = Path(__file__).parent.parent.resolve()
@@ -34,6 +42,35 @@ def path_resolved(path_str, errMsg="文件不存在"):
         print(f"❌ {errMsg}: {src}")
         return None
     return src
+
+
+def print_array(arr, filename="./tests/data.tmp"):
+    """
+    将字典或列表的内容写入到指定文件中
+
+    参数:
+        arr: 要写入的数组、字典或对象
+        filename: 输出文件路径，默认为"./tests/data.tmp"
+
+    如果是字典，使用pprint格式化输出
+    如果是列表，写入索引和对应的值
+    """
+    # 确保目录存在
+    fn = path_resolved(filename)
+    # 打开文件进行写入
+    with open(fn, "w", encoding="utf-8") as fh:
+        if isinstance(arr, dict):
+            # 如果是字典，使用pprint格式化输出
+            pprint.pprint(arr, stream=fh)
+
+        elif hasattr(arr, "__dict__"):
+            # 如果是具有__dict__属性的对象（如Namespace）
+            pprint.pprint(arr.__dict__, stream=fh)
+
+        else:
+            # 如果是列表，写入索引和值
+            for value in arr:
+                fh.write(f"{value}\n")
 
 
 def copy_file(filepath1, filepath2):
@@ -114,7 +151,7 @@ def get_shell_files(file_args=None):
             else:
                 print(f"警告: 文件不存在: {file}", file=sys.stderr)
 
-    # 如果没有指定文件，则搜索默认目录
+    # 如果没有指定文件，则搜索默认目录（结果按文件名字母排序）
     else:
         for dir in ["bin", "lib"]:
             dir_path = PARENT_DIR / dir
@@ -125,4 +162,4 @@ def get_shell_files(file_args=None):
         print("错误: 没有找到任何shell脚本文件", file=sys.stderr)
         sys.exit(1)
 
-    return sh_files
+    return sorted(sh_files)

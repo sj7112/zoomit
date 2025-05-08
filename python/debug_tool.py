@@ -1,7 +1,62 @@
 #!/usr/bin/env python3
 
+import os
+from typing import Any, List
 from rich import print as rprint
 import sys
+import typer
+
+
+def create_app(**kwargs: Any) -> typer.Typer:
+    """
+    创建并配置 Typer 应用，默认只在帮助模式下启用 Rich 格式输出
+
+    Args:
+        **kwargs: 传递给 typer.Typer 的参数
+
+    Returns:
+        配置好的 Typer 应用实例
+    """
+    # 检查是否为帮助模式
+    help_mode = any(arg in ["--help", "-h"] for arg in sys.argv[1:])
+
+    # 设置默认参数
+    defaults = {
+        "pretty_exceptions_enable": False,
+        "pretty_exceptions_show_locals": False,
+        "rich_markup_mode": "rich" if help_mode else None,
+    }
+    # 如果不是 help 模式，关闭 rich 异常格式化
+    if not help_mode:
+        # 这个环境变量会被Click使用，但不足以完全禁用Typer的Rich格式
+        os.environ["CLICK_EXCEPTION_FORMAT"] = "plaintext"
+
+    # 仅当用户未指定时应用默认值
+    for key, value in defaults.items():
+        kwargs.setdefault(key, value)
+
+    return typer.Typer(**kwargs)
+
+
+def default_cmd(default: str, commands: List[str]) -> None:
+    """
+    检查命令行参数，如果没有指定已知的子命令，则插入默认命令
+
+    Args:
+        default: 默认命令名称
+        commands: 所有可用命令的列表
+    """
+    # 检查是否有子命令
+    has_command = False
+
+    # 检查首个参数是否为已知子命令
+    if len(sys.argv) > 1 and not sys.argv[1].startswith("-"):
+        if sys.argv[1] in commands:
+            has_command = True
+
+    # 如果没有子命令，默认插入指定的默认命令
+    if not has_command:
+        sys.argv.insert(1, default)
 
 
 def print_array(arr):
