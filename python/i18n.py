@@ -21,7 +21,7 @@ from ast_parser import parse_shell_files
 from lang_util import debug_assertion, update_lang_files
 from msg_handler import string, info, warning, error, exiterr, get_lang_code
 from debug_tool import create_app, default_cmd, print_array
-
+from file_util import print_array as file_print_array
 
 # 确保目录存在
 os.makedirs(LANG_DIR, exist_ok=True)
@@ -166,9 +166,9 @@ def add_lang_files(langs: List[str], no_prompt: bool = True) -> Tuple[str, List[
         # 标准模板内容
         template = string(
             "# {0} 语言包，文档结构：\n\
-# 1. 自动处理 bin | lib 目录 py 文件\n\
+# 1. 自动处理 bin | lib 目录 sh 文件\n\
 # 2. 解析函数 string | info | exiterr | error | success | warning\n\
-# 3. key=distinct hash code + position + order\n\
+# 3. key=hash code of wording\n\
 # 4. value=localized string",
             lang_code,
         )
@@ -245,9 +245,9 @@ def upd_lang_files(langs: List[str], files: List[str], debug: bool) -> None:
     # 获取所有文件路径
     lang_codes, lang_files = get_lang_files(langs)
     # 语言消息
-    data = parse_shell_files(files)
+    lang_data = parse_shell_files(files)
     # 修改语言文件(yml和properties)
-    data = update_lang_files(lang_files, data, debug)
+    data = update_lang_files(lang_codes, lang_data, debug)
     if debug:
         debug_assertion(data, lang_codes)
 

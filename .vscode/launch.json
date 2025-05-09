@@ -85,7 +85,8 @@
                 //"del",
                 // "-y",
                 // "--lang=ko fr",
-                "--lang=zh",
+                //"--file=bin/i18n.sh bin/init_main.sh",
+                "--lang=zh en",
                 // "--lang=en",
                 // "--debug"
             ],

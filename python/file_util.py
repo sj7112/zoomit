@@ -16,6 +16,7 @@ from debug_tool import print_array
 # 获取当前文件的绝对路径的父目录
 PARENT_DIR = Path(__file__).parent.parent.resolve()
 
+PROP_PATH = "/usr/local/shell/config/lang/"
 YML_PATH = "/usr/local/shell/config/lang/_lang.yml"
 
 
@@ -92,11 +93,19 @@ def copy_file(filepath1, filepath2):
         return None
 
 
-def read_config(fn):
+def read_lang_prop(lang_code):
     """读取配置文件为数组"""
+    fn = PROP_PATH + lang_code + ".properties"
     with open(fn, "r", encoding="utf-8") as fh:
         lines = fh.readlines()
     return [line.rstrip("\n") for line in lines]
+
+
+def write_lang_prop(lang_code, content_list):
+    """写入配置文件内容"""
+    fn = PROP_PATH + lang_code + ".properties"
+    with open(fn, "w", encoding="utf-8") as fh:
+        fh.writelines(f"{line}\n" for line in content_list)
 
 
 def read_lang_yml():
@@ -112,12 +121,6 @@ def write_lang_yml(data, yaml):
     """读取yml语言文件为字典"""
     with open(YML_PATH, "w") as f:
         yaml.dump(data, f)
-
-
-def write_config(fn, content_list):
-    """写入配置文件内容"""
-    with open(fn, "w", encoding="utf-8") as fh:
-        fh.writelines(f"{line}\n" for line in content_list)
 
 
 def get_filename(file_args):
@@ -162,4 +165,4 @@ def get_shell_files(file_args=None):
         print("错误: 没有找到任何shell脚本文件", file=sys.stderr)
         sys.exit(1)
 
-    return sorted(sh_files)
+    return sh_files

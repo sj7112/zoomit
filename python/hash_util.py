@@ -13,11 +13,7 @@ from debug_tool import (
 )
 
 BASE64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+_"  # url安全
-HASH = "Z-HASH"
-HASH_YML = "hash"
-PROP_FILE = {}  # key=path/program; value = Hash Code
-PROP_FUNC = {}  # key=Hash Code; value = path/program func_name
-PROP_MSG = {}  # key=Hash Code + "_" + LineNo + "_" + order; value = message
+PROP_FILE = {}  # key=path/program; value = 待翻译消息列表
 YML_PATH = "/usr/local/shell/config/lang/_lang.yml"
 
 
@@ -26,10 +22,7 @@ YML_PATH = "/usr/local/shell/config/lang/_lang.yml"
 # _number_to_base64         数值 => 64进制
 # _padded_number_to_base64  数值_位数 => 64进制
 # _base64_to_number         64进制 => 数值
-# get_prop_files            获取hash code（True/False 是否找到了匹配节点）
-# set_prop_file             hash code => 全局字典 PROP_FILE
-# get_prop_msg              hash code + order => 64进制hash code
-# set_prop_msg              hash code + order => 全局字典 PROP_MSG
+# set_prop_msgs             待翻译内容列表(单文件) => 64进制hash code
 # ==============================================================================
 
 
@@ -130,8 +123,8 @@ def init_meta_props():
         data = YAML().load(f)
     file_yml = data["file"] = data["file"] if isinstance(data.get("file"), dict) else {}
     # 重置全局变量
-    for item in file_yml.values():
-        PROP_FILE[item[HASH]] = True
+    for key in file_yml.keys():
+        PROP_FILE[key] = False  # 初始化时候，设置为false；实际使用时，逐步加入进来
 
 
 # ==============================================================================
@@ -154,43 +147,6 @@ def _djb2_with_salt_20(text: str) -> int:
 def md5(text: str) -> int:
     """返回MD5数值"""
     return int.from_bytes(hashlib.md5(text.encode("utf-8")).digest(), byteorder="big")
-
-
-def set_prop_files(lang_data, file_yml):
-    hashes = {}
-    result = {}
-
-    for s in file_yml.keys():
-        h = _djb2_with_salt_20(s)
-
-        if h in hashes:
-            if hashes[h] == s:
-                continue  # 忽略重复
-            # 冲突但不相同，使用 MD5
-            for item in [hashes[h], s]:
-                result[md5(item)] = item  # 改用 MD5 覆盖原来的hash code
-            del result[h]  # 删除之前的 DJB2 冲突键
-        elif h not in result:
-            result[h] = s
-            hashes[h] = s
-
-    # 最后写回配置文件
-    for key, value in result.items():
-        PROP_FILE[key] = True  # 全局变量
-        file_yml[value][HASH_YML] = key  # yml配置
-        if value in lang_data:
-            lang_data[value][HASH] = key  # properties配置
-
-
-def get_prop_file(s):
-    if not PROP_FILE:
-        init_meta_props()
-
-    h = _djb2_with_salt_20(s)
-    if h in PROP_FILE:
-        return h  # 返回 hash code
-    else:
-        return md5(s)  # 改用 MD5
 
 
 def set_prop_msgs(content):
@@ -223,7 +179,7 @@ def set_prop_msgs(content):
 
 
 # =============================================================================
-# 调试测试函数（base64转换、PROP_FILE）
+# 调试测试函数（base64转换）
 # =============================================================================
 def main():
     # 测试1：base64转换
@@ -233,14 +189,6 @@ def main():
     c = _base64_to_number(b64[:4])  # 前4位
     d = _base64_to_number(b64[4:6])  # 后2位
     test_assertion("c == a and d == b", f"base64 convert: {b64}")
-
-    # 测试2：PROP_FILE key / value
-    a = "bin/init_main.sh"
-    idx = _djb2_with_salt_20(a)
-    test_assertion("idx == 3525264606", f"set PROP_FILE: {idx}")
-
-    idx2 = get_prop_file(a)
-    test_assertion(lambda: idx == idx2, f"get PROP_FILE: {idx2}")
 
 
 # =============================================================================
