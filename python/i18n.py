@@ -150,8 +150,8 @@ def get_lang_files(langs: List[str] = None) -> Tuple[List[str], List[str]]:
         exiterr("请先添加语言文件")
 
     # 返回语言文件列表
-    lang_files = [file for _, files in ret_langs for file in files]
-    return lang_codes, lang_files
+    # lang_files = [file for _, files in ret_langs for file in files]
+    return lang_codes
 
 
 def add_lang_files(langs: List[str], no_prompt: bool = True) -> Tuple[str, List[str]]:
@@ -243,7 +243,7 @@ def upd_lang_files(langs: List[str], files: List[str], debug: bool) -> None:
         lang: 语言代码（如 zh_CN）
     """
     # 获取所有文件路径
-    lang_codes, lang_files = get_lang_files(langs)
+    lang_codes = get_lang_files(langs)
     # 语言消息
     lang_data = parse_shell_files(files)
     # 修改语言文件(yml和properties)

@@ -12,7 +12,7 @@ from debug_tool import (
     test_assertion,
 )
 
-BASE64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+_"  # url安全
+BASE64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"  # url安全
 PROP_FILE = {}  # key=path/program; value = 待翻译消息列表
 YML_PATH = "/usr/local/shell/config/lang/_lang.yml"
 
@@ -167,7 +167,11 @@ def set_prop_msgs(content):
                 result[md5(item)] = item  # 改用 MD5 覆盖原来的hash code
             del result[h]  # 删除之前的 DJB2 冲突键
         elif h not in result:
-            result[h] = f"{msg} #{type}@{lineno}@{order.replace('-', '')}"  # 添加注释
+            # result[h] = f"{msg} #{type}@{lineno}@{order.replace('-', '')}"  # 添加注释
+            result[h] = {
+                "msg": msg,  # 消息体
+                "cmt": f" #{type}@{lineno}@{order.replace('-', '')}",  # 添加注释
+            }
             hashes[h] = msg
 
     # 最后循环 result，key 改为 64 进制

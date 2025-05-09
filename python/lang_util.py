@@ -3,10 +3,7 @@
 from datetime import datetime
 import sys
 import os
-import locale
-import re
 from ruamel.yaml.comments import CommentedMap
-from sortedcontainers import SortedDict
 import typer
 import re
 from typing import List, Optional
@@ -37,9 +34,12 @@ FILE_TYPE = {
 
 # 读取环境变量并设置为全局变量，默认值为0
 DEL_MODE = 1  # 0=保留；1=注释；2=删除
+TRIM_SPACE = True  # 默认禁止空格
 
-FILE_LINE = "Z-LINE"
-FILE_STAT = "Z-STAT"
+FILE_HEAD = "Z-HEAD"  # 保留头部信息（头部注释）
+FILE_LINE = "Z-LINE"  # 待写入的行内容
+FILE_MESSAGE = "Z-MSG"  # 文件所包含的消息
+MSG_COUNT = "Z-COUNT"  # 文件统计信息
 COUNT = "count"
 START = "start"
 END = "end"
@@ -54,8 +54,8 @@ FUNC_MATCH = r"^#\s+◆=[^\s]+"  # 不含捕获组
 FUNC_MATCH_G = r"^#\s+◆=([^\s]+)"  # 含捕获组
 # 消息匹配模式
 MSG_MATCH_CHK = r"^\s*[A-Za-z0-9+_]+\s*=\s*.+?(\s*#.*)?\s*$"  # 不含捕获组（检查是否有效消息）
-MSG_MATCH_G = r"^#?\s*([A-Za-z0-9+_]+)\s*=\s*(.+?)\s*$"  # 含捕获组(单个)
-MSG_MATCH_G2 = r"^#?\s*([A-Za-z0-9+_]+)\s*=\s*(.+?)(\s*#.*)?\s*$"  # 含捕获组(两个)
+# MSG_MATCH_G2 = r"^#?\s*([A-Za-z0-9+_]+)\s*=\s*(.+?)\s*$"  # 含捕获组(两个)
+MSG_MATCH_G3 = r"^#?\s*([A-Za-z0-9+_]+)\s*=\s*(.*?)(\s#[A-Za-z0-9+_]+@\d+@\S*)\s*$"  # 含捕获组(三个)
 
 
 def _current_time():
@@ -70,11 +70,6 @@ def _current_time():
 def _not_found():
     """找不到数据时输出: NOT FOUND + 时间戳"""
     return f"# NOT FOUND {_current_time()}"
-
-
-def _locale_code(fn):
-    """获取系统语言代码"""
-    return re.search(r"lang/([a-zA-Z]{2}(?:_[a-zA-Z]{2})?)\.properties", fn).group(1)
 
 
 def _system_locale():
@@ -112,7 +107,7 @@ def _set_flow_style(parentObj, key, data):
     parentObj[key] = zh_data
 
 
-def file_lang_inline_format(file_yml, file_name, lang_code, processed_files):
+def file_lang_inline_format(file_yml, file_name, lang_code, stats):
     """语言统计采用紧凑模式：写入到一行
 
     数据:
@@ -122,20 +117,7 @@ def file_lang_inline_format(file_yml, file_name, lang_code, processed_files):
             zh: {count: 17, start: 8, end: 34}
             en: {count: 17, start: 13, end: 39}
     """
-    _set_flow_style(file_yml[file_name][YML_STAT], lang_code, processed_files[file_name][FILE_STAT])
-
-
-def stat_file_yml(lang_code, processed_files, file_yml):
-    """汇总信息 file_yml
-        [file_name]["stats"][lang_code][count | start | end]
-
-    解释:
-        lang_data: 重新计算后的结果列表
-    """
-    # 调整为流式样式 (内联格式)
-    for file_name in processed_files.keys():
-        if file_name in file_yml:  # 如果在yml中未定义，则自动跳过（不负责YAML错误数据清理）
-            file_lang_inline_format(file_yml, file_name, lang_code, processed_files)
+    _set_flow_style(file_yml[file_name][YML_STAT], lang_code, stats)
 
 
 def config_lang_inline_format(stats):
@@ -183,10 +165,9 @@ def stat_config_yml(data):
     data["config"][YML_STAT] = stats
 
 
-# =============================================================================
-# 识别文件区块并返回序号i
-# =============================================================================
-def process_file_head(lines, new_lines):
+def parse_lang_head(lines, prop_data):
+    """获取文件头部注释"""
+    file_lines = prop_data.setdefault(FILE_HEAD, {}).setdefault(FILE_LINE, [])
     i = 0
     while i < len(lines):
         line = lines[i]
@@ -196,41 +177,16 @@ def process_file_head(lines, new_lines):
             case l if re.match(FILE_MATCH, l):
                 return i  # 文件标记行，停止处理
             case _:
-                new_lines.append(line)  # 普通行，添加
+                file_lines.append(line)  # 普通行，添加
                 i += 1
     return i  # 文件结束
 
 
-# =============================================================================
-# 处理单个文件区块的内容
-# =============================================================================
-def msg_match(lines, i):
-    msg_old_data = {}
-    while i < len(lines):
-        line = lines[i].strip()
-        if re.match(FILE_MATCH, line):
-            break  # 匹配到下一个文件，退出
+def parse_lang_file(lines, i, prop_data, file_name):
+    """获取文件分段信息"""
+    file_lines = []  # 文件内容
+    file_msgs = {}  # 消息的key和value
 
-        if not line or re.match(FUNC_MATCH, line):
-            i += 1
-            continue  # 去掉多余空行 | 函数注释行
-
-        match = re.match(MSG_MATCH_G, line)
-        if match:
-            key = match.group(1)
-            msg_old_data[key] = match.group(2)
-
-        i += 1
-
-    return i, msg_old_data
-
-
-# =============================================================================
-# 跳过不需要处理的文件区块
-# =============================================================================
-def skip_file_section(lines, i, processed_data):
-    file_lines = []
-    count = 0  # 语言消息条数
     while i < len(lines):
         line = lines[i].strip()
         if re.match(FILE_MATCH, line):
@@ -240,82 +196,21 @@ def skip_file_section(lines, i, processed_data):
             i += 1
             continue  # 去掉多余空行
 
-        if re.match(MSG_MATCH_CHK, lines[i]):
-            count += 1
-        file_lines.append(lines[i])
+        file_lines.append(lines[i])  # 照抄原lines数据
+        match = re.match(MSG_MATCH_G3, line)
+        if match:
+            file_msgs[match.group(1)] = {
+                "msg": match.group(2).strip() if TRIM_SPACE else match.group(2),  # TRIM_SPACE表示去掉前后空格
+                "cmt": match.group(3) or "",  # 当match.group(3)为None时，返回""
+            }
 
         i += 1
-    processed_data[FILE_STAT] = {COUNT: count}
-    processed_data[FILE_LINE] = file_lines
+    prop_data[file_name] = {
+        FILE_LINE: file_lines,
+        FILE_MESSAGE: file_msgs,
+        MSG_COUNT: len(file_msgs),  # 语言消息条数
+    }
     return i
-
-
-# =============================================================================
-# 处理单个文件区块的内容
-# =============================================================================
-def process_file_section(lines, i, file_data, processed_data):
-    global DEL_MODE
-
-    file_lines = []
-    count = 0  # 语言消息条数
-
-    i, old_msgs = msg_match(lines, i)  # 匹配msg
-
-    # 跳过processed_file
-    for func_name, func_data in file_data.items():
-        if isinstance(func_data, dict):
-            file_lines.append(f"# ◆={func_name}")  # 新增函数
-            for key, msg in func_data.items():
-                file_lines.append(f"{key}={msg}")  # 新增消息
-                count += 1
-                old_msgs.pop(key, None)  # 删除匹配消息
-
-    if old_msgs:
-        file_lines.append(f"# ◆={_not_found()}")
-        for key, msg in old_msgs.items():
-            match DEL_MODE:
-                case 0:
-                    file_lines.append(f"{key}={msg}")  # 保留整行，尾部添加注释
-                    count += 1
-                case 1:
-                    file_lines.append(f"# {key}={msg}")  # 整行注释，尾部添加注释
-                case 2:
-                    pass  # 直接跳过 = 删除
-
-    processed_data[FILE_STAT] = {COUNT: count}
-    processed_data[FILE_LINE] = file_lines
-    return i
-
-
-# =============================================================================
-# 添加未出现的语言消息块
-# =============================================================================
-def append_file_msgs(lang_data, processed_files):
-    # 跳过已经处理过的文件
-    for file_name, file_data in (item for item in lang_data.items() if not processed_files.get(item[0], False)):
-        count = 0  # 语言消息条数
-        file_lines = []
-        for func_name, func_data in file_data.items():
-            if isinstance(func_data, dict):
-                file_lines.append(f"# ◆={func_name}")
-                for key, msg in func_data.items():
-                    file_lines.append(f"{key}={msg}")
-                    count += 1
-
-        processed_files[file_name] = {FILE_STAT: {COUNT: count}, FILE_LINE: file_lines}
-
-
-# =============================================================================
-# 计算消息的起始和结束位置（精确到每个文件）
-# =============================================================================
-def calc_start_end(processed_files, new_lines):
-    # 跳过processed_files
-    for file_name, processed_data in (item for item in processed_files.items()):
-        if processed_data[FILE_LINE]:
-            new_lines.extend(["", f"# ■={file_name}"])  # 增加空行 | 文件行
-            processed_data[FILE_STAT][START] = len(new_lines) + 1
-            new_lines.extend(processed_data[FILE_LINE])  # 添加行
-            processed_data[FILE_STAT][END] = len(new_lines) + 1
 
 
 def reset_lang_yml(lang_data, data):
@@ -350,9 +245,131 @@ def reset_lang_yml(lang_data, data):
 def set_global_data(config_yml):
     """根据config参数，调整全局变量"""
     global DEL_MODE
+    global TRIM_SPACE
 
     if config_yml["del_mode"]:
         DEL_MODE = config_yml["del_mode"]  # 重置DEL_MODE
+    if config_yml["del_mode"]:
+        TRIM_SPACE = config_yml["trim_space"]  # 重置TRIM_SPACE
+
+
+def parse_lang_prop(lang_code):
+    """
+    主函数：处理语言文件(指定语言)
+    1) 读取原有properties数据
+    2) 合并重新计算的lang_data数据
+    3) 写入文件并返回合并后的结果
+    """
+    prop_data = {}
+
+    # hash表：文件-函数
+    lines = read_lang_prop(lang_code)
+
+    # 子程序1：处理头部注释
+    i = parse_lang_head(lines, prop_data)
+    while i < len(lines):
+        # 子程序2：处理文件消息
+        file_name = re.match(FILE_MATCH_G, lines[i]).group(1)
+        i = parse_lang_file(lines, i + 1, prop_data, file_name)
+
+    return prop_data
+
+
+def parse_lang_data(file_data):
+    """主函数：添加新的文件"""
+    count = 0  # 语言消息条数
+    file_lines = []
+    for func_name, func_data in file_data.items():
+        if isinstance(func_data, dict):
+            file_lines.append(f"# ◆={func_name}")
+            for k, v in func_data.items():
+                file_lines.append(f"{k}={v['msg']}{v['cmt']}")  # 消息+注释
+                count += 1
+
+    return {FILE_LINE: file_lines, MSG_COUNT: count}
+
+
+def merge_lang_data(data, file_data):
+    """主函数：合并新的文件"""
+    global DEL_MODE
+
+    file_lines = []
+    count = 0  # 语言消息条数
+
+    old_msgs = data[FILE_MESSAGE]  # 匹配msg
+
+    # 跳过processed_file
+    for func_name, func_data in file_data.items():
+        if isinstance(func_data, dict):
+            file_lines.append(f"# ◆={func_name}")  # 新增函数
+            for k, v in func_data.items():
+                if k in old_msgs:
+                    file_lines.append(f"{k}={old_msgs[k]['msg']}{v['cmt']}")  # 仅调整注释！保留原有的翻译内容
+                    old_msgs.pop(k)  # 删除匹配消息
+                else:
+                    file_lines.append(f"{k}={v['msg']}{v['cmt']}")  # 新增消息
+                count += 1
+
+    if old_msgs and DEL_MODE != 2:  # 没有附加消息，或直接删除，则跳过处理
+        file_lines.append(f"# ◆={_not_found()}")
+        for k, v in old_msgs.items():
+            match DEL_MODE:
+                case 0:
+                    file_lines.append(f"{k}={v['msg']}{v['cmt']}")  # 保留整行，尾部添加注释
+                    count += 1
+                case 1:
+                    file_lines.append(f"# {k}={v['msg']}{v['cmt']}")  # 整行注释，尾部添加注释
+
+    data[FILE_LINE] = file_lines
+    data[MSG_COUNT] = count
+
+
+def handle_prop_data(lang_code, prop_data, file_yml):
+    """主函数：生成new_lines，改写file_yml"""
+    new_lines = prop_data[FILE_HEAD][FILE_LINE]  # 头部注释
+    # 跳过processed_files
+    for file_name, file_data in sorted(prop_data.items()):  # 排序：按文件名
+        if file_name == FILE_HEAD:
+            continue  # 跳过非文件部分
+        if file_data[FILE_LINE]:
+            new_lines.extend(["", f"# ■={file_name}"])  # 增加空行 | 文件标题行
+            new_lines.extend(file_data[FILE_LINE])  # 文件内容
+
+        # 处理file_yml
+        if file_name in file_yml:  # 如果在yml中未定义，则自动跳过（不负责YAML错误数据清理）
+            if file_data[FILE_LINE]:
+                end = len(new_lines) + 1  # 文件结束行
+                start = end - len(file_data[FILE_LINE])  # 文件起始行
+                stats = {COUNT: file_data[MSG_COUNT], START: start, END: end}  # 记录条数(可能为0)
+            else:
+                stats = {COUNT: 0}  # 记录条数(必定为0)
+            file_lang_inline_format(file_yml, file_name, lang_code, stats)
+
+    return new_lines
+
+
+def update_lang_properties(lang_code, lang_data, file_yml, test_run):
+    """
+    主函数：处理语言文件(指定语言)
+    1) 读取原有properties数据
+    2) 合并重新计算的lang_data数据
+    3) 写入文件并返回合并后的结果
+    """
+    # 从语言文件中读取原始数据
+    prop_data = parse_lang_prop(lang_code)
+    # 合并重新计算后的语言数据
+    for file_name, file_data in lang_data.items():
+        if not (file_name in prop_data):
+            prop_data[file_name] = parse_lang_data(file_data)  # 补充：新添加的文件
+        else:
+            merge_lang_data(prop_data[file_name], file_data)  # 合并：已有的文件
+
+    # 生成new_lines，改写file_yml
+    new_lines = handle_prop_data(lang_code, prop_data, file_yml)
+
+    # 写文件
+    if not test_run:
+        write_lang_prop(lang_code, new_lines)
 
 
 # 拦截器装饰器
@@ -402,40 +419,6 @@ def update_lang_files(lang_codes, lang_data, test_run=False, data=None):
     stat_config_yml(data)
 
     return data
-
-
-# =============================================================================
-# 主函数：处理语言文件(指定语言)
-# =============================================================================
-def update_lang_properties(lang_code, lang_data, file_yml, test_run):
-    new_lines = []
-    processed_files = SortedDict()
-
-    # hash表：文件-函数
-    lines = read_lang_prop(lang_code)
-
-    # 子程序1：处理头部注释
-    i = process_file_head(lines, new_lines)
-    while i < len(lines):
-        # 获取文件名
-        file_name = re.match(FILE_MATCH_G, lines[i]).group(1)
-        processed_files[file_name] = {}
-        if not file_name in lang_data:
-            # 子程序3：跳过不需要处理的文件区块
-            i = skip_file_section(lines, i + 1, processed_files[file_name])
-        else:
-            # 子程序4：处理文件区块内容
-            i = process_file_section(lines, i + 1, lang_data[file_name], processed_files[file_name])
-
-    # 子程序5：添加未出现的文件块
-    append_file_msgs(lang_data, processed_files)
-    # 子程序6：计算start、end
-    calc_start_end(processed_files, new_lines)
-    # 子程序7：汇总信息写入file_yml
-    stat_file_yml(lang_code, processed_files, file_yml)
-    # 写文件
-    if not test_run:
-        write_lang_prop(lang_code, new_lines)
 
 
 # =============================================================================

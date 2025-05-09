@@ -5,8 +5,6 @@ from pathlib import Path
 import re
 import sys
 
-from sortedcontainers import SortedDict
-
 
 # 获取当前文件的绝对路径的父目录
 PARENT_DIR = Path(__file__).parent.parent.resolve()
