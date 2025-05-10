@@ -11,7 +11,7 @@ from typing import List, Optional
 # 动态添加当前目录到 sys.path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from ast_parser import parse_shell_files
+from ast_parser import extract_multi_lines, parse_shell_files
 from file_util import (
     read_lang_prop,
     read_lang_yml,
@@ -54,8 +54,9 @@ FUNC_MATCH = r"^#\s+◆=[^\s]+"  # 不含捕获组
 FUNC_MATCH_G = r"^#\s+◆=([^\s]+)"  # 含捕获组
 # 消息匹配模式
 MSG_MATCH_CHK = r"^\s*[A-Za-z0-9+_]+\s*=\s*.+?(\s*#.*)?\s*$"  # 不含捕获组（检查是否有效消息）
-# MSG_MATCH_G2 = r"^#?\s*([A-Za-z0-9+_]+)\s*=\s*(.+?)\s*$"  # 含捕获组(两个)
-MSG_MATCH_G3 = r"^#?\s*([A-Za-z0-9+_]+)\s*=\s*(.*?)(\s#[A-Za-z0-9+_]+@\d+@\S*)\s*$"  # 含捕获组(三个)
+# MSG_MATCH_G2 = r"^#?\s*([A-Za-z0-9+_]+)\s*=\s*(.+?)\s*$"  # 两个捕获组
+# MSG_MATCH_G3 = r"^#?\s*([A-Za-z0-9+_]+)\s*=\s*(.*?)(\s#[A-Za-z0-9+_]+@\d+@\S*)\s*$"  # 三个捕获组
+MSG_MATCH_G3 = r"^#?\s*([A-Za-z0-9+_]+)\s*=\s*(.*?)(\s#[A-Za-z0-9+_]+@\d+@\S*)?$"  # 三个捕获组(最后一个可以不存在)
 
 
 def _current_time():
@@ -165,52 +166,52 @@ def stat_config_yml(data):
     data["config"][YML_STAT] = stats
 
 
-def parse_lang_head(lines, prop_data):
+def parse_lang_head(lines, line_number, prop_data):
     """获取文件头部注释"""
     file_lines = prop_data.setdefault(FILE_HEAD, {}).setdefault(FILE_LINE, [])
-    i = 0
-    while i < len(lines):
-        line = lines[i]
+    while line_number[0] < len(lines):
+        line = lines[line_number[0]]
         match line.strip():
             case "":
-                i += 1  # 空行，跳过
+                line_number[0] += 1  # 空行，跳过
             case l if re.match(FILE_MATCH, l):
-                return i  # 文件标记行，停止处理
+                return  # 文件标记行，停止处理
             case _:
                 file_lines.append(line)  # 普通行，添加
-                i += 1
-    return i  # 文件结束
+                line_number[0] += 1
 
 
-def parse_lang_file(lines, i, prop_data, file_name):
+def parse_lang_file(lines, line_number, prop_data, file_name):
     """获取文件分段信息"""
     file_lines = []  # 文件内容
     file_msgs = {}  # 消息的key和value
 
-    while i < len(lines):
-        line = lines[i].strip()
+    while line_number[0] < len(lines):
+        line = lines[line_number[0]].strip()
         if re.match(FILE_MATCH, line):
             break  # 匹配到下一个文件，退出
 
         if not line:
-            i += 1
+            line_number[0] += 1
             continue  # 去掉多余空行
 
-        file_lines.append(lines[i])  # 照抄原lines数据
+        file_lines.append(lines[line_number[0]])  # 照抄原lines数据
         match = re.match(MSG_MATCH_G3, line)
         if match:
+            comment = (match.group(3) or "",)  # 当match.group(3)为None时，返回""
+            result = match.group(2).strip() if TRIM_SPACE else match.group(2)  # TRIM_SPACE表示去掉前后空格
+            (content, ln_cnt) = extract_multi_lines(result, lines, line_number)
             file_msgs[match.group(1)] = {
-                "msg": match.group(2).strip() if TRIM_SPACE else match.group(2),  # TRIM_SPACE表示去掉前后空格
-                "cmt": match.group(3) or "",  # 当match.group(3)为None时，返回""
+                "msg": content,
+                "cmt": comment,
             }
 
-        i += 1
+        line_number[0] += 1
     prop_data[file_name] = {
         FILE_LINE: file_lines,
         FILE_MESSAGE: file_msgs,
         MSG_COUNT: len(file_msgs),  # 语言消息条数
     }
-    return i
 
 
 def reset_lang_yml(lang_data, data):
@@ -264,15 +265,30 @@ def parse_lang_prop(lang_code):
 
     # hash表：文件-函数
     lines = read_lang_prop(lang_code)
+    line_number = [0]  # 使用列表包装，以便函数可以修改
+    total_lines = len(lines)
 
     # 子程序1：处理头部注释
-    i = parse_lang_head(lines, prop_data)
-    while i < len(lines):
+    parse_lang_head(lines, line_number, prop_data)
+    while line_number[0] < total_lines:
         # 子程序2：处理文件消息
-        file_name = re.match(FILE_MATCH_G, lines[i]).group(1)
-        i = parse_lang_file(lines, i + 1, prop_data, file_name)
+        file_name = re.match(FILE_MATCH_G, lines[line_number[0]]).group(1)
+        line_number[0] += 1
+        parse_lang_file(lines, line_number, prop_data, file_name)
 
     return prop_data
+
+
+def append_msg(file_lines, k, v):
+    """添加消息到文件"""
+    msg = v["msg"].split("\n")
+    length = len(msg)
+    if length == 1:
+        file_lines.append(f"{k}={v['msg']}{v['cmt']}")  # 消息+注释
+    else:
+        msg[0] = f"{k}={msg[0]}"  # 第一行
+        msg[length - 1] = f"{msg[length-1]}{v['cmt']}"  # 最后一行
+        file_lines.extend(msg)
 
 
 def parse_lang_data(file_data):
@@ -283,7 +299,8 @@ def parse_lang_data(file_data):
         if isinstance(func_data, dict):
             file_lines.append(f"# ◆={func_name}")
             for k, v in func_data.items():
-                file_lines.append(f"{k}={v['msg']}{v['cmt']}")  # 消息+注释
+                append_msg(file_lines, k, v)  # 消息+注释
+                # file_lines.append(f"{k}={v['msg']}{v['cmt']}")  # 消息+注释
                 count += 1
 
     return {FILE_LINE: file_lines, MSG_COUNT: count}
@@ -295,7 +312,6 @@ def merge_lang_data(data, file_data):
 
     file_lines = []
     count = 0  # 语言消息条数
-
     old_msgs = data[FILE_MESSAGE]  # 匹配msg
 
     # 跳过processed_file
@@ -304,10 +320,14 @@ def merge_lang_data(data, file_data):
             file_lines.append(f"# ◆={func_name}")  # 新增函数
             for k, v in func_data.items():
                 if k in old_msgs:
-                    file_lines.append(f"{k}={old_msgs[k]['msg']}{v['cmt']}")  # 仅调整注释！保留原有的翻译内容
+                    cmt_update()
+                    old_msgs[k]["cmt"] = v["cmt"]  # 仅调整注释！保留原有的翻译内容
+                    append_msg(file_lines, k, old_msgs[k])  # 消息+注释
+                    # file_lines.append(f"{k}={old_msgs[k]['msg']}{v['cmt']}")  # 仅调整注释！保留原有的翻译内容
                     old_msgs.pop(k)  # 删除匹配消息
                 else:
-                    file_lines.append(f"{k}={v['msg']}{v['cmt']}")  # 新增消息
+                    append_msg(file_lines, k, v)  # 消息+注释
+                    # file_lines.append(f"{k}={v['msg']}{v['cmt']}")  # 新增消息
                 count += 1
 
     if old_msgs and DEL_MODE != 2:  # 没有附加消息，或直接删除，则跳过处理
@@ -315,10 +335,12 @@ def merge_lang_data(data, file_data):
         for k, v in old_msgs.items():
             match DEL_MODE:
                 case 0:
-                    file_lines.append(f"{k}={v['msg']}{v['cmt']}")  # 保留整行，尾部添加注释
+                    append_msg(file_lines, k, v)  # 保留整行，尾部添加注释
+                    # file_lines.append(f"{k}={v['msg']}{v['cmt']}")  # 保留整行，尾部添加注释
                     count += 1
                 case 1:
-                    file_lines.append(f"# {k}={v['msg']}{v['cmt']}")  # 整行注释，尾部添加注释
+                    append_msg(file_lines, f"# {k}", v)  # 整行注释，尾部添加注释
+                    # file_lines.append(f"# {k}={v['msg']}{v['cmt']}")  # 整行注释，尾部添加注释
 
     data[FILE_LINE] = file_lines
     data[MSG_COUNT] = count
@@ -338,8 +360,8 @@ def handle_prop_data(lang_code, prop_data, file_yml):
         # 处理file_yml
         if file_name in file_yml:  # 如果在yml中未定义，则自动跳过（不负责YAML错误数据清理）
             if file_data[FILE_LINE]:
+                start = len(new_lines) + 1 - len(file_data[FILE_LINE])  # 文件起始行
                 end = len(new_lines) + 1  # 文件结束行
-                start = end - len(file_data[FILE_LINE])  # 文件起始行
                 stats = {COUNT: file_data[MSG_COUNT], START: start, END: end}  # 记录条数(可能为0)
             else:
                 stats = {COUNT: 0}  # 记录条数(必定为0)

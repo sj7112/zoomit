@@ -155,7 +155,7 @@ def set_prop_msgs(content):
 
     for s in content:
         parts = s.split(None, 3)
-        type, lineno, order, msg = parts
+        type, ln_no, ln_cnt, msg = parts
 
         h = _djb2_with_salt_20(msg)
 
@@ -167,10 +167,9 @@ def set_prop_msgs(content):
                 result[md5(item)] = item  # 改用 MD5 覆盖原来的hash code
             del result[h]  # 删除之前的 DJB2 冲突键
         elif h not in result:
-            # result[h] = f"{msg} #{type}@{lineno}@{order.replace('-', '')}"  # 添加注释
             result[h] = {
                 "msg": msg,  # 消息体
-                "cmt": f" #{type}@{lineno}@{order.replace('-', '')}",  # 添加注释
+                "cmt": f" #{type}@{ln_no}@{ln_cnt if int(ln_cnt) > 1 else ''}",  # 添加注释
             }
             hashes[h] = msg
 

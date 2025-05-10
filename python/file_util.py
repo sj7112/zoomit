@@ -93,6 +93,12 @@ def copy_file(filepath1, filepath2):
         return None
 
 
+def read_file(fn):
+    """读取文件内容为数组"""
+    with open(fn, "r", encoding="utf-8") as f:
+        return f.read().splitlines()  # 去掉换行符（兼容windows、macos）
+
+
 def read_lang_prop(lang_code):
     """读取配置文件为数组"""
     fn = PROP_PATH + lang_code + ".properties"

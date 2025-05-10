@@ -18,6 +18,7 @@ from hash_util import (
 
 from file_util import (
     get_shell_files,
+    read_file,
 )
 
 from debug_tool import (
@@ -49,8 +50,8 @@ def parse_line_preprocess(line_content):
         1: 普通非函数行或单行函数（需进一步解析）
         2: 是函数定义且不是单行函数
         3: heredoc 标记
-        4: 单个左括号
-        5: 单个右括号
+        8: 单个左括号
+        9: 单个右括号
     """
     # 处理注释行
     if re.match(r"^\s*#", line_content):
@@ -76,9 +77,9 @@ def parse_line_preprocess(line_content):
 
     # 检查单个括号
     if line_content == "{":
-        return line_content, 4  # 单个左括号
+        return line_content, 8  # 单个左括号
     elif line_content == "}":
-        return line_content, 5  # 单个右括号
+        return line_content, 9  # 单个右括号
 
     return line_content, 1  # 需进一步解析
 
@@ -202,7 +203,7 @@ def extract_quoted_string(segment):
 
     content = match.group(1)
 
-    # 截断未转义的结束引号
+    # 截断未转义的结束引号(前面不能有转义字符"\")
     content_match = re.match(r'^(.*?)(?<!\\)"', content)
     if content_match:
         content = content_match.group(1)
@@ -218,7 +219,37 @@ def extract_quoted_string(segment):
     return content
 
 
-def parse_match_type(segment, line_number, results):
+def extract_multi_lines(content, lines, line_number):
+    """
+    如果为当红，直接返回；如果为多行，添加多行数据并返回
+
+    参数:
+    - content: 输入字符串段落
+    - lines: 待处理多行数据
+    - line_number：如为多行，动态修改此变量
+
+    返回:
+    - content：如为多行，直接修改content内容（用\n拼接）
+    - ln_cnt：返回行数（如为多行，返回实际行数）
+    """
+    ln_cnt = 1
+    # 检查是否多行文本
+    if content.endswith("\\"):
+        while line_number[0] < len(lines):
+            line_number[0] += 1
+            line = lines[line_number[0]]
+            ln_cnt += 1
+            content_match = re.match(r'^(.*?)(?<!\\)"', line)
+            if content_match:
+                content += "\n" + content_match.group(1)
+                return content, ln_cnt
+            else:
+                content += "\n" + line
+
+    return content, ln_cnt
+
+
+def parse_match_type(segment, lines, line_number, results):
     """
     解析脚本行中的函数调用信息
 
@@ -233,19 +264,17 @@ def parse_match_type(segment, line_number, results):
     # 提取第一个字段（命令名）
     cmd = segment.split()[0] if segment.split() else ""
 
-    # 提取 --order=数字，没有就用 -
-    order = "-"
-    order_match = re.search(r"--order=([0-9]+)", segment)
-    if order_match:
-        order = order_match.group(1)
+    ln_no = line_number[0] + 1
 
     # 提取双引号之间内容
-    content = extract_quoted_string(segment)
-    if not content:
+    result = extract_quoted_string(segment)
+    if not result:
         return
+    else:
+        (content, ln_cnt) = extract_multi_lines(result, lines, line_number)
 
     # 将结果添加到全局数组
-    results.append(f"{cmd} {line_number} {order} {content}")
+    results.append(f"{cmd} {ln_no} {ln_cnt} {content}")
 
 
 def parse_function(lines, line_number, total_lines, sh_file, file_records):
@@ -279,9 +308,9 @@ def parse_function(lines, line_number, total_lines, sh_file, file_records):
             case 3:
                 if check_heredoc_block(lines, line_number, total_lines):  # 检测heredoc块
                     continue
-            case 4:
+            case 8:
                 brace_count += 1  # 出现左括号，计数器+1
-            case 5:
+            case 9:
                 brace_count -= 1  # 出现右括号，计数器-1
                 if brace_count <= 0:
                     # hash：转换"文件名@@函数名"；msgs：key=hash, value=msg # type@linNo@order
@@ -292,7 +321,7 @@ def parse_function(lines, line_number, total_lines, sh_file, file_records):
         # 解析匹配项
         matches = split_match_type(line)
         for matched in matches:
-            parse_match_type(matched, line_number[0] + 1, result_lines)
+            parse_match_type(matched, lines, line_number, result_lines)
 
 
 def parse_shell_files(target):
@@ -307,13 +336,12 @@ def parse_shell_files(target):
 
     for sh_file in sh_files:
         # 读取文件内容
-        with open(sh_file, "r") as f:
-            lines = f.read().splitlines()
-        sh_file = str(Path(sh_file).relative_to(PARENT_DIR))  # 相对工程的根路径
-        results[sh_file] = {}
-
+        lines = read_file(sh_file)
         line_number = [0]  # 使用列表包装，以便函数可以修改
         total_lines = len(lines)
+
+        sh_file = str(Path(sh_file).relative_to(PARENT_DIR))  # 相对工程的根路径
+        results[sh_file] = {}
 
         while line_number[0] < total_lines:
             line, status = parse_line_preprocess(lines[line_number[0]])
