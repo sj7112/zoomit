@@ -26,8 +26,6 @@ from debug_tool import (
 # 获取当前文件的绝对路径的父目录
 PARENT_DIR = Path(__file__).parent.parent.resolve()
 
-TRIM_SPACE = False  # 默认不处理空格
-
 # ==============================================================================
 # parse_line_preprocess     预处理行：移除注释部分和前后空格
 # check_heredoc_block       检查并处理heredoc块
@@ -238,8 +236,6 @@ def extract_multi_lines(content, lines, line_number):
     返回:
     - content：多行用\n拼接
     """
-    global TRIM_SPACE
-
     # 检查是否多行文本
     if content.endswith("\\"):
         while line_number[0] < len(lines) - 1:

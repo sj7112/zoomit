@@ -32,14 +32,11 @@ FILE_TYPE = {
     "ts": "typescript",
 }
 
-# 读取环境变量并设置为全局变量，默认值为0
-DEL_MODE = 1  # 0=保留；1=注释；2=删除
-TRIM_SPACE = False  # 默认不处理空格
-
+# 设置全局变量
 FILE_HEAD = "Z-HEAD"  # 保留头部信息（头部注释）
 FILE_LINE = "Z-LINE"  # 待写入的行内容
 FILE_MESSAGE = "Z-MSG"  # 文件所包含的消息
-MSG_COUNT = "Z-COUNT"  # 文件统计信息
+MSG_STATS = "Z-STAT"  # 文件统计信息
 COUNT = "count"
 START = "start"
 END = "end"
@@ -196,8 +193,6 @@ def extract_multi_lines(content, lines, line_number):
     返回:
     - content：如为多行，直接修改content内容（用\n拼接）
     """
-    global TRIM_SPACE
-
     # 检查是否多行文本
     if content.endswith("\\"):
         while line_number[0] < len(lines) - 1:
@@ -247,7 +242,7 @@ def parse_lang_file(lines, line_number, prop_data, file_name):
     prop_data[file_name] = {
         FILE_LINE: file_lines,
         FILE_MESSAGE: file_msgs,
-        MSG_COUNT: len(file_msgs),  # 语言消息条数
+        MSG_STATS: {"count": len(file_msgs)},  # 语言消息条数
     }
 
 
@@ -259,7 +254,6 @@ def reset_lang_yml(lang_data, data):
     3）新增文件，添加file参数
     """
     config_yml = data["config"]
-    config_yml["changed"] = _current_time()
 
     file_yml = data["file"] = data["file"] if isinstance(data.get("file"), dict) else {}
     for file_name in lang_data.keys():
@@ -281,15 +275,17 @@ def reset_lang_yml(lang_data, data):
 
 
 def set_global_data(data):
-    """根据config参数，重置全局变量"""
+    """根据config参数，重置全局变量和全局配置"""
     global DEL_MODE
     global TRIM_SPACE
 
     config_yml = data["config"]
-    if config_yml["del_mode"]:
-        DEL_MODE = config_yml["del_mode"]  # 重置
-    if config_yml["trim_space"]:
-        TRIM_SPACE = config_yml["trim_space"]  # 重置
+    # 设置全局变量
+    DEL_MODE = config_yml.get("del_mode", 2)  # 0=保留；1=注释；2=删除
+    TRIM_SPACE = config_yml.get("trim_space", False)  # 默认不处理空格
+
+    # 设置全局配置
+    config_yml["changed"] = _current_time()
 
 
 def parse_lang_prop(lang_code):
@@ -344,7 +340,7 @@ def parse_lang_data(file_data):
                 append_msg(file_lines, k, v)  # 消息+注释
                 count += 1
 
-    return {FILE_LINE: file_lines, MSG_COUNT: count}
+    return {FILE_LINE: file_lines, MSG_STATS: {"count": count}}
 
 
 def merge_lang_data(data, file_data, translated):
@@ -355,8 +351,6 @@ def merge_lang_data(data, file_data, translated):
     3) 新数据自动添加（_lang有注释；普通语言文件无注释）
     4) 旧数据根据DEL_MODE决定是否删除、保留或加注释（原有注释会保留）
     """
-    global DEL_MODE
-
     file_lines = []
     count = 0  # 语言消息条数
     old_msgs = data[FILE_MESSAGE]  # 匹配msg
@@ -385,15 +379,16 @@ def merge_lang_data(data, file_data, translated):
                     append_msg(file_lines, f"# {k}", v)  # 整行注释
 
     data[FILE_LINE] = file_lines
-    data[MSG_COUNT] = count
+    data[MSG_STATS] = {"count": count}
 
 
-def clean_lang_data(file_data):
+def clean_lang_data(lang_data):
     """主函数：清除备注字段"""
-    for func_name, func_data in file_data.items():
-        if isinstance(func_data, dict):
-            for k, v in func_data.items():
-                v["cmt"] = ""  # 清空注释（只用一次）
+    for file_data in lang_data.values():
+        for func_data in file_data.values():
+            if isinstance(func_data, dict):
+                for v in func_data.values():
+                    v["cmt"] = ""  # 清空注释（只用一次）
 
 
 def handle_prop_data(prop_data):
@@ -406,6 +401,9 @@ def handle_prop_data(prop_data):
         if file_data[FILE_LINE]:
             new_lines.extend(["", f"# ■={file_name}"])  # 增加空行 | 文件标题行
             new_lines.extend(file_data[FILE_LINE])  # 文件内容
+            # 统计MSG_STATS
+            file_data[MSG_STATS][START] = len(new_lines) + 1 - len(file_data[FILE_LINE])  # 文件起始行
+            file_data[MSG_STATS][END] = len(new_lines) + 1  # 文件结束行
 
     return new_lines
 
@@ -420,28 +418,38 @@ def handle_prop_yml_data(lang_code, prop_data, file_yml):
         if file_data[FILE_LINE]:
             new_lines.extend(["", f"# ■={file_name}"])  # 增加空行 | 文件标题行
             new_lines.extend(file_data[FILE_LINE])  # 文件内容
+            # 统计MSG_STATS
+            file_data[MSG_STATS][START] = len(new_lines) + 1 - len(file_data[FILE_LINE])  # 文件起始行
+            file_data[MSG_STATS][END] = len(new_lines) + 1  # 文件结束行
 
         # 处理file_yml
         if file_name in file_yml:  # 如果在yml中未定义，则自动跳过（不负责YAML错误数据清理）
-            if file_data[FILE_LINE]:
-                start = len(new_lines) + 1 - len(file_data[FILE_LINE])  # 文件起始行
-                end = len(new_lines) + 1  # 文件结束行
-                stats = {COUNT: file_data[MSG_COUNT], START: start, END: end}  # 记录条数(可能为0)
-            else:
-                stats = {COUNT: 0}  # 记录条数(必定为0)
-            file_lang_inline_format(file_yml, file_name, lang_code, stats)
+            file_lang_inline_format(file_yml, file_name, lang_code, file_data[MSG_STATS])
 
     return new_lines
 
 
-def update_lang_prop(lang_data, test_run):
+def handle_yml_data(lang_code, prop_data, file_yml):
+    """主函数：改写file_yml"""
+    # 跳过processed_files
+    for file_name, file_data in sorted(prop_data.items()):  # 排序：按文件名
+        # 处理file_yml
+        if file_name in file_yml:  # 如果在yml中未定义，则自动跳过（不负责YAML错误数据清理）
+            file_lang_inline_format(file_yml, file_name, lang_code, file_data[MSG_STATS])
+
+
+def update_lang_properties(lang_code, lang_data, file_yml, test_run):
     """
-    主函数：处理语言文件(_lang)
+    主函数：处理语言文件(指定语言)
     1) 读取原有properties数据
     2) 合并重新计算的lang_data数据
-    3) 写入文件并返回合并后的结果
+    3) _lang.properties的特殊处理：
+         - merge时候，始终采用新数据
+         - 执行完毕，清除备注字段
+    4) 普通语言文件的特殊处理：
+         - merge时候，始终采用旧数据
+         - 执行完毕，改写file_yml
     """
-    lang_code = "_lang"  # 特殊语言类文件，复刻最新采集的语言信息
     # 从语言文件中读取原始数据
     prop_data = parse_lang_prop(lang_code)
     # 合并重新计算后的语言数据
@@ -449,9 +457,7 @@ def update_lang_prop(lang_data, test_run):
         if not (file_name in prop_data):
             prop_data[file_name] = parse_lang_data(file_data)  # 补充：新添加的文件
         else:
-            merge_lang_data(prop_data[file_name], file_data, False)  # 合并：已有的文件
-
-        clean_lang_data(file_data)  # 清除：备注字段（只在_lang文件中使用一次！）
+            merge_lang_data(prop_data[file_name], file_data, lang_code != "_lang")  # 合并：已有的文件
 
     # 生成new_lines
     new_lines = handle_prop_data(prop_data)
@@ -460,29 +466,10 @@ def update_lang_prop(lang_data, test_run):
     if not test_run:
         write_lang_prop(lang_code, new_lines)
 
-
-def update_lang_properties(lang_code, lang_data, file_yml, test_run):
-    """
-    主函数：处理语言文件(指定语言)
-    1) 读取原有properties数据
-    2) 合并重新计算的lang_data数据
-    3) 写入文件并返回合并后的结果
-    """
-    # 从语言文件中读取原始数据
-    prop_data = parse_lang_prop(lang_code)
-    # 合并重新计算后的语言数据
-    for file_name, file_data in lang_data.items():
-        if not (file_name in prop_data):
-            prop_data[file_name] = parse_lang_data(file_data)  # 补充：新添加的文件
-        else:
-            merge_lang_data(prop_data[file_name], file_data, True)  # 合并：已有的文件
-
-    # 生成new_lines，改写file_yml
-    new_lines = handle_prop_yml_data(lang_code, prop_data, file_yml)
-
-    # 写文件
-    if not test_run:
-        write_lang_prop(lang_code, new_lines)
+    if lang_code == "_lang":
+        clean_lang_data(lang_data)  # 清除：备注字段（只在_lang文件中使用一次！）
+    else:
+        handle_yml_data(lang_code, prop_data, file_yml)  # 改写file_yml
 
 
 # 拦截器装饰器
@@ -501,13 +488,14 @@ def yaml_file_interceptor():
             set_global_data(data)  # 设置全局变量
 
             # 执行主函数 update_lang_files
-            result = main_func(lang_files, lang_data, test_run, data)
+            main_func(lang_files, lang_data, test_run, data)
 
             # 后置处理：只在数据变化且非测试运行时写入文件
+            stat_config_yml(data)  # 设置统计信息
             if not test_run:
-                write_lang_yml(result, yaml)
+                write_lang_yml(data, yaml)
 
-            return result
+            return data
 
         return wrapper
 
@@ -529,13 +517,8 @@ def update_lang_files(lang_codes, files, test_run=False, data=None):
 
     file_yml = reset_lang_yml(lang_data, data)  # 重置yaml配置
 
-    update_lang_prop(lang_data, test_run)
-    for lang_code in lang_codes:
+    for lang_code in ("_lang", *lang_codes):
         update_lang_properties(lang_code, lang_data, file_yml, test_run)
-
-    stat_config_yml(data)
-
-    return data
 
 
 # =============================================================================
