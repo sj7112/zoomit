@@ -12,6 +12,7 @@ from debug_tool import (
     test_assertion,
 )
 
+DUPL_HASH = "Z-HASH"  # hash池（一个文件中不允许有重复的hash）
 BASE64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"  # url安全
 PROP_FILE = {}  # key=path/program; value = 待翻译消息列表
 YML_PATH = "/usr/local/shell/config/lang/_lang.yml"
@@ -22,7 +23,7 @@ YML_PATH = "/usr/local/shell/config/lang/_lang.yml"
 # _number_to_base64         数值 => 64进制
 # _padded_number_to_base64  数值_位数 => 64进制
 # _base64_to_number         64进制 => 数值
-# set_prop_msgs             待翻译内容列表(单文件) => 64进制hash code
+# set_func_msgs             待翻译内容列表(单文件) => 64进制hash code
 # ==============================================================================
 
 
@@ -144,41 +145,50 @@ def _djb2_with_salt_20(text: str) -> int:
     return _djb2_with_salt(text, 20)
 
 
-def md5(text: str) -> int:
+def md5(text: str) -> str:
     """返回MD5数值"""
-    return int.from_bytes(hashlib.md5(text.encode("utf-8")).digest(), byteorder="big")
+    return hashlib.md5(text.encode("utf-8")).hexdigest()
 
 
-def set_prop_msgs(content):
-    hashes = {}
-    result = {}
-
+def set_func_msgs(file_rec, func_name, content):
+    """为每个函数中的对应文本获取hash"""
+    d_hash = file_rec[DUPL_HASH]
     for s in content:
         parts = s.split(None, 2)
         type, ln_no, msg = parts
 
         h = _djb2_with_salt_20(msg)
-
-        if h in hashes:
-            if hashes[h] == msg:
+        if h in file_rec:
+            if file_rec[h]["msg"] == msg:
                 continue  # 忽略重复
-            # 冲突但不相同，使用 MD5
-            for item in [hashes[h], msg]:
-                result[md5(item)] = item  # 改用 MD5 覆盖原来的hash code
-            del result[h]  # 删除之前的 DJB2 冲突键
-        elif h not in result:
-            result[h] = {
-                "msg": msg,  # 消息体
-                "cmt": f"{type}@{ln_no}",  # 添加注释
-            }
-            hashes[h] = msg
+            d_hash[h] = True  # 记录之前的 DJB2 冲突键
+            h = md5(msg)  # 出现冲突，使用 MD5
 
-    # 最后循环 result，key 改为 64 进制
-    result_base64 = {}
-    for key, value in result.items():
-        result_base64[_padded_number_to_base64(f"{key}_6")] = value
+        file_rec[h] = {
+            "msg": msg,  # 消息体
+            "func": func_name,  # 函数名
+            "cmt": f"{type}@{ln_no}",  # 添加注释
+        }
 
-    return result_base64
+
+def set_file_msgs(results, sh_file):
+    """hash冲突解决以及文件内容转换"""
+    result = {}
+    file_rec = results[sh_file]
+    d_hash = file_rec.pop(DUPL_HASH)  #  获取重复hash记录（同时删除临时记录）
+    for key, value in file_rec.items():
+        func_name = value.pop("func")
+        if func_name not in result:
+            result[func_name] = {}
+
+        if key in d_hash:
+            key = md5(value["msg"])  # key改为MD5格式
+        elif type(key) == int:  # 已有MD5格式key不变
+            key = _padded_number_to_base64(f"{key}_6")  # key 改为6位 64 进制
+
+        result[func_name][key] = value  # 消息体和备注
+
+    results[sh_file] = result  # 维持顺序：按func_name排序
 
 
 # =============================================================================

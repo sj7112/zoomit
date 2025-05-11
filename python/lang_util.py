@@ -107,7 +107,7 @@ def _set_flow_style(parentObj, key, data):
     parentObj[key] = zh_data
 
 
-def file_lang_inline_format(file_yml, file_name, lang_code, stats):
+def file_lang_inline_format(stats, lang_code, file_stats):
     """语言统计采用紧凑模式：写入到一行
 
     数据:
@@ -117,7 +117,8 @@ def file_lang_inline_format(file_yml, file_name, lang_code, stats):
             zh: {count: 17, start: 8, end: 34}
             en: {count: 17, start: 13, end: 39}
     """
-    _set_flow_style(file_yml[file_name][YML_STAT], lang_code, stats)
+    _set_flow_style(stats, lang_code, file_stats)
+    return stats
 
 
 def config_lang_inline_format(stats):
@@ -246,46 +247,22 @@ def parse_lang_file(lines, line_number, prop_data, file_name):
     }
 
 
-def reset_lang_yml(lang_data, data):
-    """
-    处理语言文件(元数据)
-    1) 重置config参数
-    2) 现有文件，重置file参数
-    3）新增文件，添加file参数
-    """
-    config_yml = data["config"]
-
-    file_yml = data["file"] = data["file"] if isinstance(data.get("file"), dict) else {}
-    for file_name in lang_data.keys():
-        if file_name in file_yml:  # 现有文件
-            file_yml[file_name]["changed"] = _current_time()
-            if file_yml[file_name].get(YML_STAT) is None:
-                file_yml[file_name][YML_STAT] = {}
-        else:  # 新增文件
-            now = _current_time()
-            file_yml[file_name] = {
-                "type": _file_type(file_name),
-                "djb2_len": config_yml["djb2_len"],
-                "created": now,
-                "changed": now,
-                YML_STAT: {},
-            }
-
-    return file_yml
-
-
 def set_global_data(data):
     """根据config参数，重置全局变量和全局配置"""
     global DEL_MODE
     global TRIM_SPACE
+    global DJB2_LEN
 
+    # 设置全局配置
     config_yml = data["config"]
+    config_yml["changed"] = _current_time()
+    data["file"] = data["file"] if isinstance(data.get("file"), dict) else {}
     # 设置全局变量
     DEL_MODE = config_yml.get("del_mode", 2)  # 0=保留；1=注释；2=删除
     TRIM_SPACE = config_yml.get("trim_space", False)  # 默认不处理空格
+    DJB2_LEN = config_yml.get("djb2_len", 20)  # 默认20个字符参与hash计算
 
-    # 设置全局配置
-    config_yml["changed"] = _current_time()
+    return data["file"]
 
 
 def parse_lang_prop(lang_code):
@@ -430,12 +407,30 @@ def handle_prop_yml_data(lang_code, prop_data, file_yml):
 
 
 def handle_yml_data(lang_code, prop_data, file_yml):
-    """主函数：改写file_yml"""
-    # 跳过processed_files
+    """
+    主函数：改写file_yml(元数据)
+    1) 现有文件，重置file参数
+    2) 新增文件，添加file参数
+    3）设置stats
+    """
     for file_name, file_data in sorted(prop_data.items()):  # 排序：按文件名
-        # 处理file_yml
-        if file_name in file_yml:  # 如果在yml中未定义，则自动跳过（不负责YAML错误数据清理）
-            file_lang_inline_format(file_yml, file_name, lang_code, file_data[MSG_STATS])
+        if file_name == FILE_HEAD:
+            continue  # 跳过非文件部分
+
+        now = _current_time()
+        if file_name in file_yml:  # 现有文件
+            file_yml[file_name]["changed"] = now
+            if file_yml[file_name].get(YML_STAT) is None:
+                file_yml[file_name][YML_STAT] = {}
+        else:  # 新增文件
+            file_yml[file_name] = {
+                "type": _file_type(file_name),
+                "djb2_len": DJB2_LEN,
+                "created": now,
+                "changed": now,
+                YML_STAT: {},
+            }
+        file_lang_inline_format(file_yml[file_name][YML_STAT], lang_code, file_data[MSG_STATS])
 
 
 def update_lang_properties(lang_code, lang_data, file_yml, test_run):
@@ -485,10 +480,10 @@ def yaml_file_interceptor():
         def wrapper(lang_files, lang_data, test_run=False):
             # 前置处理：读取YAML文件
             data, yaml = read_lang_yml()
-            set_global_data(data)  # 设置全局变量
+            file_yml = set_global_data(data)  # 设置全局变量
 
             # 执行主函数 update_lang_files
-            main_func(lang_files, lang_data, test_run, data)
+            main_func(lang_files, lang_data, test_run, file_yml)
 
             # 后置处理：只在数据变化且非测试运行时写入文件
             stat_config_yml(data)  # 设置统计信息
@@ -504,7 +499,7 @@ def yaml_file_interceptor():
 
 # 主函数
 @yaml_file_interceptor()
-def update_lang_files(lang_codes, files, test_run=False, data=None):
+def update_lang_files(lang_codes, files, test_run=False, file_yml=None):
     """
     处理语言文件(元数据)
     :param lang_files: 语言文件列表
@@ -514,8 +509,6 @@ def update_lang_files(lang_codes, files, test_run=False, data=None):
     """
     # 语言消息
     lang_data = parse_shell_files(files, TRIM_SPACE)
-
-    file_yml = reset_lang_yml(lang_data, data)  # 重置yaml配置
 
     for lang_code in ("_lang", *lang_codes):
         update_lang_properties(lang_code, lang_data, file_yml, test_run)

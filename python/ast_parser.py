@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from collections import OrderedDict
 import os
 from pathlib import Path
 import re
@@ -10,12 +11,14 @@ import sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from hash_util import (
-    set_prop_msgs,
+    set_file_msgs,
+    set_func_msgs,
 )
 
 from file_util import (
     get_shell_files,
     read_file,
+    print_array as file_print_array,
 )
 
 from debug_tool import (
@@ -25,6 +28,8 @@ from debug_tool import (
 
 # 获取当前文件的绝对路径的父目录
 PARENT_DIR = Path(__file__).parent.parent.resolve()
+
+DUPL_HASH = "Z-HASH"  # hash池（一个文件中不允许有重复的hash）
 
 # ==============================================================================
 # parse_line_preprocess     预处理行：移除注释部分和前后空格
@@ -280,7 +285,7 @@ def parse_match_type(segment, lines, line_number, results):
     results.append(f"{cmd} {ln_no} {content}")
 
 
-def parse_function(lines, line_number, total_lines, file_records):
+def parse_function(lines, line_number, total_lines, file_rec):
     """
     处理函数内容，递归解析函数体
 
@@ -306,7 +311,7 @@ def parse_function(lines, line_number, total_lines, file_records):
             case 0:
                 continue  # 注释、空行、单行函数：跳过
             case 2:
-                parse_function(lines, line_number, total_lines, file_records)  # 递归解析嵌套函数
+                parse_function(lines, line_number, total_lines, file_rec)  # 递归解析嵌套函数
             case 3:
                 if check_heredoc_block(lines, line_number, total_lines):  # 检测heredoc块
                     continue
@@ -317,13 +322,33 @@ def parse_function(lines, line_number, total_lines, file_records):
                 if brace_count <= 0:
                     # hash：转换"文件名@@函数名"；msgs：key=hash, value=msg # type@linNo@order
                     if result_lines:
-                        file_records[func_name] = set_prop_msgs(result_lines)
+                        set_func_msgs(file_rec, func_name, result_lines)
                     return  # 函数结束
 
         # 解析匹配项
         matches = split_match_type(line)
         for matched in matches:
             parse_match_type(matched, lines, line_number, result_lines)
+
+
+def find_duplicate_keys(data):
+    """查找file_name > func_name中是否有重复key"""
+    buckets = {}
+
+    # 遍历数据，填充桶
+    for file_name, functions in data.items():
+        for func_name, keys in functions.items():
+            for key in keys:
+                full_key = f"{file_name}.{func_name}.{key}"
+                # 初始化桶
+                if key not in buckets:
+                    buckets[key] = []
+                # 追加完整路径
+                buckets[key].append(full_key)
+
+    # 过滤出有冲突的key（多个文件使用相同的key；用md5作为key值）
+    duplicates = {key: paths for key, paths in buckets.items() if len(paths) > 1 or len(key) == 32}
+    return duplicates
 
 
 def parse_shell_files(target, trim_space=False):
@@ -346,7 +371,7 @@ def parse_shell_files(target, trim_space=False):
         total_lines = len(lines)
 
         sh_file = str(Path(sh_file).relative_to(PARENT_DIR))  # 相对工程的根路径
-        results[sh_file] = {}
+        results[sh_file] = {DUPL_HASH: {}}
 
         while line_number[0] < total_lines:
             line, status = parse_line_preprocess(lines[line_number[0]])
@@ -355,6 +380,13 @@ def parse_shell_files(target, trim_space=False):
                 parse_function(lines, line_number, total_lines, results[sh_file])
 
             line_number[0] += 1
+
+        set_file_msgs(results, sh_file)
+
+    # duplicates = find_duplicate_keys(results)  # 查找重复键
+    # if duplicates:
+    #     print_array(duplicates)
+
     return results
 
 
