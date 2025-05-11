@@ -17,7 +17,6 @@ LANG_DIR = (CONF_DIR / "lang").resolve()
 # 动态添加当前目录到 sys.path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from ast_parser import parse_shell_files
 from lang_util import debug_assertion, update_lang_files
 from msg_handler import string, info, warning, error, exiterr, get_lang_code
 from debug_tool import create_app, default_cmd, print_array
@@ -244,10 +243,8 @@ def upd_lang_files(langs: List[str], files: List[str], debug: bool) -> None:
     """
     # 获取所有文件路径
     lang_codes = get_lang_files(langs)
-    # 语言消息
-    lang_data = parse_shell_files(files)
     # 修改语言文件(yml和properties)
-    data = update_lang_files(lang_codes, lang_data, debug)
+    data = update_lang_files(lang_codes, files, debug)
     if debug:
         debug_assertion(data, lang_codes)
 

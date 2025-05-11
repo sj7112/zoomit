@@ -154,8 +154,8 @@ def set_prop_msgs(content):
     result = {}
 
     for s in content:
-        parts = s.split(None, 3)
-        type, ln_no, ln_cnt, msg = parts
+        parts = s.split(None, 2)
+        type, ln_no, msg = parts
 
         h = _djb2_with_salt_20(msg)
 
@@ -169,7 +169,7 @@ def set_prop_msgs(content):
         elif h not in result:
             result[h] = {
                 "msg": msg,  # 消息体
-                "cmt": f" #{type}@{ln_no}@{ln_cnt if int(ln_cnt) > 1 else ''}",  # 添加注释
+                "cmt": f"{type}@{ln_no}",  # 添加注释
             }
             hashes[h] = msg
 

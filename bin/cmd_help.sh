@@ -212,8 +212,8 @@ if [[ -z "$LOADED_CMD_HELP" ]]; then
   # ==============================================================================
   show_help_info() {
     local cmd=$1
-    [[ -z "$cmd" ]] && exiterr "Usage: show_help_info [command]\n \
-        Available commands: find, ls"
+    [[ -z "$cmd" ]] && exiterr "Usage: show_help_info [command]\n \   
+        Available commands: find, ls   "
 
     # 使用jq解析JSON
     local command_info=$(jq -e ".${cmd}" <<<"$META_Command" 2>/dev/null)

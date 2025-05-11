@@ -9,10 +9,10 @@
 config:
   project: zoomIT-2025
   created: 2025/4/25 09:19:01
-  changed: '2025-05-10 16:19:52'
+  changed: '2025-05-11 17:57:06'
   djb2_len: 20
   del_mode: 2 # 0=保留；1=注释；2=删除
-  trim_space: true # 消息前后禁止空格
+  trim_space: false # false=不处理；true=删除末尾空格
   lazy_load: false
   # add relative path here
   path_incl:
@@ -33,7 +33,7 @@ file:
     type: shell
     djb2_len: 20
     created: '2025-04-30 19:08:34'
-    changed: '2025-05-10 16:19:52'
+    changed: '2025-05-11 17:57:06'
     stats:
       zh: {count: 4, start: 8, end: 15}
       en: {count: 4, start: 8, end: 15}
@@ -41,7 +41,7 @@ file:
     type: shell
     djb2_len: 20
     created: '2025-04-30 19:08:34'
-    changed: '2025-05-10 16:19:52'
+    changed: '2025-05-11 17:57:06'
     stats:
       zh: {count: 1, start: 17, end: 19}
       en: {count: 1, start: 17, end: 19}
@@ -49,7 +49,7 @@ file:
     type: shell
     djb2_len: 20
     created: '2025-04-29 16:56:55'
-    changed: '2025-05-10 16:19:52'
+    changed: '2025-05-11 17:57:06'
     stats: #  auto-generated, DO NOT UPDATE
       zh: {count: 17, start: 21, end: 51}
       en: {count: 17, start: 21, end: 51}
@@ -57,7 +57,7 @@ file:
     type: shell
     djb2_len: 20
     created: '2025-05-08 23:37:21'
-    changed: '2025-05-10 16:19:52'
+    changed: '2025-05-11 17:57:06'
     stats:
       zh: {count: 5, start: 53, end: 59}
       en: {count: 5, start: 53, end: 59}
@@ -65,7 +65,7 @@ file:
     type: shell
     djb2_len: 20
     created: '2025-04-29 16:56:55'
-    changed: '2025-05-10 16:19:52'
+    changed: '2025-05-11 17:57:06'
     stats: #  auto-generated, DO NOT UPDATE
       zh: {count: 27, start: 61, end: 95}
       en: {count: 27, start: 61, end: 95}
@@ -73,7 +73,7 @@ file:
     type: shell
     djb2_len: 20
     created: '2025-05-08 23:37:21'
-    changed: '2025-05-10 16:19:52'
+    changed: '2025-05-11 17:57:06'
     stats:
       zh: {count: 2, start: 97, end: 100}
       en: {count: 2, start: 97, end: 100}
@@ -81,7 +81,7 @@ file:
     type: shell
     djb2_len: 20
     created: '2025-05-08 23:37:21'
-    changed: '2025-05-10 16:19:52'
+    changed: '2025-05-11 17:57:06'
     stats:
       zh: {count: 8, start: 102, end: 112}
       en: {count: 8, start: 102, end: 112}
@@ -89,7 +89,7 @@ file:
     type: shell
     djb2_len: 20
     created: '2025-05-08 23:37:21'
-    changed: '2025-05-10 16:19:52'
+    changed: '2025-05-11 17:57:06'
     stats:
       zh: {count: 8, start: 114, end: 127}
       en: {count: 8, start: 114, end: 127}
@@ -97,7 +97,7 @@ file:
     type: shell
     djb2_len: 20
     created: '2025-05-08 23:37:21'
-    changed: '2025-05-10 16:19:52'
+    changed: '2025-05-11 17:57:06'
     stats:
       zh: {count: 1, start: 129, end: 131}
       en: {count: 1, start: 129, end: 131}

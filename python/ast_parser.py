@@ -6,9 +6,6 @@ import re
 import sys
 
 
-# 获取当前文件的绝对路径的父目录
-PARENT_DIR = Path(__file__).parent.parent.resolve()
-
 # 动态添加当前目录到 sys.path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
@@ -25,6 +22,11 @@ from debug_tool import (
     print_array,
 )
 
+
+# 获取当前文件的绝对路径的父目录
+PARENT_DIR = Path(__file__).parent.parent.resolve()
+
+TRIM_SPACE = False  # 默认不处理空格
 
 # ==============================================================================
 # parse_line_preprocess     预处理行：移除注释部分和前后空格
@@ -221,7 +223,12 @@ def extract_quoted_string(segment):
 
 def extract_multi_lines(content, lines, line_number):
     """
-    如果为当红，直接返回；如果为多行，添加多行数据并返回
+    单行直接返回；多行，添加多行数据并返回
+    以下一个有效的双引号为结束条件
+    如果TRIM_SPACE = True，则去掉字符串右侧的空格！！
+    例如：
+        exiterr "Usage: show_help_info [command]\n \
+            Available commands: find, ls"
 
     参数:
     - content: 输入字符串段落
@@ -229,24 +236,24 @@ def extract_multi_lines(content, lines, line_number):
     - line_number：如为多行，动态修改此变量
 
     返回:
-    - content：如为多行，直接修改content内容（用\n拼接）
-    - ln_cnt：返回行数（如为多行，返回实际行数）
+    - content：多行用\n拼接
     """
-    ln_cnt = 1
+    global TRIM_SPACE
+
     # 检查是否多行文本
     if content.endswith("\\"):
-        while line_number[0] < len(lines):
+        while line_number[0] < len(lines) - 1:
             line_number[0] += 1
+            content += "\n"  # 增加换行
             line = lines[line_number[0]]
-            ln_cnt += 1
-            content_match = re.match(r'^(.*?)(?<!\\)"', line)
-            if content_match:
-                content += "\n" + content_match.group(1)
-                return content, ln_cnt
-            else:
-                content += "\n" + line
+            content_match = re.match(r'^(.*?)(?<!\\)"', line)  # 采用双引号结束（读取代码文件）
+            if content_match:  # 最后一行
+                content += content_match.group(1)
+                return content.rstrip() if TRIM_SPACE else content
+            else:  # 中间行
+                content += line.rstrip()
 
-    return content, ln_cnt
+    return content.rstrip() if TRIM_SPACE else content
 
 
 def parse_match_type(segment, lines, line_number, results):
@@ -271,13 +278,13 @@ def parse_match_type(segment, lines, line_number, results):
     if not result:
         return
     else:
-        (content, ln_cnt) = extract_multi_lines(result, lines, line_number)
+        content = extract_multi_lines(result, lines, line_number)
 
     # 将结果添加到全局数组
-    results.append(f"{cmd} {ln_no} {ln_cnt} {content}")
+    results.append(f"{cmd} {ln_no} {content}")
 
 
-def parse_function(lines, line_number, total_lines, sh_file, file_records):
+def parse_function(lines, line_number, total_lines, file_records):
     """
     处理函数内容，递归解析函数体
 
@@ -285,7 +292,6 @@ def parse_function(lines, line_number, total_lines, sh_file, file_records):
     - lines: 所有行的列表
     - line_number: 当前行号的引用(列表形式，以便可以修改)
     - total_lines: 总行数
-    - sh_file: 源文件名
     """
     current_line = lines[line_number[0]]
     func_name = get_function_name(current_line)
@@ -304,7 +310,7 @@ def parse_function(lines, line_number, total_lines, sh_file, file_records):
             case 0:
                 continue  # 注释、空行、单行函数：跳过
             case 2:
-                parse_function(lines, line_number, total_lines, sh_file, file_records)  # 递归解析嵌套函数
+                parse_function(lines, line_number, total_lines, file_records)  # 递归解析嵌套函数
             case 3:
                 if check_heredoc_block(lines, line_number, total_lines):  # 检测heredoc块
                     continue
@@ -324,13 +330,16 @@ def parse_function(lines, line_number, total_lines, sh_file, file_records):
             parse_match_type(matched, lines, line_number, result_lines)
 
 
-def parse_shell_files(target):
+def parse_shell_files(target, trim_space=False):
     """
     主解析函数：解析shell文件，遇到函数，则进入解析
 
     参数:
     - sh_file: 要解析的shell文件路径
     """
+    global TRIM_SPACE
+    TRIM_SPACE = trim_space
+
     sh_files = get_shell_files(target)  # 文件列表
     results = {}  # 文件=>函数 | 消息
 
@@ -347,7 +356,7 @@ def parse_shell_files(target):
             line, status = parse_line_preprocess(lines[line_number[0]])
 
             if status == 2:  # 函数定义
-                parse_function(lines, line_number, total_lines, sh_file, results[sh_file])
+                parse_function(lines, line_number, total_lines, results[sh_file])
 
             line_number[0] += 1
     return results
@@ -355,6 +364,7 @@ def parse_shell_files(target):
 
 # =============================================================================
 # 调试测试函数
+# ./python/ast_parser.py bin/i18n.sh bin/init_main.sh
 # =============================================================================
 def main():  # 获取输入参数（如果没传，就设置为 None）
     print_array(parse_shell_files(sys.argv[1:]))  # 打印解析结果

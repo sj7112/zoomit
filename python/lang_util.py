@@ -11,7 +11,7 @@ from typing import List, Optional
 # 动态添加当前目录到 sys.path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from ast_parser import extract_multi_lines, parse_shell_files
+from ast_parser import parse_shell_files
 from file_util import (
     read_lang_prop,
     read_lang_yml,
@@ -34,7 +34,7 @@ FILE_TYPE = {
 
 # 读取环境变量并设置为全局变量，默认值为0
 DEL_MODE = 1  # 0=保留；1=注释；2=删除
-TRIM_SPACE = True  # 默认禁止空格
+TRIM_SPACE = False  # 默认不处理空格
 
 FILE_HEAD = "Z-HEAD"  # 保留头部信息（头部注释）
 FILE_LINE = "Z-LINE"  # 待写入的行内容
@@ -52,6 +52,8 @@ FILE_MATCH_G = rf"^#\s+■=([^\s]+\.(?:{FILE_MODE}))$"  # 含捕获组
 # 函数匹配模式
 FUNC_MATCH = r"^#\s+◆=[^\s]+"  # 不含捕获组
 FUNC_MATCH_G = r"^#\s+◆=([^\s]+)"  # 含捕获组
+# 注释匹配模式
+CALL_MATCH_G = r"=([^\s]+)\s*$"  # 含捕获组
 # 消息匹配模式
 MSG_MATCH_CHK = r"^\s*[A-Za-z0-9+_]+\s*=\s*.+?(\s*#.*)?\s*$"  # 不含捕获组（检查是否有效消息）
 # MSG_MATCH_G2 = r"^#?\s*([A-Za-z0-9+_]+)\s*=\s*(.+?)\s*$"  # 两个捕获组
@@ -181,6 +183,43 @@ def parse_lang_head(lines, line_number, prop_data):
                 line_number[0] += 1
 
 
+def extract_multi_lines(content, lines, line_number):
+    """
+    如果为当红，直接返回；如果为多行，添加多行数据并返回
+    如果TRIM_SPACE = True，则去掉字符串右侧的空格！！
+
+    参数:
+    - content: 输入字符串段落
+    - lines: 待处理多行数据
+    - line_number：如为多行，动态修改此变量
+
+    返回:
+    - content：如为多行，直接修改content内容（用\n拼接）
+    """
+    global TRIM_SPACE
+
+    # 检查是否多行文本
+    if content.endswith("\\"):
+        while line_number[0] < len(lines) - 1:
+            line_number[0] += 1
+            content += "\n"  # 增加换行
+            line = lines[line_number[0]]
+            content_match = re.match(r"^(.*?(?<!\\)\\)\s*$", line)  # 采用孤立的 \ 结束（捕获组去掉尾部的空格）
+            if content_match:
+                content += content_match.group(1).rstrip()
+            else:
+                content += line
+                return content.rstrip() if TRIM_SPACE else content
+
+    return content.rstrip() if TRIM_SPACE else content
+
+
+def parse_comment(line):
+    """获取消息备注"""
+    match = re.match(CALL_MATCH_G, line)
+    return match.group(1) if match else ""
+
+
 def parse_lang_file(lines, line_number, prop_data, file_name):
     """获取文件分段信息"""
     file_lines = []  # 文件内容
@@ -198,12 +237,10 @@ def parse_lang_file(lines, line_number, prop_data, file_name):
         file_lines.append(lines[line_number[0]])  # 照抄原lines数据
         match = re.match(MSG_MATCH_G3, line)
         if match:
-            comment = (match.group(3) or "",)  # 当match.group(3)为None时，返回""
-            result = match.group(2).strip() if TRIM_SPACE else match.group(2)  # TRIM_SPACE表示去掉前后空格
-            (content, ln_cnt) = extract_multi_lines(result, lines, line_number)
+            pre_line = lines[line_number[0] - 1]  # 上一行，默认存放消息备注
             file_msgs[match.group(1)] = {
-                "msg": content,
-                "cmt": comment,
+                "msg": extract_multi_lines(match.group(2), lines, line_number),  # 获取消息值
+                "cmt": parse_comment(pre_line),  # 获取消息备注
             }
 
         line_number[0] += 1
@@ -240,18 +277,19 @@ def reset_lang_yml(lang_data, data):
                 YML_STAT: {},
             }
 
-    return config_yml, file_yml
+    return file_yml
 
 
-def set_global_data(config_yml):
-    """根据config参数，调整全局变量"""
+def set_global_data(data):
+    """根据config参数，重置全局变量"""
     global DEL_MODE
     global TRIM_SPACE
 
+    config_yml = data["config"]
     if config_yml["del_mode"]:
-        DEL_MODE = config_yml["del_mode"]  # 重置DEL_MODE
-    if config_yml["del_mode"]:
-        TRIM_SPACE = config_yml["trim_space"]  # 重置TRIM_SPACE
+        DEL_MODE = config_yml["del_mode"]  # 重置
+    if config_yml["trim_space"]:
+        TRIM_SPACE = config_yml["trim_space"]  # 重置
 
 
 def parse_lang_prop(lang_code):
@@ -281,18 +319,22 @@ def parse_lang_prop(lang_code):
 
 def append_msg(file_lines, k, v):
     """添加消息到文件"""
+    if v["cmt"]:
+        file_lines.append(f"# ●={v['cmt']}")
     msg = v["msg"].split("\n")
     length = len(msg)
     if length == 1:
-        file_lines.append(f"{k}={v['msg']}{v['cmt']}")  # 消息+注释
+        file_lines.append(f"{k}={v['msg']}")  # 消息+注释
     else:
         msg[0] = f"{k}={msg[0]}"  # 第一行
-        msg[length - 1] = f"{msg[length-1]}{v['cmt']}"  # 最后一行
         file_lines.extend(msg)
 
 
 def parse_lang_data(file_data):
-    """主函数：添加新的文件"""
+    """
+    主函数：添加新的文件
+    新数据自动添加（_lang有注释；普通语言文件无注释）
+    """
     count = 0  # 语言消息条数
     file_lines = []
     for func_name, func_data in file_data.items():
@@ -300,14 +342,19 @@ def parse_lang_data(file_data):
             file_lines.append(f"# ◆={func_name}")
             for k, v in func_data.items():
                 append_msg(file_lines, k, v)  # 消息+注释
-                # file_lines.append(f"{k}={v['msg']}{v['cmt']}")  # 消息+注释
                 count += 1
 
     return {FILE_LINE: file_lines, MSG_COUNT: count}
 
 
-def merge_lang_data(data, file_data):
-    """主函数：合并新的文件"""
+def merge_lang_data(data, file_data, translated):
+    """
+    主函数：合并新的文件
+    1) _lang：数据有冲突，总是用新数据替换旧数据
+    2) 普通语言文件：数据有冲突，总是保留旧数据
+    3) 新数据自动添加（_lang有注释；普通语言文件无注释）
+    4) 旧数据根据DEL_MODE决定是否删除、保留或加注释（原有注释会保留）
+    """
     global DEL_MODE
 
     file_lines = []
@@ -320,14 +367,11 @@ def merge_lang_data(data, file_data):
             file_lines.append(f"# ◆={func_name}")  # 新增函数
             for k, v in func_data.items():
                 if k in old_msgs:
-                    cmt_update()
-                    old_msgs[k]["cmt"] = v["cmt"]  # 仅调整注释！保留原有的翻译内容
-                    append_msg(file_lines, k, old_msgs[k])  # 消息+注释
-                    # file_lines.append(f"{k}={old_msgs[k]['msg']}{v['cmt']}")  # 仅调整注释！保留原有的翻译内容
+                    new_v = old_msgs[k] if translated else v  # 翻译类语言文件，需保留原有翻译内容
+                    append_msg(file_lines, k, new_v)  # 消息+注释
                     old_msgs.pop(k)  # 删除匹配消息
                 else:
                     append_msg(file_lines, k, v)  # 消息+注释
-                    # file_lines.append(f"{k}={v['msg']}{v['cmt']}")  # 新增消息
                 count += 1
 
     if old_msgs and DEL_MODE != 2:  # 没有附加消息，或直接删除，则跳过处理
@@ -335,18 +379,38 @@ def merge_lang_data(data, file_data):
         for k, v in old_msgs.items():
             match DEL_MODE:
                 case 0:
-                    append_msg(file_lines, k, v)  # 保留整行，尾部添加注释
-                    # file_lines.append(f"{k}={v['msg']}{v['cmt']}")  # 保留整行，尾部添加注释
+                    append_msg(file_lines, k, v)  # 保留整行
                     count += 1
                 case 1:
-                    append_msg(file_lines, f"# {k}", v)  # 整行注释，尾部添加注释
-                    # file_lines.append(f"# {k}={v['msg']}{v['cmt']}")  # 整行注释，尾部添加注释
+                    append_msg(file_lines, f"# {k}", v)  # 整行注释
 
     data[FILE_LINE] = file_lines
     data[MSG_COUNT] = count
 
 
-def handle_prop_data(lang_code, prop_data, file_yml):
+def clean_lang_data(file_data):
+    """主函数：清除备注字段"""
+    for func_name, func_data in file_data.items():
+        if isinstance(func_data, dict):
+            for k, v in func_data.items():
+                v["cmt"] = ""  # 清空注释（只用一次）
+
+
+def handle_prop_data(prop_data):
+    """主函数：生成new_lines"""
+    new_lines = prop_data[FILE_HEAD][FILE_LINE]  # 头部注释
+    # 跳过processed_files
+    for file_name, file_data in sorted(prop_data.items()):  # 排序：按文件名
+        if file_name == FILE_HEAD:
+            continue  # 跳过非文件部分
+        if file_data[FILE_LINE]:
+            new_lines.extend(["", f"# ■={file_name}"])  # 增加空行 | 文件标题行
+            new_lines.extend(file_data[FILE_LINE])  # 文件内容
+
+    return new_lines
+
+
+def handle_prop_yml_data(lang_code, prop_data, file_yml):
     """主函数：生成new_lines，改写file_yml"""
     new_lines = prop_data[FILE_HEAD][FILE_LINE]  # 头部注释
     # 跳过processed_files
@@ -370,6 +434,33 @@ def handle_prop_data(lang_code, prop_data, file_yml):
     return new_lines
 
 
+def update_lang_prop(lang_data, test_run):
+    """
+    主函数：处理语言文件(_lang)
+    1) 读取原有properties数据
+    2) 合并重新计算的lang_data数据
+    3) 写入文件并返回合并后的结果
+    """
+    lang_code = "_lang"  # 特殊语言类文件，复刻最新采集的语言信息
+    # 从语言文件中读取原始数据
+    prop_data = parse_lang_prop(lang_code)
+    # 合并重新计算后的语言数据
+    for file_name, file_data in lang_data.items():
+        if not (file_name in prop_data):
+            prop_data[file_name] = parse_lang_data(file_data)  # 补充：新添加的文件
+        else:
+            merge_lang_data(prop_data[file_name], file_data, False)  # 合并：已有的文件
+
+        clean_lang_data(file_data)  # 清除：备注字段（只在_lang文件中使用一次！）
+
+    # 生成new_lines
+    new_lines = handle_prop_data(prop_data)
+
+    # 写文件
+    if not test_run:
+        write_lang_prop(lang_code, new_lines)
+
+
 def update_lang_properties(lang_code, lang_data, file_yml, test_run):
     """
     主函数：处理语言文件(指定语言)
@@ -384,10 +475,10 @@ def update_lang_properties(lang_code, lang_data, file_yml, test_run):
         if not (file_name in prop_data):
             prop_data[file_name] = parse_lang_data(file_data)  # 补充：新添加的文件
         else:
-            merge_lang_data(prop_data[file_name], file_data)  # 合并：已有的文件
+            merge_lang_data(prop_data[file_name], file_data, True)  # 合并：已有的文件
 
     # 生成new_lines，改写file_yml
-    new_lines = handle_prop_data(lang_code, prop_data, file_yml)
+    new_lines = handle_prop_yml_data(lang_code, prop_data, file_yml)
 
     # 写文件
     if not test_run:
@@ -407,6 +498,7 @@ def yaml_file_interceptor():
         def wrapper(lang_files, lang_data, test_run=False):
             # 前置处理：读取YAML文件
             data, yaml = read_lang_yml()
+            set_global_data(data)  # 设置全局变量
 
             # 执行主函数 update_lang_files
             result = main_func(lang_files, lang_data, test_run, data)
@@ -424,7 +516,7 @@ def yaml_file_interceptor():
 
 # 主函数
 @yaml_file_interceptor()
-def update_lang_files(lang_codes, lang_data, test_run=False, data=None):
+def update_lang_files(lang_codes, files, test_run=False, data=None):
     """
     处理语言文件(元数据)
     :param lang_files: 语言文件列表
@@ -432,9 +524,12 @@ def update_lang_files(lang_codes, lang_data, test_run=False, data=None):
     :param test_run: 是否测试运行
     :param data: 由拦截器注入的YAML数据
     """
-    config_yml, file_yml = reset_lang_yml(lang_data, data)  # 重置yaml配置
-    set_global_data(config_yml)  # 设置全局变量
+    # 语言消息
+    lang_data = parse_shell_files(files, TRIM_SPACE)
 
+    file_yml = reset_lang_yml(lang_data, data)  # 重置yaml配置
+
+    update_lang_prop(lang_data, test_run)
     for lang_code in lang_codes:
         update_lang_properties(lang_code, lang_data, file_yml, test_run)
 
@@ -450,9 +545,8 @@ def update_lang_files(lang_codes, lang_data, test_run=False, data=None):
 # =============================================================================
 def run_exec(opts):
     lang_codes = ["zh", "en"]  # 语言消息
-    lang_data = parse_shell_files(opts["file"])
     # 修改语言文件(yml和properties)
-    update_lang_files(lang_codes, lang_data)
+    update_lang_files(lang_codes, opts["file"])
 
 
 # =============================================================================
@@ -465,9 +559,8 @@ def run_test(opts):
     print("Debug mode is on. Running tests...")
 
     lang_codes = ["zh", "en"]  # 语言消息
-    lang_data = parse_shell_files(opts["file"])
     # 测试语言文件(yml和properties)
-    data = update_lang_files(lang_codes, lang_data, True)
+    data = update_lang_files(lang_codes, opts["file"], True)
     debug_assertion(data, lang_codes)
 
 
