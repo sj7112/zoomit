@@ -41,7 +41,7 @@ COUNT = "count"
 START = "start"
 END = "end"
 YML_STAT = "stats"
-YML_PATH = "/usr/local/shell/config/lang/_lang.yml"
+BASE_LANG = "_lang"
 
 # 文件匹配模式
 FILE_MATCH = rf"^#\s+■=[^\s]+\.(?:{FILE_MODE})$"  # 不含捕获组
@@ -452,7 +452,7 @@ def update_lang_properties(lang_code, lang_data, file_yml, test_run):
         if not (file_name in prop_data):
             prop_data[file_name] = parse_lang_data(file_data)  # 补充：新添加的文件
         else:
-            merge_lang_data(prop_data[file_name], file_data, lang_code != "_lang")  # 合并：已有的文件
+            merge_lang_data(prop_data[file_name], file_data, lang_code != BASE_LANG)  # 合并：已有的文件
 
     # 生成new_lines
     new_lines = handle_prop_data(prop_data)
@@ -461,7 +461,7 @@ def update_lang_properties(lang_code, lang_data, file_yml, test_run):
     if not test_run:
         write_lang_prop(lang_code, new_lines)
 
-    if lang_code == "_lang":
+    if lang_code == BASE_LANG:
         clean_lang_data(lang_data)  # 清除：备注字段（只在_lang文件中使用一次！）
     else:
         handle_yml_data(lang_code, prop_data, file_yml)  # 改写file_yml
@@ -510,7 +510,7 @@ def update_lang_files(lang_codes, files, test_run=False, file_yml=None):
     # 语言消息
     lang_data = parse_shell_files(files, TRIM_SPACE)
 
-    for lang_code in ("_lang", *lang_codes):
+    for lang_code in (BASE_LANG, *lang_codes):
         update_lang_properties(lang_code, lang_data, file_yml, test_run)
 
 

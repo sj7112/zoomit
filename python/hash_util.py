@@ -166,7 +166,7 @@ def set_func_msgs(file_rec, func_name, content):
 
         file_rec[h] = {
             "msg": msg,  # 消息体
-            "func": func_name,  # 函数名
+            "func": func_name,  # 函数名(临时变量)
             "cmt": f"{type}@{ln_no}",  # 添加注释
         }
 
@@ -177,7 +177,7 @@ def set_file_msgs(results, sh_file):
     file_rec = results[sh_file]
     d_hash = file_rec.pop(DUPL_HASH)  #  获取重复hash记录（同时删除临时记录）
     for key, value in file_rec.items():
-        func_name = value.pop("func")
+        func_name = value.pop("func")  # 函数名(临时变量)
         if func_name not in result:
             result[func_name] = {}
 
