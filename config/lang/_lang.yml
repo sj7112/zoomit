@@ -9,7 +9,7 @@
 config:
   project: zoomIT-2025
   created: 2025/4/25 09:19:01
-  changed: '2025-05-16 18:57:43'
+  changed: '2025-05-16 19:04:14'
   djb2_len: 20
   djb2_coll: FILE # 目前仅在文件内处理hash冲突（暂未启用）
   del_mode: 2 # 0=保留；1=注释；2=删除
@@ -26,15 +26,15 @@ config:
     shell: sh
     python: py
   stats: # auto-generated, DO NOT UPDATE
-    file_nos: 19
-    zh: {count: 70}
-    en: {count: 70}
+    file_nos: 18
+    zh: {count: 68}
+    en: {count: 68}
 file:
   bin/cmd_help.sh:
     type: shell
     djb2_len: 20
     created: '2025-04-30 19:08:34'
-    changed: '2025-05-16 18:57:43'
+    changed: '2025-05-16 19:04:14'
     stats:
       zh: {count: 4, start: 8, end: 15}
       en: {count: 4, start: 8, end: 15}
@@ -42,7 +42,7 @@ file:
     type: shell
     djb2_len: 20
     created: '2025-04-30 19:08:34'
-    changed: '2025-05-16 18:57:43'
+    changed: '2025-05-16 19:04:14'
     stats:
       zh: {count: 1, start: 17, end: 19}
       en: {count: 1, start: 17, end: 19}
@@ -50,7 +50,7 @@ file:
     type: shell
     djb2_len: 20
     created: '2025-04-29 16:56:55'
-    changed: '2025-05-16 18:57:43'
+    changed: '2025-05-16 19:04:14'
     stats: #  auto-generated, DO NOT UPDATE
       zh: {count: 17, start: 21, end: 51}
       en: {count: 17, start: 21, end: 51}
@@ -58,7 +58,7 @@ file:
     type: shell
     djb2_len: 20
     created: '2025-05-08 23:37:21'
-    changed: '2025-05-16 18:57:43'
+    changed: '2025-05-16 19:04:14'
     stats:
       zh: {count: 5, start: 53, end: 59}
       en: {count: 5, start: 53, end: 59}
@@ -66,39 +66,31 @@ file:
     type: shell
     djb2_len: 20
     created: '2025-04-29 16:56:55'
-    changed: '2025-05-16 18:57:43'
+    changed: '2025-05-16 19:04:14'
     stats: #  auto-generated, DO NOT UPDATE
       zh: {count: 24, start: 61, end: 93}
       en: {count: 24, start: 61, end: 93}
-  lib/ast_parser.sh:
-    type: shell
-    djb2_len: 20
-    created: '2025-05-08 23:37:21'
-    changed: '2025-05-16 18:57:43'
-    stats:
-      zh: {count: 2, start: 95, end: 98}
-      en: {count: 2, start: 95, end: 98}
   lib/bash_utils.sh:
     type: shell
     djb2_len: 20
     created: '2025-05-08 23:37:21'
-    changed: '2025-05-16 18:57:43'
+    changed: '2025-05-16 19:04:14'
     stats:
-      zh: {count: 8, start: 100, end: 110}
-      en: {count: 8, start: 100, end: 110}
+      zh: {count: 8, start: 95, end: 105}
+      en: {count: 8, start: 95, end: 105}
   lib/cmd_handler.sh:
     type: shell
     djb2_len: 20
     created: '2025-05-08 23:37:21'
-    changed: '2025-05-16 18:57:43'
+    changed: '2025-05-16 19:04:14'
     stats:
-      zh: {count: 8, start: 112, end: 125}
-      en: {count: 8, start: 112, end: 125}
+      zh: {count: 8, start: 107, end: 120}
+      en: {count: 8, start: 107, end: 120}
   lib/json_handler.sh:
     type: shell
     djb2_len: 20
     created: '2025-05-08 23:37:21'
-    changed: '2025-05-16 18:57:43'
+    changed: '2025-05-16 19:04:14'
     stats:
-      zh: {count: 1, start: 127, end: 129}
-      en: {count: 1, start: 127, end: 129}
+      zh: {count: 1, start: 122, end: 124}
+      en: {count: 1, start: 122, end: 124}
