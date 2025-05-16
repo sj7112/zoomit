@@ -447,7 +447,10 @@ def update_lang_properties(lang_code, lang_data, file_yml, test_run):
     """
     # 从语言文件中读取原始数据
     prop_data = parse_lang_prop(lang_code)
-    # 合并重新计算后的语言数据
+    # 如果 FULL_OPERATE 为 True，从 prop_data 中移除 lang_data 中没有的记录
+    if FULL_OPERATE:
+        prop_data = {k: v for k, v in prop_data.items() if k in lang_data or k == FILE_HEAD}
+
     for file_name, file_data in lang_data.items():
         if not (file_name in prop_data):
             prop_data[file_name] = parse_lang_data(file_data)  # 补充：新添加的文件
@@ -507,6 +510,8 @@ def update_lang_files(lang_codes, files, test_run=False, file_yml=None):
     :param test_run: 是否测试运行
     :param data: 由拦截器注入的YAML数据
     """
+    global FULL_OPERATE  # 是否完整操作(处理所有文件)
+    FULL_OPERATE = not files
     # 语言消息
     lang_data = parse_shell_files(files, TRIM_SPACE)
 
