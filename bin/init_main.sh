@@ -67,10 +67,7 @@ fi
 # ==============================================================================
 check_env() {
   # 1. 检查用户权限，自动安装sudo
-  {
-    info --order=1 -i "[1/1] 检查用户权限...{0}{1}{0}"
-    info --order=2 "test 123"
-  }
+  info "[1/1] 检查用户权限...{0}{1}{0}"
   if [ "$(id -u)" -eq 0 ]; then
     install_base_pkg "sudo" # 此时 SUDO_CMD=""
   else
@@ -210,6 +207,29 @@ configure_ip() {
   read -r response
 
   if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+    info "检查网络设置..."
+    FLAG=3
+
+    if systemctl is-active --quiet NetworkManager; then
+      echo "NetworkManager 正在运行"
+      FLAG=1
+    elif systemctl is-active --quiet wicked; then
+      echo "wicked 正在运行"
+      FLAG=2
+    elif systemctl is-active --quiet systemd-networkd; then
+      echo "systemd-networkd 正在运行"
+    elif command -v systemd-networkd >/dev/null 2>&1 \
+      || [ -x /lib/systemd/systemd-networkd ] \
+      || [ -x /usr/lib/systemd/systemd-networkd ]; then
+      echo "systemd-networkd 已存在，尝试启动..."
+      systemctl enable systemd-networkd
+      systemctl start systemd-networkd
+    else
+      echo "systemd-networkd 不存在，尝试安装..."
+      apt-get update
+      apt-get install -y systemd
+    fi
+
     # 检查并安装systemd-networkd
     if ! dpkg -l | grep -q "systemd-networkd"; then
       echo "正在安装 systemd-networkd..."

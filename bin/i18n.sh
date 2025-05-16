@@ -12,7 +12,6 @@ if [[ -z "${LOADED_I18N:-}" ]]; then
   source "$LIB_DIR/msg_handler.sh"
   source "$LIB_DIR/json_handler.sh"
   source "$LIB_DIR/system.sh"
-  source "$LIB_DIR/ast_parser.sh"
   source "$LIB_DIR/hash_util.sh"
   source "$LIB_DIR/bash_utils.sh"
   source "$LIB_DIR/python_bridge.sh"

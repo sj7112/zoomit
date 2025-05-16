@@ -53,20 +53,6 @@
         {
             "type": "bashdb",
             "request": "launch",
-            "name": "Bash-Debug (ast_parser)",
-            "cwd": "${workspaceFolder}",
-            "program": "${workspaceFolder}/lib/ast_parser.sh",
-            "args": [
-                // "bin/init_main.sh"
-                "bin/i18n.sh"
-            ],
-            "env": {
-                "DEBUG": "1"
-            }
-        },
-        {
-            "type": "bashdb",
-            "request": "launch",
             "name": "Bash-Debug (hash_util)",
             "cwd": "${workspaceFolder}",
             "program": "${workspaceFolder}/lib/hash_util.sh",
