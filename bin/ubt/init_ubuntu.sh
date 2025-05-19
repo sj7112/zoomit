@@ -73,7 +73,7 @@ EOF
 
 # 检查国家是否在列表之中
 check_country_in_list() {
-  if [[ -n "$COUNTRY_CODE" && "$1" =~ (^| )"$COUNTRY_CODE"($| ) ]]; then
+  if [[ -n "$SYSTEM_COUNTRY" && "$1" =~ (^| )"$SYSTEM_COUNTRY"($| ) ]]; then
     return 0
   else
     return 1
@@ -96,17 +96,17 @@ calc_fast_mirrors() {
   # 交互式选择国家
   local MIRRORS
   while true; do
-    read -p "请选择国家/地区代码（回车使用默认值 '$COUNTRY_CODE'）：" USER_INPUT
+    read -p "请选择国家/地区代码（回车使用默认值 '$SYSTEM_COUNTRY'）：" USER_INPUT
     USER_INPUT=$(echo "${USER_INPUT}" | tr '[:lower:]' '[:upper:]') # 转为大写
-    COUNTRY_CODE=${USER_INPUT:-$COUNTRY_CODE}
+    SYSTEM_COUNTRY=${USER_INPUT:-$SYSTEM_COUNTRY}
 
-    if ! grep -qxF "$COUNTRY_CODE" <<<"$COUNTRIES"; then
-      echo "国家代码 $COUNTRY_CODE 不存在于列表中！"
+    if ! grep -qxF "$SYSTEM_COUNTRY" <<<"$COUNTRIES"; then
+      echo "国家代码 $SYSTEM_COUNTRY 不存在于列表中！"
       continue
     fi
-    MIRRORS=$(curl -s "http://mirrors.ubuntu.com/${COUNTRY_CODE}.txt" | grep '^http://')
+    MIRRORS=$(curl -s "http://mirrors.ubuntu.com/${SYSTEM_COUNTRY}.txt" | grep '^http://')
     if [ -z "$MIRRORS" ]; then
-      echo "无法获取 ${COUNTRY_CODE} 的镜像列表！"
+      echo "无法获取 ${SYSTEM_COUNTRY} 的镜像列表！"
       continue
     fi
     break # 找到了镜像列表，退出

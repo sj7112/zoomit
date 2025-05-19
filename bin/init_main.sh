@@ -68,21 +68,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     init_sources_list "检测到 CD-ROM 作为软件源，修改为默认 {0} 官方源..."
 
     # 选择速度快的镜像
-    COUNTRY_CODE="$SYSTEM_COUNTRY"
-    local mirror_file="/tmp/mirrors.txt"
-
-    # 调用交互函数并存储结果
-    # while true; do
-    #   # calc_fast_mirrors "$mirror_file" # 内有交互，根据 COUNTRY_CODE 切换镜像列表
-    #   # select_mirror "$mirror_file" # 内有交互，shell无法echo返回。用 SELECTED_MIRROR 传值
-    #   SELECTED_MIRROR=""
-    #   echo "哈哈 $SELECTED_MIRROR"
-    #   if [[ -n "$SELECTED_MIRROR" ]]; then
-    #     pick_sources_list "$SELECTED_MIRROR" # 改为新镜像
-    #     success "已切换到: {0}" "$SELECTED_MIRROR"
-    #     break
-    #   fi
-    # done
+    select_mirror # 内有交互
 
     info "==== 系统升级开始 ===="
     clean_pkg_mgr   # 清理缓存

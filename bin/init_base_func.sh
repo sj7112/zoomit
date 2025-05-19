@@ -21,14 +21,14 @@ if [[ -z "${LOADED_INIT_BASE_FUNC:-}" ]]; then
   # ==============================================================================
   # select_mirror - 处理镜像选择
   # 适用：debian | ubuntu
-  # 参数：
-  #   $1 - 包含多个镜像URL的字符串（空格/换行分隔）
-  # 返回值：
-  #   通过全局变量 SELECTED_MIRROR 返回用户选中的镜像URL
   # ==============================================================================
   select_mirror() {
-    # 检查文件是否存在
-    [ -f "$1" ] || exiterr "错误：镜像列表文件不存在"
+    # 调用交互函数并存储结果
+    local mirror_file="/tmp/mirrors.txt"
+    calc_fast_mirrors "$mirror_file" # 内有交互，根据 SYSTEM_COUNTRY 切换镜像列表
+
+    # 检查文件是否已生成
+    [ -f "$mirror_file" ] || exiterr "错误：镜像列表文件不存在"
 
     # 读取并过滤有效镜像
     echo ""
@@ -42,7 +42,7 @@ if [[ -z "${LOADED_INIT_BASE_FUNC:-}" ]]; then
         mirrors[$count]="$line"
         printf "%2d) %s\n" "$count" "$line"
       fi
-    done <"$1"
+    done <"$mirror_file"
     # 检查是否找到有效镜像
     [ "$count" -gt 0 ] || exiterr "错误：未找到有效镜像URL"
     echo ""
@@ -51,16 +51,23 @@ if [[ -z "${LOADED_INIT_BASE_FUNC:-}" ]]; then
 
     # 用户选择循环
     while true; do
-      echo -ne $(string "请选择镜像编号 [{0}]: " "${RED}1-$count${NC}")
+      echo -ne $(string "请选择镜像编号 [{0}](0=不做选择): " "${RED}1-$count${NC}")
       read choice
+
+      # 检查输入是否有效 - 0 = 保持原有配置
+      if [[ "$choice" == "0" ]]; then
+        return
+      fi
 
       # 检查输入是否有效
       if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le 10 ]; then
-        SELECTED_MIRROR="${mirrors[$choice]}"
-        break
-      else
-        echo -e $(string "输入{0}错误!{1}" $RED_BG $NC)
+        local selected_mirror="${mirrors[$choice]}"
+        pick_sources_list "$selected_mirror" # 改为新镜像
+        success "已切换到: {0}" "$selected_mirror"
+        return
       fi
+
+      echo -e $(string "输入{0}错误!{1}" $RED_BG $NC)
     done
   }
 
