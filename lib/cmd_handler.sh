@@ -12,6 +12,24 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
   # ==============================================================================
 
   # ==============================================================================
+  # 函数: clean_pkg_mgr 清理缓存
+  # ==============================================================================
+  source_defualt_lang() {
+    $SUDO_CMD sed -i 's/^LANG=C/#LANG=C/g' /root/.profile
+    $SUDO_CMD sed -i 's/^LANGUAGE=C/#LANGUAGE=C/g' /root/.profile
+    # 使用 sudo 以 root 权限执行 source
+    $SUDO_CMD bash -c 'source /root/.profile'
+    if [ "$DISTRO_PM" = "apt" ]; then # debian | ubuntu
+      $SUDO_CMD bash -c 'source /etc/default/locale'
+    elif [ "$DISTRO_PM" = "zypper" ]; then # openSUSE
+      $SUDO_CMD bash -c 'source /etc/sysconfig/language'
+    else # centos | RHEL | arch Linux
+      $SUDO_CMD bash -c 'source /etc/locale.conf'
+    fi
+    info "root 语言设置已更新"
+  }
+
+  # ==============================================================================
   # install_base_pkg - 检查命令是否存在，不存在自动安装
   # ==============================================================================
   install_base_pkg() {
@@ -119,7 +137,6 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
     eval "$(parse_options "$@")" # 需在cmd_meta定义同名子对象
     local options="$1"
 
-    local cmds=()         # 命令行参数
     local combined_cmd="" # 合并后的命令行参数
     local result=0        # 返回成功=0 | 失败=1
 
@@ -127,41 +144,49 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
     for cmd in "${@:2}"; do
       combined_cmd="${combined_cmd:+$combined_cmd && }$SUDO_CMD $cmd"
     done
-
-    # 命令组需要加上括号
-    [[ "$combined_cmd" == *"&&"* ]] && combined_cmd="($combined_cmd)"
+    combined_cmd=$(echo "$combined_cmd" | xargs)                      # 去除多余空格
+    [[ "$combined_cmd" == *"&&"* ]] && combined_cmd="($combined_cmd)" # 命令组需要加上括号
 
     # 执行命令（非安静模式）
-    if ! json_getopt "q"; then
+    if ! json_getopt "$options" "q"; then
       echo "执行: $combined_cmd ... " >&2
       # 确定输出文件
-      output_file=$(json_getopt "f" && echo "$LOG_FILE" || echo "$TMP_FILE")
-      # 执行命令
-      bash -c "$combined_cmd >> \"$output_file\" 2>&1" &
-      # 前端监控进度
-      monitor_progress "$!" "$output_file"
-      return $?
-    fi
-
-    # 执行命令（安静模式 = 前端不输出）
-    if json_getopt "f"; then
-      bash -c "$combined_cmd" >>"$LOG_FILE" 2>&1 # 只写日志
+      output_file=$(json_getopt "$options" "f" && echo "$LOG_FILE" || echo "$TMP_FILE")
+      # 执行命令 & 监控进度
+      monitor_progress "$combined_cmd" "$output_file" # 调用监控函数
     else
-      bash -c "$combined_cmd" >/dev/null 2>&1 # 无任何输出
+      # 执行命令（安静模式 = 前端不输出）
+      if json_getopt "$options" "f"; then
+        bash -c "$combined_cmd" >>"$LOG_FILE" 2>&1 # 只写日志
+      else
+        bash -c "$combined_cmd" >/dev/null 2>&1 # 无任何输出
+      fi
     fi
-    return $?
+    return $? # 返回命令执行结果
   }
 
   # 监控命令进度并在单行中显示更新
   # 参数：$1 - 进程PID
   monitor_progress() {
-    local pid=$1
+    local cmd="$1"
     local log_file="${2:-$LOG_FILE}"
 
-    [[ -z "$pid" ]] || ! kill -0 "$pid" 2>/dev/null && {
-      echo "Invalid PID: $pid"
+    # 启动命令并获取 PID
+    bash -c "$cmd >> \"$log_file\" 2>&1" &
+    # eval "$cmd >> \"$log_file\" 2>&1 &"
+    local pid=$!
+
+    # 检查 PID 是否为空
+    [[ -z "$pid" ]] && {
+      echo "Error: Empty PID" >&2
       return 1
     }
+
+    # 检查 PID 是否有效（DEBUG跳过检测，避免kill之前进程已结束）
+    if [[ "${DEBUG:-0}" != "1" ]] && ! kill -0 "$pid" 2>/dev/null; then
+      echo "Error: Invalid PID $pid"
+      return 1
+    fi
 
     printf "Monitoring process %d...\n" "$pid"
 

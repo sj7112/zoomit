@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # 确保只被加载一次
-if [[ -z "${LOADED_INIT_BASE_FUNC:-}" ]]; then
-  LOADED_INIT_BASE_FUNC=1
+if [[ -z "${LOADED_SYSTEM:-}" ]]; then
+  LOADED_SYSTEM=1
 
   declare -A TMP_MAP # 定义全局关联数组
 

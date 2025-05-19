@@ -19,6 +19,18 @@
         {
             "type": "bashdb",
             "request": "launch",
+            "name": "Bash-Debug (init_debian)",
+            "terminalKind": "integrated",
+            "cwd": "${workspaceFolder}",
+            "program": "${workspaceFolder}/bin/deb/init_debian.sh",
+            "args": [],
+            "env": {
+                "DEBUG": "1"
+            }
+        },
+        {
+            "type": "bashdb",
+            "request": "launch",
             "name": "Bash-Debug (i18n add/delete)",
             "cwd": "${workspaceFolder}",
             // "program": "${workspaceFolder}/bin/deb/init_debian.sh",
@@ -122,14 +134,6 @@
                 "bin/i18n.sh",
                 "bin/init_main.sh",
             ],
-            "console": "integratedTerminal"
-        },
-        {
-            "type": "debugpy",
-            "name": "Python: test.py",
-            "request": "launch",
-            "program": "${workspaceFolder}/tests/test2.py",
-            "args": [],
             "console": "integratedTerminal"
         }
     ]

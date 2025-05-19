@@ -387,7 +387,7 @@ if [[ -z "${LOADED_MSG_HANDLER:-}" ]]; then
     local template=$(msg_parse_tmpl "$@") # parse text by template
 
     local stackerr
-    if json_getopt "s"; then
+    if json_getopt "$options" "s"; then
       stackerr=$(print_stack_err 6 3) # print stack error (level ≤ 6)
       template+=" $stackerr"
     fi
@@ -404,7 +404,7 @@ if [[ -z "${LOADED_MSG_HANDLER:-}" ]]; then
       echo -e "$template" # normal text (no color)
     fi
 
-    if json_getopt "e"; then return 1; fi # 如有需要，返回错误，供调用者使用
+    if json_getopt "$options" "e"; then return 1; fi # 如有需要，返回错误，供调用者使用
   }
 
   #

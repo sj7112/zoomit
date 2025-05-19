@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # 确保只被加载一次
-if [[ -z "${LOADED_MATH_UTIL:-}" ]]; then
-  LOADED_MATH_UTIL=1
+if [[ -z "${LOADED_HASH_UTIL:-}" ]]; then
+  LOADED_HASH_UTIL=1
 
   : "${LIB_DIR:=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}" # lib direcotry
   source "$LIB_DIR/debug_tool.sh"
@@ -143,66 +143,6 @@ if [[ -z "${LOADED_MATH_UTIL:-}" ]]; then
   }
 
   # ==============================================================================
-  # 根据字符串查找语言属性在哈希表中的索引位置
-  # 参数:
-  #   $1 - 引用变量名，用于存储找到的消息
-  #   $2 - 父函数的hash code
-  #   $3 - 查找的键字符串，格式如 "bin/init_base_func.sh@@select_mirror"
-  # 返回:
-  #   0: 找到匹配键值
-  #   1: 键值为空
-  # ==============================================================================
-  lang_props_get() {
-    local -n _msg="$1" # 引用外部变量 msg（传引用）
-    local hash="$2"
-    local count="$3"
-    local key="$(padded_number_to_base64 "$hash"_4 "$count"_2)" # key=6位base64编码
-    local msg=LANG_PROPS["$key"]
-    [[ -z "${msg}" ]] && return 1 # 空值，说明没找到
-    return 1
-  }
-
-  # ==============================================================================
-  # 用途: 转换hash code和函数内序号，生成6位base64编码
-  #       程序+函数=4位；函数内位置=2位
-  #       结果存入全局变量 LNAG_PROPS
-  # 参数:
-  #   $1 - 父函数的hash code
-  #   $2 - 在父函数中出现的序号
-  # 全局变量:
-  #   _LANG_PROPS - 存储字符串的全局数组
-  # ==============================================================================
-  lang_props_set() {
-    local hash="$1"
-    local count="$2"
-    local key="$(padded_number_to_base64 "$hash"_4 "$count"_2)" # key=6位base64编码
-    LANG_PROPS["$key"]="$msg"                                   # 存储到 LANG_PROPS
-  }
-
-  # ==============================================================================
-  # 根据字符串查找语言属性在哈希表中的索引位置
-  # 参数:
-  #   $1: 引用变量名，用于存储找到的索引位置
-  #   $2: 查找的键字符串，格式如 "bin/init_base_func.sh@@select_mirror"
-  # 返回:
-  #   0: 找到匹配的键
-  #   1: 找到可用的空位
-  # ==============================================================================
-  _lang_props_get() {
-    local -n _idx="$1"                    # 引用外部变量 idx（传引用）
-    local str="$2"                        # 要查找的 key
-    local mask=$((64 * 64 * 64 * 64 - 1)) # 取模掩码
-    _idx=$(($(hash_djb2 "$str") * 64))    # 起始索引，64对齐
-
-    while :; do
-      [[ -z "${_LANG_PROPS[$_idx]}" ]] && return 1        # 空位，说明没找到
-      [[ "${_LANG_PROPS[$_idx]}" == "$str" ]] && return 0 # 找到匹配，说明存在
-
-      _idx=$((($_idx + (($_idx & 63) == 63 ? 2 : 1)) & mask)) # 探测下一个索引（跳过64倍数）
-    done
-  }
-
-  # ==============================================================================
   # Set function: Add a string to the hash table with linear probing
   # 用途: 将给定的字符串存储到全局数组 _LANG_PROPS 中，并返回其哈希索引位置
   #       使用线性探测法解决哈希冲突
@@ -257,9 +197,6 @@ if [[ -z "${LOADED_MATH_UTIL:-}" ]]; then
       _lang_props_set idx $a
       local b="${_LANG_PROPS[$idx]}"
       test_assertion "[[ $a == $b ]]" "set _LANG_PROPS: $idx"
-      local idx2
-      _lang_props_get idx2 $a
-      test_assertion "[[ $? && $idx == $idx2 ]]" "get _LANG_PROPS: $idx2"
     }
 
     main "$@"

@@ -34,16 +34,16 @@ source "$BIN_DIR/init_main.sh"                                   # main script
 # 改cdrom为标准包管理器
 init_sources_list() {
   local sources_file="/etc/apt/sources.list"
-  if grep -q "^deb cdrom:" /etc/apt/sources.list; then
-    info "$1" $DISTRO_OSTYPE
-    file_backup_sj "/etc/apt/sources.list"
+  if grep -q "^deb cdrom:" "$sources_file"; then
+    info "$1" "$DISTRO_OSTYPE"
+    file_backup_sj "$sources_file"
     cat >/tmp/sources.list <<EOF
 deb http://deb.debian.org/debian $DISTRO_CODENAME main contrib non-free non-free-firmware
 deb http://deb.debian.org/debian $DISTRO_CODENAME-updates main contrib non-free non-free-firmware
 deb http://security.debian.org/debian-security $DISTRO_CODENAME-security main contrib non-free non-free-firmware
 EOF
-    $SUDO_CMD mv /tmp/sources.list /etc/apt/sources.list
-    $SUDO_CMD chmod 644 /etc/apt/sources.list
+    $SUDO_CMD mv /tmp/sources.list "$sources_file"
+    $SUDO_CMD chmod 644 "$sources_file"
   fi
 }
 
@@ -77,11 +77,4 @@ pick_sources_list() {
 # --------------------------
 # 主执行流程
 # --------------------------
-echo "=== sj init $DISTRO_OSTYPE system start ==="
-check_env
-check_dvd
-#config_sshd
-# configure_ip
-# install_software
-# system_config
-echo "=== sj init $DISTRO_OSTYPE system end ==="
+init_main "$@"
