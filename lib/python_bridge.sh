@@ -8,6 +8,13 @@ if [[ -z "${LOADED_PYTHON_BRIDGE:-}" ]]; then
   : "${LIB_DIR:=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}" # bin direcotry
   : "${PYTHON_DIR:=$(dirname "$BIN_DIR")/python}"               # python directory
 
+  PYTHON="/root/.venv/bin/python" # python3虚拟环境
+
+  # ===== 从myshell.py中统一调用对应函数 =====
+  sh_check_ip() {
+    "$PYTHON" "$PYTHON_DIR/myshell.py" sh_check_ip "$SUDO_CMD" </dev/tty # 调用 myshell.py 的 sh_check_ip 命令
+  }
+
   # ===== 从ast_parser.py导入的函数 =====
   parse_shell_files() {
     local sh_file="$1"
@@ -19,39 +26,6 @@ sys.path.append('$PYTHON_DIR')
 from lang_util import parse_shell_files
 
 for item in parse_shell_files('$sh_file'):
-    print(item)
-"
-  }
-
-  # ===== 从另一个Python脚本导入的函数示例 =====
-  # 例如，从text_processor.py导入函数
-  process_text() {
-    local input_text="$1"
-    local options="$2"
-
-    python3 -c "
-import sys
-sys.path.append('$PYTHON_DIR')
-from text_processor import process_text
-
-result = process_text('$input_text', '$options')
-print(result)
-"
-  }
-
-  # ===== 从data_analyzer.py导入的函数示例 =====
-  analyze_data() {
-    local data_file="$1"
-    local analysis_type="$2"
-
-    # 调用Python并获取结果
-    python3 -c "
-import sys
-sys.path.append('$PYTHON_DIR')
-from data_analyzer import analyze_data
-
-results = analyze_data('$data_file', '$analysis_type')
-for item in results:
     print(item)
 "
   }

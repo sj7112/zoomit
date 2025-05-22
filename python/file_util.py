@@ -172,3 +172,46 @@ def get_shell_files(file_args=None):
         sys.exit(1)
 
     return sh_files
+
+
+def read_env_file(filename, section=None):
+    """
+    初始化环境变量，从 .env 文件读取数据，返回一个二层字典结构
+    {
+        "network": {...},
+        "infrastructure": {...}
+    }
+
+    参数:
+        filename (str): .env 文件路径
+        section (str): 可选，指定要返回的部分（如 "network" 或 "infrastructure"）
+
+    返回:
+        dict: 如果指定了 section，则返回对应的部分；否则返回完整的 env_data
+    """
+    if not os.path.isfile(filename):
+        raise FileNotFoundError(f"{filename} not found!")
+
+    env_data = {}
+    current_section = None
+
+    with open(filename, "r") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                # 检测标题行 (#=xxx)
+                if line.startswith("#="):
+                    current_section = line[2:].strip()
+                    env_data.setdefault(current_section, {})
+                continue
+
+            # 拆分键值对
+            if "=" in line:
+                key, value = map(str.strip, line.split("=", 1))
+                if current_section in env_data:
+                    env_data[current_section][key] = value
+
+    if section:  # 指定了 section，返回对应部分
+        return env_data.get(section, {})
+
+    return env_data  # 未指定 section，返回完整 env_data

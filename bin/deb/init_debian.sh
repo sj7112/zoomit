@@ -16,6 +16,7 @@
 # sudo ./init_main.sh
 
 # 检查 DEBUG 环境变量，设置相应的调试模式
+
 if [[ "$DEBUG" == "1" ]]; then
   # set -x          # 启用命令追踪
   set -e          # 启用脚本错误即退出

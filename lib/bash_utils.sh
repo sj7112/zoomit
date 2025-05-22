@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # 确保只被加载一次
-if [[ -z "${LOADED_UTILS:-}" ]]; then
-  LOADED_UTILS=1
+if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
+  LOADED_BASH_UTILS=1
 
   # 生成时间戳
   timestamp() {

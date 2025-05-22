@@ -135,6 +135,17 @@
                 "bin/init_main.sh",
             ],
             "console": "integratedTerminal"
+        },
+        {
+            "type": "debugpy",
+            "name": "Python: 启动 myshell.py",
+            "request": "launch",
+            "program": "${workspaceFolder}/python/myshell.py",
+            "args": [
+                "sh_check_ip",
+                ""
+            ],
+            "console": "integratedTerminal"
         }
     ]
 }

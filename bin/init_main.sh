@@ -11,7 +11,9 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   source "$LIB_DIR/json_handler.sh"
   source "$LIB_DIR/system.sh"
   source "$LIB_DIR/hash_util.sh"
-  source "$BIN_DIR/init_base_func.sh"
+  source "$LIB_DIR/init_base_func.sh"
+  source "$LIB_DIR/python_bridge.sh"
+  source "$LIB_DIR/update_env.sh"
 
   # 全局变量
   DISTRO_PM=""       # 包管理器
@@ -22,16 +24,17 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   SUDO_CMD=""        # sudo 默认为空字符串
 
   # ==============================================================================
+  # 兼容：debian | ubuntu | centos | RHEL | openSUSE | arch Linux
   # 功能1: 检查root权限并自动升级
   # ==============================================================================
 
   # ==============================================================================
-  # 函数: check_env 检查root权限和sudo
+  # 函数: initial_env 检查root权限和sudo
   # @i18n: This function needs internationalization
   # ==============================================================================
-  check_env() {
+  initial_env() {
     # 1. 检查用户权限，自动安装sudo
-    info "[1/1] 检查用户权限..."
+    info "[1] 检查系统环境..."
     if [ "$(id -u)" -eq 0 ]; then
       install_base_pkg "sudo" # 此时 SUDO_CMD=""
     else
@@ -46,10 +49,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     fi
 
     # 2. 调整 root 语言设置
-    info "[1/2] 检查用户语言环境..."
-    if check_root_file "/root/.profile"; then
-      source_defualt_lang
-    fi
+    source_defualt_lang
 
     # 3. 初始化语言和国家代码变量
     SYSTEM_LANG=$(get_locale_code)
@@ -66,7 +66,6 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   check_dvd() {
     # 检查是否包含 cdrom 源
     init_sources_list "检测到 CD-ROM 作为软件源，修改为默认 {0} 官方源..."
-
     # 选择速度快的镜像
     select_mirror # 内有交互
 
@@ -99,7 +98,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   # }
 
   # ==============================================================================
-  # 功能2: 配置SSH
+  # 功能2: 配置SSH（适用于所有发行版本）
   # 函数: config_sshd
   # 作用: 检查并安装 sshd，交互式修改 SSH 端口和 root 登录权限
   # 参数: 无
@@ -139,149 +138,79 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   # 功能3: 配置静态IP
   # --------------------------
   configure_ip() {
-    # 加载环境配置文件
-    source "$ENV_FILE"
-
-    # 检查是否已经配置了静态IP
-    if [ -n "$FIXED_IP" ]; then
-      echo "静态IP已配置 (FIXED_IP=$FIXED_IP)，跳过IP配置"
-      return 0
+    need_fix_ip # 设置环境配置文件
+    if [[ $? -ne 0 ]]; then
+      exiterr
     fi
-
-    # 询问是否切换到静态IP
-    echo "当前配置为动态IP。是否切换为静态IP？ [y/n]"
-    read -r response
-
-    if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
-      info "检查网络设置..."
-      FLAG=3
-
-      if systemctl is-active --quiet NetworkManager; then
-        echo "NetworkManager 正在运行"
-        FLAG=1
-      elif systemctl is-active --quiet wicked; then
-        echo "wicked 正在运行"
-        FLAG=2
-      elif systemctl is-active --quiet systemd-networkd; then
-        echo "systemd-networkd 正在运行"
-      elif command -v systemd-networkd >/dev/null 2>&1 \
-        || [ -x /lib/systemd/systemd-networkd ] \
-        || [ -x /usr/lib/systemd/systemd-networkd ]; then
-        echo "systemd-networkd 已存在，尝试启动..."
-        systemctl enable systemd-networkd
-        systemctl start systemd-networkd
-      else
-        echo "systemd-networkd 不存在，尝试安装..."
-        apt-get update
-        apt-get install -y systemd
-      fi
-
-      # 检查并安装systemd-networkd
-      if ! dpkg -l | grep -q "systemd-networkd"; then
-        echo "正在安装 systemd-networkd..."
-        apt-get update
-        apt-get install -y systemd-networkd
-      fi
-
-      # 获取当前网络接口和IP信息
-      if [ -z "$NET_DEVICE" ]; then
-        NET_DEVICE=$(ip route | grep default | awk '{print $5}' | head -n 1)
-      fi
-
-      # 获取当前IP信息
-      current_ip=$(ip -4 addr show "$NET_DEVICE" | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
-      current_prefix=$(ip -4 addr show "$NET_DEVICE" | grep -oP '(?<=inet\s)\d+(\.\d+){3}/\K\d+')
-      ip_prefix=$(echo "$current_ip" | cut -d. -f1-3)
-      last_octet=$(echo "$current_ip" | cut -d. -f4)
-
-      # 获取网关信息
-      if [ -z "$GATEWAY" ]; then
-        GATEWAY=$(ip route | grep default | awk '{print $3}' | head -n 1)
-      fi
-
-      # 获取用户输入的IP最后一位
-      while true; do
-        echo "请输入IP地址最后一位数字 (当前: $last_octet):"
-        read -r new_last_octet
-
-        if [[ "$new_last_octet" =~ ^[0-9]+$ ]] && [ "$new_last_octet" -ge 1 ] && [ "$new_last_octet" -le 254 ]; then
-          new_ip="$ip_prefix.$new_last_octet"
-          break
-        else
-          echo "无效的输入，请输入1-254之间的数字"
-        fi
-      done
-
-      # 创建网络配置
-      network_config="# 静态IP配置
-[Match]
-Name=$NET_DEVICE
-
-[Network]
-DHCP=no
-Address=$new_ip/$current_prefix
-Gateway=$GATEWAY"
-
-      # 添加DNS配置
-      if [ -n "$DNS_SERVERS" ]; then
-        IFS=',' read -ra DNS_ARRAY <<<"$DNS_SERVERS"
-        for dns in "${DNS_ARRAY[@]}"; do
-          network_config="$network_config
-DNS=$dns"
-        done
-      fi
-
-      # 显示配置预览
-      echo "将创建以下网络配置:"
-      echo "$network_config"
-
-      # 提供选项
-      while true; do
-        echo "请选择: [1]确认 [2]刷新 [3]退出"
-        read -r choice
-
-        case "$choice" in
-          1 | "确认")
-            # 安装resolvconf
-            if ! dpkg -l | grep -q "resolvconf"; then
-              echo "正在安装 resolvconf..."
-              apt-get update
-              apt-get install -y resolvconf
-            fi
-
-            # 保存网络配置
-            echo "$network_config" >"/etc/systemd/network/20-wired-static.network"
-
-            # 更新环境变量文件
-            sed -i "s/^NET_DEVICE=.*/NET_DEVICE=$NET_DEVICE/" "$ENV_FILE"
-            sed -i "s/^BASE_IP=.*/BASE_IP=$ip_prefix/" "$ENV_FILE"
-            sed -i "s/^GATEWAY=.*/GATEWAY=$GATEWAY/" "$ENV_FILE"
-            sed -i "s/^FIXED_IP=.*/FIXED_IP=$new_ip/" "$ENV_FILE"
-
-            # 重启网络服务
-            systemctl restart systemd-networkd
-            systemctl enable systemd-networkd
-
-            echo "静态IP配置完成。新IP地址: $new_ip"
-            return 0
-            ;;
-          2 | "刷新")
-            source "$ENV_FILE"
-            echo "已重新加载配置文件: $ENV_FILE"
-            ;;
-          3 | "退出")
-            echo "退出IP配置"
-            return 1
-            ;;
-          *)
-            echo "无效选择，请重试"
-            ;;
-        esac
-      done
+    if [[ ${ENV_NETWORK["CURR_NM"]} == "NetworkManager" ]]; then
+      info "NetworkManager 正在运行"
+      config_nmcli
+    elif [[ ${ENV_NETWORK["CURR_NM"]} == "networking" ]]; then
+      info "ifupdown 正在运行"
+      ifupdown_to_systemd_networkd
+    elif [[ ${ENV_NETWORK["CURR_NM"]} == "wicked" ]]; then
+      info "wicked 正在运行"
+    elif [[ ${ENV_NETWORK["CURR_NM"]} == "network" ]]; then
+      info "network-scripts 正在运行"
+    elif [[ ${ENV_NETWORK["CURR_NM"]} == "systemd-networkd" ]]; then
+      info "systemd-networkd 正在运行"
+      config_default
     else
-      echo "保持动态IP配置"
-      return 0
+      info "未知网络管理器，无法配置静态IP"
+      exiterr
     fi
+
+    #   # 显示配置预览
+    #   echo "将创建以下网络配置:"
+    #   echo "$network_config"
+
+    #   # 提供选项
+    #   while true; do
+    #     echo "请选择: [1]确认 [2]刷新 [3]退出"
+    #     read -r choice
+
+    #     case "$choice" in
+    #       1 | "确认")
+    #         # 安装resolvconf
+    #         if ! dpkg -l | grep -q "resolvconf"; then
+    #           echo "正在安装 resolvconf..."
+    #           apt-get update
+    #           apt-get install -y resolvconf
+    #         fi
+
+    #         # 保存网络配置
+    #         echo "$network_config" >"/etc/systemd/network/20-wired-static.network"
+
+    #         # 更新环境变量文件
+    #         sed -i "s/^NET_DEVICE=.*/NET_DEVICE=$NET_DEVICE/" "$ENV_FILE"
+    #         sed -i "s/^BASE_IP=.*/BASE_IP=$ip_prefix/" "$ENV_FILE"
+    #         sed -i "s/^GATEWAY=.*/GATEWAY=$GATEWAY/" "$ENV_FILE"
+    #         sed -i "s/^STATIC_IP=.*/STATIC_IP=$new_ip/" "$ENV_FILE"
+
+    #         # 重启网络服务
+    #         systemctl restart systemd-networkd
+    #         systemctl enable systemd-networkd
+
+    #         echo "静态IP配置完成。新IP地址: $new_ip"
+    #         return 0
+    #         ;;
+    #       2 | "刷新")
+    #         source "$ENV_FILE"
+    #         echo "已重新加载配置文件: $ENV_FILE"
+    #         ;;
+    #       3 | "退出")
+    #         echo "退出IP配置"
+    #         return 1
+    #         ;;
+    #       *)
+    #         echo "无效选择，请重试"
+    #         ;;
+    #     esac
+    #   done
+    # else
+    #   echo "保持动态IP配置"
+    #   return 0
+    # fi
   }
 
   # # --------------------------
@@ -444,10 +373,10 @@ EOF
     fi
 
     echo "=== sj init $DISTRO_OSTYPE system start ==="
-    check_env
-    check_dvd
+    initial_env
+    # check_dvd
     # config_sshd
-    # configure_ip
+    configure_ip
     # install_software
     # system_config
     echo "=== sj init $DISTRO_OSTYPE system end ==="

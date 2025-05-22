@@ -4,29 +4,50 @@
 if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
   LOADED_CMD_HANDLER=1
 
-  LOG_FILE="/var/log/sj_pkg_install.log"
-  TMP_FILE="/tmp/sj_pkg_install.log"
+  LOG_FILE="/var/log/sj_install.log"
+  TMP_FILE="/tmp/sj_install.log"
 
   # ==============================================================================
   # 公共子函数（兼容：debian | ubuntu | centos | RHEL | openSUSE | arch Linux）
   # ==============================================================================
 
   # ==============================================================================
-  # 函数: clean_pkg_mgr 清理缓存
+  # 函数: 调整 root 语言设置
   # ==============================================================================
   source_defualt_lang() {
-    $SUDO_CMD sed -i 's/^LANG=C/#LANG=C/g' /root/.profile
-    $SUDO_CMD sed -i 's/^LANGUAGE=C/#LANGUAGE=C/g' /root/.profile
-    # 使用 sudo 以 root 权限执行 source
-    $SUDO_CMD bash -c 'source /root/.profile'
-    if [ "$DISTRO_PM" = "apt" ]; then # debian | ubuntu
-      $SUDO_CMD bash -c 'source /etc/default/locale'
-    elif [ "$DISTRO_PM" = "zypper" ]; then # openSUSE
-      $SUDO_CMD bash -c 'source /etc/sysconfig/language'
-    else # centos | RHEL | arch Linux
-      $SUDO_CMD bash -c 'source /etc/locale.conf'
+    local profile="/root/.profile"
+    local need_update=0
+
+    # 如果 /root/.profile 存在，检查是否存在未注释的 LANG=C 或 LANGUAGE=C
+    if [[ -f "$profile" ]]; then
+      if $SUDO_CMD grep -qE '^LANG(C)?=C' "$profile"; then
+        $SUDO_CMD sed -i -E 's/^(LANG(C)?=C)/#\1/' "$profile"
+        need_update=1
+      fi
+      if $SUDO_CMD grep -q '^LANGUAGE=C' "$profile"; then
+        $SUDO_CMD sed -i 's/^LANGUAGE=C/#LANGUAGE=C/' "$profile"
+        need_update=1
+      fi
     fi
-    info "root 语言设置已更新"
+
+    if [[ "$need_update" -eq 1 ]]; then
+      # 使用 sudo 以 root 权限执行 source
+      case "$DISTRO_PM" in
+        apt)
+          # debian | ubuntu
+          source /etc/default/locale
+          ;;
+        zypper)
+          # openSUSE
+          source /etc/sysconfig/language
+          ;;
+        *)
+          # centos | RHEL | arch Linux
+          source /etc/locale.conf
+          ;;
+      esac
+      info "root 语言设置已更新"
+    fi
   }
 
   # ==============================================================================
@@ -37,7 +58,7 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
 
     # 检查命令是否存在
     if ! command -v "$lnx_cmd" &>/dev/null; then
-      echo "自动安装 '$lnx_cmd' ..."
+      info "自动安装 '$lnx_cmd' ..."
 
       # 根据不同 Linux 发行版安装命令
       if [ "$DISTRO_PM" = "pacman" ]; then # arch Linux
@@ -92,7 +113,7 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
   # 函数: upgrade_pkg_mgr 升级已安装的软件包
   # ==============================================================================
   upgrade_pkg_mgr() {
-    echo "升级已安装的软件包..."
+    info "升级已安装的软件包..."
     case "$DISTRO_PM" in
       apt) cmd="apt-get upgrade -y" ;;
       yum | dnf) cmd="$DISTRO_PM upgrade -y" ;;
@@ -106,7 +127,7 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
   # 函数: remove_pkg_mgr 删除不再需要的依赖包
   # ==============================================================================
   remove_pkg_mgr() {
-    echo "删除不再需要的依赖包..."
+    info "删除不再需要的依赖包..."
     case "$DISTRO_PM" in
       apt) cmd="apt-get autoremove -y" ;;
       yum | dnf) cmd="$DISTRO_PM autoremove -y" ;;
@@ -217,7 +238,7 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
 
     # 显示最终状态
     printf "\r\033[K[%s] %s" "-" "完成 Completed: $(date "+%Y-%m-%d %H:%M:%S")"
-
+    printf "\n"
     wait "$pid" 2>/dev/null
     return $?
   }

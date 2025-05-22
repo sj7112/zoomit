@@ -4,7 +4,7 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import List, Optional, Tuple, Callable, Any
+from typing import List, Optional, Tuple
 import typer
 
 
@@ -21,41 +21,13 @@ from lang_util import debug_assertion, update_lang_files
 from msg_handler import string, info, warning, error, exiterr, get_lang_code
 from debug_tool import create_app, default_cmd, print_array
 from file_util import print_array as file_print_array
+from system import confirm_action
 
 # 确保目录存在
 os.makedirs(LANG_DIR, exist_ok=True)
 
 
 SYSTEM_LANG = os.environ.get("SYSTEM_LANG", get_lang_code())  # 2位语言代码
-
-
-def confirm_action(prompt: str, callback: Callable[..., Any], *args: Any, **kwargs: Any) -> int:
-    """
-    确认操作函数（带回调）
-
-    参数:
-        prompt: 提示消息
-        callback: 回调函数
-        *args: 回调函数的位置参数
-        **kwargs: 可包含取消提示信息 msg=xxx，以及回调函数的关键字参数
-
-    返回:
-        0: 用户确认执行
-        1: 用户取消操作
-        2: 输入错误
-    """
-    cancel_msg = kwargs.pop("msg", "操作已取消")
-
-    response = input(f"{prompt} [Y/n] ").strip().lower()
-    if response in ("", "y", "yes"):
-        callback(*args)
-        return 0
-    elif response in ("n", "no"):
-        error(cancel_msg)
-        return 1
-    else:
-        error(cancel_msg)
-        return 2
 
 
 def resolve_lang_files(lang_code: str, mode: str = "", max_files: int = 1) -> List[str]:

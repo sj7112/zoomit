@@ -55,7 +55,7 @@ EOF
 # 主执行流程
 # --------------------------
 echo "=== sj init debian system start ==="
-# check_env
+# initial_env
 # check_dvd
 # update_sys
 config_sshd
