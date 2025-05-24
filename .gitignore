@@ -20,3 +20,5 @@ tests/
 sh.code-workspace
 # 忽略其他子目录
 build/
+# 忽略所有 .bak 文件
+*.bak
