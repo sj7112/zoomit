@@ -19,6 +19,27 @@ PARENT_DIR = Path(__file__).parent.parent.resolve()
 CONF_DIR = (PARENT_DIR / "config").resolve()
 
 
+def is_cloud_manufacturer(manufacturer):
+    # 常见云厂商关键词列表（可扩展）
+    cloud_keywords = [
+        "Amazon",
+        "Google",
+        "Microsoft Azure",
+        "Alibaba Cloud",
+        "Tencent Cloud",
+        "Huawei",
+        "Oracle Cloud",
+        "IBM Cloud",
+        "DigitalOcean",
+        "Linode",
+    ]
+    if manufacturer:
+        for keyword in cloud_keywords:
+            if keyword.lower() in manufacturer.lower():
+                return manufacturer
+    return None
+
+
 def check_ip(sudo_cmd):
     """
     检查服务器是否使用静态IP，并提供交互式选项：
@@ -47,6 +68,11 @@ def check_ip(sudo_cmd):
     # pgrep -f "dhclient|dhcpcd|nm-dhcp|NetworkManager.*dhcp"
     dhcp_client = bool(run_cmd(sudo_cmd, ["pgrep", "-f", "dhclient|dhcpcd|nm-dhcp|NetworkManager.*dhcp"]))
     env_network["DHCP_CLIENT"] = dhcp_client
+
+    # 调用 dmidecode 获取 system-manufacturer
+    manufacturer = is_cloud_manufacturer(run_cmd(sudo_cmd, "dmidecode -s system-manufacturer"))
+    if manufacturer:
+        env_network["IS_CLOUD"] = manufacturer.strip()
 
     # 新安装系统，是这几种之一：systemd-networkd、NetworkManager、networking[ifupdown]、wicked、network[network-scripts]
     nm_type = get_network_service(sudo_cmd)

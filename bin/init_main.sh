@@ -14,6 +14,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   source "$LIB_DIR/init_base_func.sh"
   source "$LIB_DIR/python_bridge.sh"
   source "$LIB_DIR/update_env.sh"
+  source "$LIB_DIR/network.sh"
 
   # 全局变量
   DISTRO_PM=""       # 包管理器
@@ -138,9 +139,9 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   # 功能3: 配置静态IP
   # --------------------------
   configure_ip() {
-    need_fix_ip # 设置环境配置文件
-    if [[ $? -ne 0 ]]; then
-      exiterr
+    # 设置环境配置文件
+    if ! need_fix_ip; then
+      return 0
     fi
     if [[ ${ENV_NETWORK["CURR_NM"]} == "NetworkManager" ]]; then
       info "NetworkManager 正在运行"
@@ -150,126 +151,59 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
       ifupdown_to_systemd_networkd
     elif [[ ${ENV_NETWORK["CURR_NM"]} == "wicked" ]]; then
       info "wicked 正在运行"
+      # wicked_to_systemd_networkd
     elif [[ ${ENV_NETWORK["CURR_NM"]} == "network" ]]; then
       info "network-scripts 正在运行"
+      # network_to_systemd_networkd
     elif [[ ${ENV_NETWORK["CURR_NM"]} == "systemd-networkd" ]]; then
       info "systemd-networkd 正在运行"
       config_default
     else
-      info "未知网络管理器，无法配置静态IP"
-      exiterr
+      exiterr "未知网络管理器，无法配置静态IP"
     fi
 
-    #   # 显示配置预览
-    #   echo "将创建以下网络配置:"
-    #   echo "$network_config"
-
-    #   # 提供选项
-    #   while true; do
-    #     echo "请选择: [1]确认 [2]刷新 [3]退出"
-    #     read -r choice
-
-    #     case "$choice" in
-    #       1 | "确认")
-    #         # 安装resolvconf
-    #         if ! dpkg -l | grep -q "resolvconf"; then
-    #           echo "正在安装 resolvconf..."
-    #           apt-get update
-    #           apt-get install -y resolvconf
-    #         fi
-
-    #         # 保存网络配置
-    #         echo "$network_config" >"/etc/systemd/network/20-wired-static.network"
-
-    #         # 更新环境变量文件
-    #         sed -i "s/^NET_DEVICE=.*/NET_DEVICE=$NET_DEVICE/" "$ENV_FILE"
-    #         sed -i "s/^BASE_IP=.*/BASE_IP=$ip_prefix/" "$ENV_FILE"
-    #         sed -i "s/^GATEWAY=.*/GATEWAY=$GATEWAY/" "$ENV_FILE"
-    #         sed -i "s/^STATIC_IP=.*/STATIC_IP=$new_ip/" "$ENV_FILE"
-
-    #         # 重启网络服务
-    #         systemctl restart systemd-networkd
-    #         systemctl enable systemd-networkd
-
-    #         echo "静态IP配置完成。新IP地址: $new_ip"
-    #         return 0
-    #         ;;
-    #       2 | "刷新")
-    #         source "$ENV_FILE"
-    #         echo "已重新加载配置文件: $ENV_FILE"
-    #         ;;
-    #       3 | "退出")
-    #         echo "退出IP配置"
-    #         return 1
-    #         ;;
-    #       *)
-    #         echo "无效选择，请重试"
-    #         ;;
-    #     esac
-    #   done
-    # else
-    #   echo "保持动态IP配置"
-    #   return 0
-    # fi
   }
 
-  # # --------------------------
-  # # 加载环境变量
-  # # --------------------------
-  # ENV_FILE="~/sj_auto_install/config/infrastructure/.env"
-  # CONFIG_DIR=$(dirname "$ENV_FILE")
-  # # 加载配置
-  # source "$ENV_FILE"
+  # --------------------------
+  # 加载环境变量
+  # --------------------------
+  ENV_FILE="~/sj_auto_install/config/infrastructure/.env"
+  CONFIG_DIR=$(dirname "$ENV_FILE")
+  # 加载配置
+  source "$ENV_FILE"
 
-  # # --------------------------
-  # # 功能2: 安装指定软件
-  # # --------------------------
-  # install_software() {
-  #     echo "[2/3] 正在安装软件: ${SOFTWARE_LIST}..."
+  # --------------------------
+  # 功能2: 安装指定软件
+  # --------------------------
+  docker_compose() {
+    echo "[2/3] 正在安装软件: ${SOFTWARE_LIST}..."
 
-  #     # 更新包列表
-  #     apt-get update -qq
+    # 更新包列表
+    apt-get update -qq
 
-  #     # 安装每个指定的软件
-  #     for software in ${SOFTWARE_LIST}; do
-  #         case "${software}" in
-  #         postgres)
-  #             echo "-> 安装PostgreSQL..."
-  #             apt-get install -y postgresql postgresql-contrib
-  #             systemctl enable postgresql
-  #             ;;
-  #         redis)
-  #             echo "-> 安装Redis..."
-  #             apt-get install -y redis-server
-  #             systemctl enable redis-server
-  #             ;;
-  #         nginx)
-  #             echo "-> 安装Nginx..."
-  #             apt-get install -y nginx
-  #             systemctl enable nginx
-  #             ;;
-  #         *)
-  #             echo "警告: 未知软件 '${software}'，跳过安装" >&2
-  #             ;;
-  #         esac
-  #     done
-  # }
-
-  # Debian/Ubuntu (apt)
-  handle_apt() {
-    if grep -q "^deb cdrom:" /etc/apt/sources.list; then
-      info "检测到 CD-ROM 作为软件源，正在修改为默认 Debian/Ubuntu 官方源..."
-      $SUDO_CMD cp /etc/apt/sources.list /etc/apt/sources.list.bak
-      cat >/tmp/sources.list <<EOF
-deb http://deb.debian.org/debian bookworm main contrib non-free non-free-firmware
-deb http://security.debian.org/debian-security bookworm-security main contrib non-free non-free-firmware
-deb http://deb.debian.org/debian bookworm-updates main contrib non-free non-free-firmware
-EOF
-      $SUDO_CMD mv /tmp/sources.list /etc/apt/sources.list
-      success "已更新 sources.list"
-    else
-      info "未检测到 CD-ROM 作为软件源，无需修改。"
-    fi
+    # 安装每个指定的软件
+    for software in ${SOFTWARE_LIST}; do
+      case "${software}" in
+        postgres)
+          echo "-> 安装PostgreSQL..."
+          apt-get install -y postgresql postgresql-contrib
+          systemctl enable postgresql
+          ;;
+        redis)
+          echo "-> 安装Redis..."
+          apt-get install -y redis-server
+          systemctl enable redis-server
+          ;;
+        nginx)
+          echo "-> 安装Nginx..."
+          apt-get install -y nginx
+          systemctl enable nginx
+          ;;
+        *)
+          echo "警告: 未知软件 '${software}'，跳过安装" >&2
+          ;;
+      esac
+    done
   }
 
   # CentOS/RHEL (yum/dnf)
@@ -373,11 +307,11 @@ EOF
     fi
 
     echo "=== sj init $DISTRO_OSTYPE system start ==="
-    initial_env
-    # check_dvd
-    # config_sshd
-    configure_ip
-    # install_software
+    initial_env # 基础值初始化
+    # check_dvd # 检查软件源
+    # config_sshd # SSH配置
+    # configure_ip # 静态IP配置
+    docker_compose # 安装软件
     # system_config
     echo "=== sj init $DISTRO_OSTYPE system end ==="
   }

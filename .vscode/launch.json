@@ -34,7 +34,8 @@
             "name": "Bash-Debug (i18n add/delete)",
             "cwd": "${workspaceFolder}",
             // "program": "${workspaceFolder}/bin/deb/init_debian.sh",
-            "program": "${workspaceFolder}/bin/i18n.sh",
+            // "program": "${workspaceFolder}/bin/i18n.sh",
+            "program": "${workspaceFolder}/lib/update_env.sh",
             "args": [
                 "del",
                 "-y",

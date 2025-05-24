@@ -167,10 +167,13 @@ def get_static_ip(nm_type):
             for path in glob.glob("/etc/systemd/network/*.network"):
                 with open(path) as f:
                     content = f.read()
-                    if "DHCP=no" in content:
-                        match = re.search(r"Address=(\d+\.\d+\.\d+\.\d+)", content)
-                        if match:
-                            return match.group(1)
+                    # 如果启用了 DHCP，就不是静态 IP
+                    if "DHCP=yes" in content:
+                        continue
+                        # 否则尝试找静态 IP 地址
+                    match = re.search(r"Address=(\d+\.\d+\.\d+\.\d+)", content)
+                    if match:
+                        return match.group(1)
 
         elif nm_type == "NetworkManager":  # 桌面版
             for path in glob.glob("/etc/NetworkManager/system-connections/*"):
