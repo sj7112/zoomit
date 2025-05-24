@@ -70,33 +70,13 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     # 选择速度快的镜像
     select_mirror # 内有交互
 
-    info "==== 系统升级开始 ===="
+    info "[1/2] 系统升级开始..."
     clean_pkg_mgr   # 清理缓存
     update_pkg_mgr  # 更新镜像源列表
     upgrade_pkg_mgr # 升级已安装的软件包
     remove_pkg_mgr  # 删除不再需要的依赖包
-    success "==== 系统升级完成 ===="
+    success "[2/2] 系统升级完成..."
   }
-
-  # ==============================================================================
-  # 函数: update_sys 换语言 & 自动升级
-  # ==============================================================================
-  # update_sys() {
-  #   info "==== 系统升级开始 ===="
-
-  #   # 2. 系统更新
-  #   info "[2/3] 升级系统软件..."
-  #   $SUDO_CMD apt-get update
-  #   DEBIAN_FRONTEND=noninteractive $SUDO_CMD apt-get upgrade -y
-  #   DEBIAN_FRONTEND=noninteractive $SUDO_CMD apt-get full-upgrade -y
-
-  #   # 3. 清理
-  #   info "[3/3] 清理无用包..."
-  #   $SUDO_CMD apt-get autoremove -y
-  #   $SUDO_CMD apt-get clean
-
-  #   success "系统升级完成"
-  # }
 
   # ==============================================================================
   # 功能2: 配置SSH（适用于所有发行版本）
@@ -165,14 +145,6 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   }
 
   # --------------------------
-  # 加载环境变量
-  # --------------------------
-  ENV_FILE="~/sj_auto_install/config/infrastructure/.env"
-  CONFIG_DIR=$(dirname "$ENV_FILE")
-  # 加载配置
-  source "$ENV_FILE"
-
-  # --------------------------
   # 功能2: 安装指定软件
   # --------------------------
   docker_compose() {
@@ -204,66 +176,6 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
           ;;
       esac
     done
-  }
-
-  # CentOS/RHEL (yum/dnf)
-  handle_yum() {
-    if grep -q "cdrom" /etc/yum.repos.d/*; then
-      info "检测到 CD-ROM 作为软件源，正在修改为默认 CentOS/RHEL 官方源..."
-      $SUDO_CMD cp /etc/yum.repos.d/* /etc/yum.repos.d/*.bak
-      cat >/tmp/centos.repo <<EOF
-[base]
-name=CentOS-7 - Base
-baseurl=http://mirror.centos.org/centos/7/os/x86_64/
-enabled=1
-gpgcheck=1
-gpgkey=http://mirror.centos.org/centos/RPM-GPG-KEY-CentOS-7
-EOF
-      $SUDO_CMD mv /tmp/centos.repo /etc/yum.repos.d/centos.repo
-      success "已更新 repo 文件"
-    else
-      info "未检测到 CD-ROM 作为软件源，无需修改。"
-    fi
-  }
-
-  # Arch Linux (pacman)
-  handle_pacman() {
-    if grep -q "^cdrom" /etc/pacman.conf; then
-      info "检测到 CD-ROM 作为软件源，正在修改为默认 Arch 官方源..."
-      $SUDO_CMD cp /etc/pacman.conf /etc/pacman.conf.bak
-      cat >/tmp/pacman.conf <<EOF
-[core]
-Server = http://mirror.rackspace.com/archlinux/\$repo/os/\$arch
-[extra]
-Server = http://mirror.rackspace.com/archlinux/\$repo/os/\$arch
-[community]
-Server = http://mirror.rackspace.com/archlinux/\$repo/os/\$arch
-EOF
-      $SUDO_CMD mv /tmp/pacman.conf /etc/pacman.conf
-      success "已更新 pacman.conf"
-    else
-      info "未检测到 CD-ROM 作为软件源，无需修改。"
-    fi
-  }
-
-  # OpenSUSE (zypper)
-  handle_zypper() {
-    if grep -q "^cdrom" /etc/zypp/repos.d/*; then
-      info "检测到 CD-ROM 作为软件源，正在修改为默认 OpenSUSE 官方源..."
-      $SUDO_CMD cp /etc/zypp/repos.d/* /etc/zypp/repos.d/*.bak
-      cat >/tmp/suse.repo <<EOF
-[openSUSE]
-name=openSUSE
-baseurl=http://download.opensuse.org/distribution/leap/15.3/repo/oss/
-enabled=1
-gpgcheck=1
-gpgkey=http://download.opensuse.org/repositories/oss/15.3/repodata/repomd.xml.key
-EOF
-      $SUDO_CMD mv /tmp/suse.repo /etc/zypp/repos.d/openSUSE.repo
-      success "已更新 repo 文件"
-    else
-      info "未检测到 CD-ROM 作为软件源，无需修改。"
-    fi
   }
 
   # ==============================================================================
