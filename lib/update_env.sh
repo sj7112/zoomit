@@ -88,7 +88,8 @@ if [[ -z "${LOADED_UPDATE_ENV:-}" ]]; then
   save_env() {
     local env_file="$1"
     local -n env_array="$2"
-    local flag="${3:-0}" # 备份标志，默认为0（备份）
+    local -n keys_array="$3"
+    local flag="${4:-0}" # 备份标志，默认为0（备份）
 
     # 备份原文件
     if [[ "$flag" -eq 0 ]]; then
@@ -112,13 +113,10 @@ if [[ -z "${LOADED_UPDATE_ENV:-}" ]]; then
       local value=$(echo "$line" | cut -d '=' -f 2- | xargs)
 
       # 检查是否需要更新
-      # echo "下标 $key=${env_array[$key]} 值 ${env_array[$key]+_}"
-      if [[ -n "${env_array[$key]+_}" ]]; then
-        # 更新值
-        echo "$key=${env_array[$key]}" >>"$temp_file"
+      if string_array_contain keys_array "$key"; then
+        echo "$key=${env_array[$key]}" >>"$temp_file" # 更新值
       else
-        # 保持原值
-        echo "$line" >>"$temp_file"
+        echo "$line" >>"$temp_file" # 保持原值
       fi
     done <"$env_file"
 
@@ -162,14 +160,14 @@ if [[ -z "${LOADED_UPDATE_ENV:-}" ]]; then
       set_env "infrastructure" "MYSQL_ROOT_PASSWORD" "newpassword"
 
       # 保存到文件
-      save_env "$ENV_SYSTEM" ENV_NETWORK
-      save_env "$ENV_DOCKER" ENV_INFRASTRUCTURE
-      print_array ENV_INFRASTRUCTURE
+      save_env "$ENV_SYSTEM" ENV_NETWORK keys_network
+      save_env "$ENV_DOCKER" ENV_INFRASTRUCTURE keys_infrastructure
+
       # 改回原始值
       ENV_NETWORK["BASE_IP"]="$old_base_ip"
       ENV_INFRASTRUCTURE["MYSQL_ROOT_PASSWORD"]="$old_password"
-      save_env "$ENV_SYSTEM" ENV_NETWORK "1"
-      save_env "$ENV_DOCKER" ENV_INFRASTRUCTURE "1"
+      save_env "$ENV_SYSTEM" ENV_NETWORK keys_network "1"
+      save_env "$ENV_DOCKER" ENV_INFRASTRUCTURE keys_infrastructure "1"
 
       # 比较.env和.bak文件
       test_assertion "cmp -s '$ENV_SYSTEM' '$ENV_SYSTEM.bak'" "BASE_IP: $old_base_ip"
