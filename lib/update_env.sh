@@ -142,6 +142,44 @@ if [[ -z "${LOADED_UPDATE_ENV:-}" ]]; then
     done < <(echo "$env_json" | jq -r 'to_entries[] | "\(.key)=\(.value)"')
   }
 
+  # 保存函数：按项目匹配更新文件
+  save_env_docker() {
+    local -n env_array="$1"
+    local flag="${2:-0}" # 备份标志，默认为0（备份）
+
+    # 备份原文件
+    if [[ "$flag" -eq 0 ]]; then
+      cp "$ENV_DOCKER" "$ENV_DOCKER.bak"
+    fi
+
+    # 临时文件
+    local temp_file
+    temp_file=$(mktemp)
+
+    # 逐行读取文件，按项目匹配更新
+    while IFS= read -r line; do
+      # 保留空行和注释行
+      if [[ -z "$line" || "$line" == \#* ]]; then
+        echo "$line" >>"$temp_file"
+        continue
+      fi
+
+      # 拆分键值对
+      local key=$(echo "$line" | cut -d '=' -f 1 | xargs)
+      local value=$(echo "$line" | cut -d '=' -f 2- | xargs)
+
+      # 检查是否需要更新
+      if [[ -v env_array[$key] ]]; then
+        echo "$key=${env_array[$key]}" >>"$temp_file"
+      else
+        echo "$key=" >>"$temp_file" # 无需设置
+      fi
+    done <"$ENV_DOCKER"
+
+    # 将更新内容写回文件
+    mv "$temp_file" "$ENV_DOCKER"
+  }
+
   # ==============================================================================
   # 主程序（用于测试）
   # 修改、显示、写入配置文件
@@ -151,27 +189,18 @@ if [[ -z "${LOADED_UPDATE_ENV:-}" ]]; then
     main() {
       # 初始化环境变量
       init_env "$ENV_SYSTEM"
-      init_env "$ENV_DOCKER"
 
-      # 修改示例
-      local old_base_ip="${ENV_NETWORK["BASE_IP"]}"
-      set_env "network" "BASE_IP" "192.168.1.100"
-      local old_password="${ENV_NETWORK["MYSQL_ROOT_PASSWORD"]}"
-      set_env "infrastructure" "MYSQL_ROOT_PASSWORD" "newpassword"
-
-      # 保存到文件
+      # 修改示例，保存到文件
+      local old_curr_ip="${ENV_NETWORK["CURR_IP"]}"
+      set_env "network" "CURR_IP" "192.168.1.100"
       save_env "$ENV_SYSTEM" ENV_NETWORK keys_network
-      save_env "$ENV_DOCKER" ENV_INFRASTRUCTURE keys_infrastructure
 
       # 改回原始值
-      ENV_NETWORK["BASE_IP"]="$old_base_ip"
-      ENV_INFRASTRUCTURE["MYSQL_ROOT_PASSWORD"]="$old_password"
-      save_env "$ENV_SYSTEM" ENV_NETWORK keys_network "1"
-      save_env "$ENV_DOCKER" ENV_INFRASTRUCTURE keys_infrastructure "1"
+      ENV_NETWORK["CURR_IP"]="$old_curr_ip"
+      save_env "$ENV_SYSTEM" ENV_NETWORK keys_network "1" # 1表示不备份
 
       # 比较.env和.bak文件
-      test_assertion "cmp -s '$ENV_SYSTEM' '$ENV_SYSTEM.bak'" "BASE_IP: $old_base_ip"
-      test_assertion "cmp -s '$ENV_DOCKER' '$ENV_DOCKER.bak'" "MYSQL_ROOT_PASSWORD: $old_password"
+      test_assertion "cmp -s '$ENV_SYSTEM' '$ENV_SYSTEM.bak'" "CURR_IP: $old_curr_ip"
     }
 
     main "$@"

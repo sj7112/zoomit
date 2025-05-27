@@ -31,19 +31,10 @@
         {
             "type": "bashdb",
             "request": "launch",
-            "name": "Bash-Debug (i18n add/delete)",
+            "name": "Bash-Debug (update_env)",
             "cwd": "${workspaceFolder}",
-            // "program": "${workspaceFolder}/bin/deb/init_debian.sh",
-            // "program": "${workspaceFolder}/bin/i18n.sh",
             "program": "${workspaceFolder}/lib/update_env.sh",
-            "args": [
-                "del",
-                "-y",
-                "--lang=zh"
-            ],
-            "env": {
-                "DEBUG": "1"
-            }
+            "args": []
         },
         {
             "type": "bashdb",

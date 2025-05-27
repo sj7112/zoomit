@@ -1,0 +1,16 @@
+nginx:
+  image: nginx:alpine
+  container_name: nginx
+  restart: unless-stopped
+  ports:
+    - "80:80"
+    - "443:443"
+  volumes:
+    - /etc/nginx:/etc/nginx # Nginx config files
+    - /etc/letsencrypt:/etc/letsencrypt # SSL/TLS Certificates
+    - /var/www/html:/var/www/html # Home for all Web App. CHANGE IF NEEDED!
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy

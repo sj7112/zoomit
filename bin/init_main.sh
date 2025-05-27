@@ -15,6 +15,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   source "$LIB_DIR/python_bridge.sh"
   source "$LIB_DIR/update_env.sh"
   source "$LIB_DIR/network.sh"
+  source "$LIB_DIR/docker.sh"
 
   # 全局变量
   DISTRO_PM=""       # 包管理器
@@ -105,6 +106,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     fi
 
     # 询问是否允许 root 登录
+    #PermitRootLogin prohibit-password
     read -rp "允许 root 远程登录？[y/N]: " allow_root
     case "$allow_root" in
       [Yy]) fl_modify_line "$sshd_config" "PermitRootLogin" "PermitRootLogin yes" && info "已允许 root 登录" ;;
@@ -144,38 +146,47 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
 
   }
 
+  install_docker() {
+    info "在 $DISTRO 上安装 Docker 与 Docker Compose..."
+
+    # 安装依赖
+    install_base_pkg "ca-certificates"
+    install_base_pkg "gnupg"
+
+    apt-get update
+    apt-get install -y \
+      ca-certificates \
+      curl \
+      gnupg \
+      lsb-release \
+      apt-transport-https
+
+    # 添加 Docker 仓库 GPG（可选，但推荐）
+    install -m 0755 -d /etc/apt/keyrings
+    curl -fsSL https://download.docker.com/linux/$DISTRO/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    chmod a+r /etc/apt/keyrings/docker.gpg
+
+    # 添加 Docker 仓库源
+    echo \
+      "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/$DISTRO \
+      $(lsb_release -cs) stable" >/etc/apt/sources.list.d/docker.list
+
+    # 安装 Docker
+    apt-get update
+    apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+    # 验证安装
+    docker --version
+    docker compose version
+  }
+
   # --------------------------
   # 功能2: 安装指定软件
   # --------------------------
   docker_compose() {
-    echo "[2/3] 正在安装软件: ${SOFTWARE_LIST}..."
-
-    # 更新包列表
-    apt-get update -qq
-
-    # 安装每个指定的软件
-    for software in ${SOFTWARE_LIST}; do
-      case "${software}" in
-        postgres)
-          echo "-> 安装PostgreSQL..."
-          apt-get install -y postgresql postgresql-contrib
-          systemctl enable postgresql
-          ;;
-        redis)
-          echo "-> 安装Redis..."
-          apt-get install -y redis-server
-          systemctl enable redis-server
-          ;;
-        nginx)
-          echo "-> 安装Nginx..."
-          apt-get install -y nginx
-          systemctl enable nginx
-          ;;
-        *)
-          echo "警告: 未知软件 '${software}'，跳过安装" >&2
-          ;;
-      esac
-    done
+    install_docker
+    infra_setup
+    apps_setup
   }
 
   # ==============================================================================

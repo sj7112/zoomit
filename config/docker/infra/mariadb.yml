@@ -1,0 +1,12 @@
+mariadb:
+  image: mariadb:${MYSQL_VERSION} # support 10, 11，latest, ...
+  container_name: mariadb
+  restart: unless-stopped
+  ports:
+    - "3306:3306"
+  volumes:
+    - /var/lib/mysql:/var/lib/mysql # mysql data
+    - /etc/mysql:/etc/mysql # mysql config files
+  user: ${MYSQL_GUID} # e.g. 999:999，UID:GID for mysql user
+  environment:
+    MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
