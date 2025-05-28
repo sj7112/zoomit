@@ -5,7 +5,6 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
   LOADED_CMD_HANDLER=1
 
   LOG_FILE="/var/log/sj_install.log"
-  TMP_FILE="/tmp/sj_install.log"
 
   # ==============================================================================
   # 公共子函数（兼容：debian | ubuntu | centos | RHEL | openSUSE | arch Linux）
@@ -55,7 +54,6 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
   # ==============================================================================
   install_base_pkg() {
     local lnx_cmd="$1"
-
     # 检查命令是否存在
     if ! command -v "$lnx_cmd" &>/dev/null; then
       info "自动安装 '$lnx_cmd' ..."
@@ -68,7 +66,7 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
       else # centos | RHEL | openSUSE
         cmd="'$DISTRO_PM' install -y $lnx_cmd"
       fi
-      local result=$(cmd_exec -f "$cmd")
+      local result=$(cmd_exec "$cmd")
 
       # 再次检查是否安装成功
       local date=$(date "+%Y-%m-%d %H:%M:%S")
@@ -92,7 +90,7 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
       zypper) cmd="zypper clean -a" ;;
       pacman) cmd="pacman -Sc --noconfirm" ;;
     esac
-    cmd_exec -f "$cmd" || exiterr "清理缓存失败"
+    cmd_exec "$cmd" || exiterr "清理缓存失败"
   }
 
   # ==============================================================================
@@ -106,7 +104,7 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
       zypper) cmd="zypper refresh" ;;
       pacman) cmd="pacman -Syy" ;;
     esac
-    cmd_exec -f "$cmd" || exiterr "更新失败，镜像可能不可用"
+    cmd_exec "$cmd" || exiterr "更新失败，镜像可能不可用"
   }
 
   # ==============================================================================
@@ -120,7 +118,7 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
       zypper) cmd="zypper update -y" ;;
       pacman) cmd="pacman -Syu --noconfirm" ;;
     esac
-    cmd_exec -f "$cmd" || exiterr "升级软件包失败"
+    cmd_exec "$cmd" || exiterr "升级软件包失败"
   }
 
   # ==============================================================================
@@ -134,56 +132,41 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
       zypper) cmd="zypper remove -u" ;;
       pacman) cmd="pacman -Rns $(pacman -Qdtq) --noconfirm" ;;
     esac
-    cmd_exec -f "$cmd" || exiterr "删除依赖包失败"
+    cmd_exec "$cmd" || exiterr "删除依赖包失败"
   }
 
   # ==============================================================================
   # cmd_exec - 执行命令并支持日志记录、静默模式、同行输出等功能
+  #            日志模式（结果写入日志文件）
   #
   # 参数选项:
-  #   -q, --quiet    安静模式（不输出到控制台）
-  #   -f, --file     日志模式（结果写入日志文件）
   #   cmd...         要执行的命令（除非确有必要，避免使用 && 动态拼接命令！）
   #
   # 返回值:
   #   0 表示成功，非 0 表示失败
   #
   # 示例:
-  #   cmd_exec -fq "apt update"       # 记录日志，页面不输出结果
-  #   cmd_exec -f -q "apt update"     # 同上，分开参数
-  #   cmd_exec --file --quite "apt update"  # 同上，使用长参数
-  #   cmd_exec -q "rm file"           # 静默执行（不输出任何结果）
+  #   cmd_exec "apt update"  # 记录日志，页面不输出结果
+  #   cmd_exec "apt update"  # 同上，分开参数
+  #   cmd_exec "apt update"  # 同上，使用长参数
+  #   cmd_exec "rm file"     # 静默执行（不输出任何结果）
   # ==============================================================================
   cmd_exec() {
-    eval "$(parse_options "$@")" # 需在cmd_meta定义同名子对象
-    local options="$1"
-
     local combined_cmd="" # 合并后的命令行参数
     local result=0        # 返回成功=0 | 失败=1
 
     # 合并命令，用 && 连接
-    for cmd in "${@:2}"; do
+    for cmd in "${@}"; do
       combined_cmd="${combined_cmd:+$combined_cmd && }$SUDO_CMD $cmd"
     done
     combined_cmd=$(echo "$combined_cmd" | xargs)                      # 去除多余空格
     [[ "$combined_cmd" == *"&&"* ]] && combined_cmd="($combined_cmd)" # 命令组需要加上括号
 
     # 执行命令（非安静模式）
-    if ! json_getopt "$options" "q"; then
-      echo "执行: $combined_cmd ... " >&2
-      # 确定输出文件
-      output_file=$(json_getopt "$options" "f" && echo "$LOG_FILE" || echo "$TMP_FILE")
-      # 执行命令 & 监控进度
-      monitor_progress "$combined_cmd" "$output_file" # 调用监控函数
-    else
-      # 执行命令（安静模式 = 前端不输出）
-      if json_getopt "$options" "f"; then
-        bash -c "$combined_cmd" >>"$LOG_FILE" 2>&1 # 只写日志
-      else
-        bash -c "$combined_cmd" >/dev/null 2>&1 # 无任何输出
-      fi
-    fi
-    return $? # 返回命令执行结果
+    echo "执行: $combined_cmd ... " >&2
+    # 执行命令 & 监控进度
+    monitor_progress "$combined_cmd" "$LOG_FILE" # 调用监控函数
+    return $?                                    # 返回命令执行结果
   }
 
   # 监控命令进度并在单行中显示更新

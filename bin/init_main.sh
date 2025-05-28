@@ -50,16 +50,17 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
       fi
     fi
 
-    # 2. 调整 root 语言设置
+    # 2. 安装各类基础包
+    install_base_pkg "curl"
+    install_base_pkg "jq"
+
+    # 3. 调整 root 语言设置
     source_defualt_lang
 
-    # 3. 初始化语言和国家代码变量
+    # 4. 初始化语言和国家代码变量
     SYSTEM_LANG=$(get_locale_code)
     SYSTEM_COUNTRY=$(get_country_code | tr '[:lower:]' '[:upper:]')
 
-    # 4. 安装各类基础包
-    install_base_pkg "curl"
-    install_base_pkg "jq"
   }
 
   # ==============================================================================
@@ -231,7 +232,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
 
     echo "=== sj init $DISTRO_OSTYPE system start ==="
     initial_env # 基础值初始化
-    # check_dvd # 检查软件源
+    check_dvd   # 检查软件源
     # config_sshd # SSH配置
     # configure_ip # 静态IP配置
     docker_compose # 安装软件
