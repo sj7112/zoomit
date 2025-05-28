@@ -373,7 +373,7 @@ if [[ -z "${LOADED_MSG_HANDLER:-}" ]]; then
     shift
 
     # 自动翻译
-    # if ! json_getopt "i"; then
+    # if  [[ "$1" == "" ]] && ! json_getopt "i"; then
     #   get_current_context
     #   # 构建消息ID
     #   local msg_id=$(get_message_id "$CURRENT_FUNCTION" "${FUNCNAME[1]}")
@@ -386,10 +386,8 @@ if [[ -z "${LOADED_MSG_HANDLER:-}" ]]; then
 
     local template=$(msg_parse_tmpl "$@") # parse text by template
 
-    local stackerr
     if json_getopt "$options" "s"; then
-      stackerr=$(print_stack_err 6 3) # print stack error (level ≤ 6)
-      template+=" $stackerr"
+      template+=" $(print_stack_err 6 3)" # print stack error (level ≤ 6)
     fi
 
     if [[ "${FUNCNAME[1]}" == "exiterr" || "${FUNCNAME[1]}" == "error" ]]; then

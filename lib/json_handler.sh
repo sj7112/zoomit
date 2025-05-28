@@ -7,6 +7,7 @@ if [[ -z "${LOADED_JSON_HANDLER:-}" ]]; then
   CONF_DIR="$(dirname "$BIN_DIR")/config" # config direcotry
   LIB_DIR="$(dirname "$BIN_DIR")/lib"     # lib direcotry
   source "$LIB_DIR/debug_tool.sh"
+  declare META_Command # 加载json环境变量
 
   # 从 config 加载 json文件
   json_load_data() {
@@ -22,9 +23,6 @@ if [[ -z "${LOADED_JSON_HANDLER:-}" ]]; then
     # 去除 // 和 /* */ 注释，并返回纯净 JSON 数据
     sed -e 's@//.*@@' -e '/\/\*/,/\*\//d' "$json_file" | jq -c .
   }
-
-  # 加载json环境变量
-  declare META_Command=$(json_load_data "cmd_meta") # 命令解析json
 
   # 获取JSON对象的所有key并用指定分隔符连接
   # 用法: json_get_keys "jsonstr" "delimiter"
@@ -50,8 +48,9 @@ if [[ -z "${LOADED_JSON_HANDLER:-}" ]]; then
   # 需要测试，得在外层加测试语句：json_getopt "$options" "f" && echo "选项 f 存在" || echo "选项 f 不存在"
   # ==============================================================================
   json_getopt() {
-    local value=$(jq -r --arg k "$2" '.[$k]' <<<"$1") # options在父函数中定义
-    [[ "$value" != "0" && "$value" != "" ]]           # 1 = true(0)；0|"" = false(1)
+    [[ "$1" == "" ]] && return 1                                  # 异常处理，返回 1
+    local value=$(jq -r --arg k "$2" '.[$k]' <<<"$1")             # options在父函数中定义
+    [[ "$value" != "0" && "$value" != "" && "$value" != "null" ]] # 1 = true(0)；0|"" = false(1)
   }
 
   # 检查是否json格式
@@ -69,8 +68,8 @@ if [[ -z "${LOADED_JSON_HANDLER:-}" ]]; then
   # 注2：short_opt遇到echo坑点：-n会被改为""
   # ==============================================================================
   parse_options() {
-    local parsed_options="{}" # 选项JSON对象
-    if [ -n "$META_Command" ]; then
+    local parsed_options="" # 选项JSON对象
+    if [[ -n "${META_Command:-}" ]]; then
       # 从META_Command中提取选项定义
       local cmd_name=${FUNCNAME[1]}
       local options_def=$(json get META_Command "${cmd_name}.options")
@@ -79,6 +78,7 @@ if [[ -z "${LOADED_JSON_HANDLER:-}" ]]; then
         exit 1
       fi
 
+      parsed_options="{}" # 解析后的json
       local json_key
       local -A short_opts_map   # 短选项名 -> 布尔值（用于检查是否为有效选项）
       local -A long_opts_map    # 长选项名 -> 布尔值（用于检查是否为有效选项）
@@ -105,56 +105,56 @@ if [[ -z "${LOADED_JSON_HANDLER:-}" ]]; then
         json set parsed_options "$json_key" "$def_val" # 将该选项添加到parsed_options，初始值为0
 
       done < <(jq -r '.[] | [.key, (.long // "")] | join(" ")' <<<"$options_def")
-
-      # 当前函数所有参数一览表
-      # list_vars "$(extract_local_variables)" "$(declare -p)" "$@"
-      # echo "$parsed_options" >&2
-      # print_array short_opts_map
-      # print_array long_opts_map
-      # print_array long_to_json_key
-
-      # 解析参数
-      local new_args=()
-      local i=1
-      while [[ $i -le $# ]]; do
-        local arg="${!i}"
-        # 处理带值的长选项 --option=value
-
-        case "$arg" in
-          --*) # 处理长选项 (--file, --single, --quiet)
-            IFS='=' read -r key value <<<"$arg"
-            key="${key#--}"
-            json_key="${long_to_json_key["$key"]:-$key}"
-
-            if [[ -v "long_opts_map[$json_key]" ]]; then
-              value="${value:-1}"
-              json set parsed_options "$json_key" "$value"
-            else
-              echo "警告: 未知选项 $arg" >&2
-            fi
-            ;;
-
-          -*) # 处理短选项（单个 -f 或组合 -fs）
-            local short_opt="${arg#-}"
-            # 处理每个字符
-            for ((j = 0; j < ${#short_opt}; j++)); do
-              json_key="${short_opt:$j:1}"
-
-              if [[ -v "short_opts_map[$json_key]" ]]; then
-                json set parsed_options "$json_key" 1
-              else
-                echo "警告: 未知选项 -$json_key" >&2
-              fi
-            done
-            ;;
-
-          *) # 非选项参数视为命令
-            new_args+=("$arg")
-            ;;
-        esac
-        ((i = i + 1))
-      done
     fi
+
+    # 当前函数所有参数一览表
+    # list_vars "$(extract_local_variables)" "$(declare -p)" "$@"
+    # echo "$parsed_options" >&2
+    # print_array short_opts_map
+    # print_array long_opts_map
+    # print_array long_to_json_key
+
+    # 解析参数
+    local new_args=()
+    local i=1
+    while [[ $i -le $# ]]; do
+      local arg="${!i}"
+      # 处理带值的长选项 --option=value
+
+      case "$arg" in
+        --*) # 处理长选项 (--file, --single, --quiet)
+          IFS='=' read -r key value <<<"$arg"
+          key="${key#--}"
+          json_key="${long_to_json_key["$key"]:-$key}"
+
+          if [[ -v "long_opts_map[$json_key]" ]]; then
+            value="${value:-1}"
+            json set parsed_options "$json_key" "$value"
+          else
+            echo "警告: 未知选项 $arg" >&2
+          fi
+          ;;
+
+        -*) # 处理短选项（单个 -f 或组合 -fs）
+          local short_opt="${arg#-}"
+          # 处理每个字符
+          for ((j = 0; j < ${#short_opt}; j++)); do
+            json_key="${short_opt:$j:1}"
+
+            if [[ -v "short_opts_map[$json_key]" ]]; then
+              json set parsed_options "$json_key" 1
+            else
+              echo "警告: 未知选项 -$json_key" >&2
+            fi
+          done
+          ;;
+
+        *) # 非选项参数视为命令
+          new_args+=("$arg")
+          ;;
+      esac
+      ((i = i + 1))
+    done
     echo "set -- $(printf "%q " "$parsed_options" "${new_args[@]}")"
   }
 

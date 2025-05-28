@@ -57,9 +57,10 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     # 3. 调整 root 语言设置
     source_defualt_lang
 
-    # 4. 初始化语言和国家代码变量
-    SYSTEM_LANG=$(get_locale_code)
-    SYSTEM_COUNTRY=$(get_country_code | tr '[:lower:]' '[:upper:]')
+    # 4. 加载json环境变量；初始化语言和国家代码变量
+    META_Command=$(json_load_data "cmd_meta")                       # 命令解析json
+    SYSTEM_LANG=$(get_locale_code)                                  # 获取系统语言代码
+    SYSTEM_COUNTRY=$(get_country_code | tr '[:lower:]' '[:upper:]') # 获取国家代码
 
   }
 
