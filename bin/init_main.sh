@@ -37,7 +37,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   initial_env() {
     # 1. 非root用户，且未安装sudo（debian/ubuntu最小化安装）需手动切换到root用户
     if [ "$(id -u)" -ne 0 ] && ! command -v sudo &>/dev/null; then
-      exiterr "请先执行 su - 切换到 root 用户后再执行本脚本"
+      exiterr "请先执行 su - 切换到 root 用户后再重新执行脚本"
     fi
     # 增加 sudo 命令前缀
     if [ "$(id -u)" -ne 0 ]; then
