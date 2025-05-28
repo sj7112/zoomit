@@ -35,22 +35,30 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   # @i18n: This function needs internationalization
   # ==============================================================================
   initial_env() {
-    # 1. 检查用户权限，自动安装sudo
-    info "[1] 检查系统环境..."
-    if [ "$(id -u)" -eq 0 ]; then
-      install_base_pkg "sudo" # 此时 SUDO_CMD=""
-    else
-      if ! command -v sudo &>/dev/null; then
-        exiterr "无法以非 root 安装 sudo，请联系管理员或使用 root 账号"
-      elif sudo -v; then # 如有需要，会提示用户输入密码
-        SUDO_CMD="sudo"
-        success "sudo 权限验证成功，后续命令自动使用 sudo"
-      else
-        exiterr "当前用户没有足够的 sudo 权限，无法继续执行"
-      fi
+    # 1. 非root用户，且未安装sudo（debian/ubuntu最小化安装）需手动切换到root用户
+    if [ "$(id -u)" -ne 0 ] && ! command -v sudo &>/dev/null; then
+      exiterr "请先执行 su - 切换到 root 用户后再执行本脚本"
+    fi
+    # 增加 sudo 命令前缀
+    if [ "$(id -u)" -ne 0 ]; then
+      SUDO_CMD="sudo"
     fi
 
+    # 2. 检查是否包含 cdrom 源
+    init_sources_list "检测到 CD-ROM 作为软件源，修改为默认 {0} 官方源..."
+    select_mirror # 选择速度快的镜像(内有交互)
+
+    info "[1/1] 系统升级开始..."
+    clean_pkg_mgr   # 清理缓存
+    update_pkg_mgr  # 更新镜像源列表
+    upgrade_pkg_mgr # 升级已安装的软件包
+    remove_pkg_mgr  # 删除不再需要的依赖包
+    success "[1/2] 系统升级完成..."
+
+    # 1. 检查用户权限，自动安装sudo
+    info "[1/3] 检查系统环境..."
     # 2. 安装各类基础包
+    install_base_pkg "sudo"
     install_base_pkg "curl"
     install_base_pkg "jq"
 
@@ -62,23 +70,6 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     SYSTEM_LANG=$(get_locale_code)                                  # 获取系统语言代码
     SYSTEM_COUNTRY=$(get_country_code | tr '[:lower:]' '[:upper:]') # 获取国家代码
 
-  }
-
-  # ==============================================================================
-  # 函数: check_dvd 检查apt软件源并自动替换
-  # ==============================================================================
-  check_dvd() {
-    # 检查是否包含 cdrom 源
-    init_sources_list "检测到 CD-ROM 作为软件源，修改为默认 {0} 官方源..."
-    # 选择速度快的镜像
-    select_mirror # 内有交互
-
-    info "[1/2] 系统升级开始..."
-    clean_pkg_mgr   # 清理缓存
-    update_pkg_mgr  # 更新镜像源列表
-    upgrade_pkg_mgr # 升级已安装的软件包
-    remove_pkg_mgr  # 删除不再需要的依赖包
-    success "[2/2] 系统升级完成..."
   }
 
   # ==============================================================================
@@ -233,7 +224,6 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
 
     echo "=== sj init $DISTRO_OSTYPE system start ==="
     initial_env # 基础值初始化
-    check_dvd   # 检查软件源
     # config_sshd # SSH配置
     # configure_ip # 静态IP配置
     docker_compose # 安装软件

@@ -147,7 +147,6 @@ pick_sources_list() {
 # --------------------------
 echo "=== sj init $DISTRO_OSTYPE system start ==="
 initial_env
-check_dvd
 # config_sshd
 # configure_ip
 # install_software
