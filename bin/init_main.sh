@@ -37,7 +37,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   initial_env() {
     # 1. 非root用户，且未安装sudo（debian/ubuntu最小化安装）需手动切换到root用户
     if [ "$(id -u)" -ne 0 ] && ! command -v sudo &>/dev/null; then
-      exiterr "无法以非 root 安装 sudo，请手动安装 sudo，或使用 root 账号执行脚本(su -)"
+      exiterr "无法安装 sudo，请手动安装 sudo，或使用 root 账号执行本脚本(su -)"
     fi
 
     # 增加 sudo 命令前缀
