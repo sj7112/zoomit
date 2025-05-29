@@ -67,8 +67,12 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     fi
 
     # 询问是否安装
-    # local prompt=$(string "python 版本过低，是否安装 Python {0} 到 ~/.local？" "${PY_VERSION}")
-    local prompt=$(string "python 版本过低，是否安装 Python ${PY_VERSION} 到 ~/.local？")
+    local prompt
+    if [ -n "$py_path" ]; then
+      prompt=$(string "无法创建虚拟环境，是否安装 Python ${PY_VERSION} 到 ~/.local？")
+    else
+      prompt=$(string "Python 版本过低，是否安装 Python ${PY_VERSION} 到 ~/.local？")
+    fi
     if ! confirm_action "$prompt"; then
       exiterr "用户取消安装"
     fi
