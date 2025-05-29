@@ -8,7 +8,7 @@ if [[ -z "${LOADED_PYTHON_BRIDGE:-}" ]]; then
   : "${LIB_DIR:=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}" # bin direcotry
   : "${PYTHON_DIR:=$(dirname "$BIN_DIR")/python}"               # python directory
 
-  PYTHON="/root/.venv/bin/python" # python3虚拟环境
+  PYTHON="/$HOME/.venv/bin/python" # python3虚拟环境
 
   # ===== 从myshell.py中统一调用对应函数 =====
   sh_check_ip() {

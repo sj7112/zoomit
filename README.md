@@ -1,5 +1,8 @@
-# zoomIT
+# zoomit
 A quick/rapid deployment toolkit for newly installed Linux systems
+
+bash 4.2+
+python 3.10+
 
 ---
 /my_shell_project/

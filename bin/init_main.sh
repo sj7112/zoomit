@@ -12,6 +12,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   source "$LIB_DIR/system.sh"
   source "$LIB_DIR/hash_util.sh"
   source "$LIB_DIR/init_base_func.sh"
+  source "$LIB_DIR/python_install.sh"
   source "$LIB_DIR/python_bridge.sh"
   source "$LIB_DIR/update_env.sh"
   source "$LIB_DIR/network.sh"
@@ -35,9 +36,13 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   # @i18n: This function needs internationalization
   # ==============================================================================
   initial_env() {
-    # 1. 非root用户，且未安装sudo（debian/ubuntu最小化安装）需手动切换到root用户
-    if [ "$(id -u)" -ne 0 ] && ! command -v sudo &>/dev/null; then
-      exiterr "无法安装 sudo，请手动安装 sudo，或使用 root 账号执行本脚本(su -)"
+    # 1. 校验非root用户：是否已安装sudo；是否有sudo权限
+    if [ "$(id -u)" -ne 0 ]; then
+      if ! command -v sudo &>/dev/null; then
+        exiterr "无法安装 sudo，请使用 root 账号执行本脚本(su -)，或手动安装 sudo"
+      elif ! id -nG | grep -qw "sudo"; then
+        exiterr "用户非 sudo 组，请使用 root 账号执行本脚本(su -)，或手动加入 sudo"
+      fi
     fi
 
     # 增加 sudo 命令前缀
@@ -45,7 +50,10 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
       SUDO_CMD="sudo"
     fi
 
-    # 2. 检查是否包含 cdrom 源
+    # 2. 检查并安装 Python3 虚拟环境
+    install_py_venv # 安装 Python 虚拟环境
+
+    # 3. 检查是否包含 cdrom 源
     init_sources_list "检测到 CD-ROM 作为软件源，修改为默认 {0} 官方源..."
     select_mirror # 选择速度快的镜像(内有交互)
 
@@ -56,17 +64,17 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     remove_pkg_mgr  # 删除不再需要的依赖包
     success "[1/2] 系统升级完成..."
 
-    # 1. 检查用户权限，自动安装sudo
+    # 4. 安装各类基础包
     info "[1/3] 检查系统环境..."
-    # 2. 安装各类基础包
     install_base_pkg "sudo"
     install_base_pkg "curl"
     install_base_pkg "jq"
+    install_base_pkg "make"
 
-    # 3. 调整 root 语言设置
+    # 5. 调整 root 语言设置
     source_defualt_lang
 
-    # 4. 加载json环境变量；初始化语言和国家代码变量
+    # 6. 加载json环境变量；初始化语言和国家代码变量
     META_Command=$(json_load_data "cmd_meta")                       # 命令解析json
     SYSTEM_LANG=$(get_locale_code)                                  # 获取系统语言代码
     SYSTEM_COUNTRY=$(get_country_code | tr '[:lower:]' '[:upper:]') # 获取国家代码
@@ -226,7 +234,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     echo "=== sj init $DISTRO_OSTYPE system start ==="
     initial_env # 基础值初始化
     # config_sshd # SSH配置
-    # configure_ip # 静态IP配置
+    configure_ip   # 静态IP配置
     docker_compose # 安装软件
     # system_config
     echo "=== sj init $DISTRO_OSTYPE system end ==="
