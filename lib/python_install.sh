@@ -32,8 +32,8 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
   # 源码编译安装python 3.10
   install_py() {
     # 下载源码
-    # curl -LC- "https://www.python.org/ftp/python/3.10.14/Python-3.10.14.tgz" -o "/tmp/Python-3.10.14.tgz"
-    curl -LC- "$PY_TAR_URL" -o "$PY_TAR_FILE"
+    # wget -c -O "/tmp/Python-3.10.14.tgz" "https://www.python.org/ftp/python/3.10.14/Python-3.10.14.tgz"
+    wget -c -O "$PY_TAR_FILE" "$PY_TAR_URL"
     # tar -xf "/tmp/Python-3.10.14.tgz" -C /tmp
     tar -xf "$PY_TAR_FILE" -C /tmp
     # cd "/tmp/Python-3.10.14"
@@ -49,12 +49,16 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     echo "$PY_INST_DIR/bin/python3.10"
   }
 
-  check_PY_VERSION() {
+  check_py_version() {
     # 判断是否已有 Python 3.10+
     local py_path=$(command -v python3 2>/dev/null || true)
     if [ -n "$py_path" ] && "$py_path" -c 'import sys; exit(0) if sys.version_info >= (3,10) else exit(1)'; then
-      PY_BIN="$py_path"
-      exit 0
+      # 确保 venv 和 ensurepip 都存在
+      if "$py_path" -m venv --help >/dev/null 2>&1 \
+        && "$py_path" -m ensurepip --version >/dev/null 2>&1; then
+        PY_BIN="$py_path"
+        return 0
+      fi
     fi
 
     # 检查编译工具
@@ -72,14 +76,15 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     # 源码编译安装python 3.10
     PY_BIN=install_py
     if [ -x "$PY_BIN" ]; then
-      exit 0
+      return 0
     else
       exiterr "Python ${PY_VERSION} 安装失败"
     fi
   }
 
   install_py_venv() {
-    if check_PY_VERSION; then
+    if check_py_version; then
+      echo "2: $PY_BIN"
       "$PY_BIN" -m venv "$VENV_DIR" # 创建虚拟环境
     fi
   }
