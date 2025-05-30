@@ -33,26 +33,49 @@ def confirm_action(prompt: str, callback: Callable[..., Any] = None, *args: Any,
         prompt: 提示消息
         callback: 回调函数。为 None 直接返回 0
         *args: 回调函数的位置参数
-        **kwargs: 可包含取消提示信息 msg=xxx，以及回调函数的关键字参数
+        **kwargs: 可包含取消提示信息，以及回调函数的关键字参数
 
     返回:
         0: 用户确认执行
         1: 用户取消操作
         2: 输入错误
     """
-    cancel_msg = kwargs.pop("msg", "操作已取消")
+    # 优先级：nomsg > msg > 默认值
+    no_msg = kwargs.pop("nomsg", kwargs.pop("msg", "操作已取消"))
+    # 优先级：errmsg > msg > 默认值
+    err_msg = kwargs.pop("errmsg", kwargs.pop("msg", "输入错误，请输入 Y 或 N"))
 
-    response = input(f"{prompt} [Y/n] ").strip().lower()
-    if response in ("", "y", "yes"):
-        if callback:
-            callback(*args)  # 执行回调函数
-        return 0
-    elif response in ("n", "no"):
-        error(cancel_msg)
-        return 1
+    # 获取 default 和 exit 参数
+    default = kwargs.pop("default", "Y")
+    exit = kwargs.pop("exit", True)
+
+    # 根据默认值设置提示符
+    if default.upper() == "Y":
+        prompt_suffix = "[Y/n]"
+        default_choice = "y"
     else:
-        error(cancel_msg)
-        return 2
+        prompt_suffix = "[y/N]"
+        default_choice = "n"
+
+    while True:
+        response = input(f"{prompt} {prompt_suffix} ").strip().lower()
+        # 如果输入为空，使用默认值
+        if response == "":
+            response = default_choice
+
+        if response in ("y", "yes"):
+            if callback:
+                callback(*args)  # 执行回调函数
+            return 0
+        elif response in ("n", "no"):
+            print(no_msg)  # 输出选择为no的提示消息
+            return 1
+        else:
+            if exit:
+                error(err_msg)
+                return 2
+            else:
+                print(err_msg)  # 继续循环，不返回
 
 
 def run_cmd(sudo_cmd, cmd, pattern=""):

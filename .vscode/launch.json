@@ -33,8 +33,12 @@
             "request": "launch",
             "name": "Bash-Debug (update_env)",
             "cwd": "${workspaceFolder}",
-            "program": "${workspaceFolder}/lib/update_env.sh",
-            "args": []
+            // "program": "${workspaceFolder}/lib/update_env.sh",
+            "program": "${workspaceFolder}/lib/python_install.sh",
+            "args": [],
+            "env": {
+                "DEBUG": "1"
+            }
         },
         {
             "type": "bashdb",
@@ -134,8 +138,9 @@
             "request": "launch",
             "program": "${workspaceFolder}/python/myshell.py",
             "args": [
-                "sh_check_ip",
-                ""
+                "sh_pip_install",
+                // "sh_check_ip",
+                // ""
             ],
             "console": "integratedTerminal"
         }

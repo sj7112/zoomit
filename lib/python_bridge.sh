@@ -15,6 +15,10 @@ if [[ -z "${LOADED_PYTHON_BRIDGE:-}" ]]; then
     "$PYTHON" "$PYTHON_DIR/myshell.py" sh_check_ip "$SUDO_CMD" </dev/tty # 调用 myshell.py 的 sh_check_ip 命令
   }
 
+  sh_pip_install() {
+    "$PYTHON" "$PYTHON_DIR/myshell.py" sh_pip_install # 调用 myshell.py 的 sh_pip_install 命令
+  }
+
   # ===== 从ast_parser.py导入的函数 =====
   parse_shell_files() {
     local sh_file="$1"

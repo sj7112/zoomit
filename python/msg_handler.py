@@ -9,8 +9,7 @@ import inspect
 import json
 from typing import Dict, List, Optional, Any, Union, Tuple
 
-
-# 动态添加当前目录到 sys.path
+# default python sys.path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from debug_tool import print_array

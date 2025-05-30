@@ -14,7 +14,7 @@ LIB_DIR = (PARENT_DIR / "lib").resolve()
 CONF_DIR = (PARENT_DIR / "config").resolve()
 LANG_DIR = (CONF_DIR / "lang").resolve()
 
-# 动态添加当前目录到 sys.path
+# default python sys.path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from lang_util import debug_assertion, update_lang_files
@@ -204,7 +204,7 @@ def del_lang_files(langs: List[str], no_prompt: bool = False) -> None:
 
         # 文件存在，提示用户是否删除
         prompt = string("确定要删除 {0} 语言文件吗?", lang_code)
-        confirm_action(prompt, do_del_lang_files, lang_code, lang_files, msg=string("操作已取消，文件未删除"))
+        confirm_action(prompt, do_del_lang_files, lang_code, lang_files, errmsg=string("操作已取消，文件未删除"))
 
 
 def upd_lang_files(langs: List[str], files: List[str], debug: bool) -> None:

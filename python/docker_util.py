@@ -7,8 +7,7 @@ import re
 import os
 import sys
 
-
-# 动态添加当前目录到 sys.path
+# default python sys.path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from file_util import read_env_file
