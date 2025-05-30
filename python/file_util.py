@@ -5,19 +5,17 @@ from pathlib import Path
 import pprint
 import shutil
 import sys
-from ruamel.yaml import YAML
 
 # default python sys.path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 
-from debug_tool import print_array
+# from debug_tool import print_array
 
 # 获取当前文件的绝对路径的父目录
 PARENT_DIR = Path(__file__).parent.parent.resolve()
 
 PROP_PATH = "/usr/local/shell/config/lang/"
-YML_PATH = "/usr/local/shell/config/lang/_lang.yml"
 
 
 def _path_resolve(path_str):
@@ -112,21 +110,6 @@ def write_lang_prop(lang_code, content_list):
     fn = PROP_PATH + lang_code + ".properties"
     with open(fn, "w", encoding="utf-8") as fh:
         fh.writelines(f"{line}\n" for line in content_list)
-
-
-def read_lang_yml():
-    """读取yml语言文件为字典"""
-    yaml = YAML()  # 处理yaml文件
-    with open(YML_PATH, "r") as f:
-        data = yaml.load(f)  # 读yaml
-
-    return data, yaml
-
-
-def write_lang_yml(data, yaml):
-    """读取yml语言文件为字典"""
-    with open(YML_PATH, "w") as f:
-        yaml.dump(data, f)
 
 
 def get_filename(file_args):

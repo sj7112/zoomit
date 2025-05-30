@@ -6,13 +6,11 @@ import sys
 import re
 import locale
 import inspect
-import json
-from typing import Dict, List, Optional, Any, Union, Tuple
 
 # default python sys.path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from debug_tool import print_array
+# from debug_tool import print_array
 
 from json_handler import json_getopt
 

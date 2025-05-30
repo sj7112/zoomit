@@ -7,6 +7,7 @@ from ruamel.yaml.comments import CommentedMap
 import typer
 import re
 from typing import List, Optional
+from ruamel.yaml import YAML
 
 # default python sys.path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -14,12 +15,13 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from ast_parser import parse_shell_files
 from file_util import (
     read_lang_prop,
-    read_lang_yml,
     write_lang_prop,
-    write_lang_yml,
     print_array as file_print_array,
 )
 from debug_tool import test_assertion, print_array
+
+# 全局变量
+YML_PATH = "/usr/local/shell/config/lang/_lang.yml"
 
 # 多语言支持
 FILE_MODE = "c|cpp|java|js|py|sh|ts"
@@ -468,6 +470,21 @@ def update_lang_properties(lang_code, lang_data, file_yml, test_run):
         clean_lang_data(lang_data)  # 清除：备注字段（只在_lang文件中使用一次！）
     else:
         handle_yml_data(lang_code, prop_data, file_yml)  # 改写file_yml
+
+
+def read_lang_yml():
+    """读取yml语言文件为字典"""
+    yaml = YAML()  # 处理yaml文件
+    with open(YML_PATH, "r") as f:
+        data = yaml.load(f)  # 读yaml
+
+    return data, yaml
+
+
+def write_lang_yml(data, yaml):
+    """读取yml语言文件为字典"""
+    with open(YML_PATH, "w") as f:
+        yaml.dump(data, f)
 
 
 # 拦截器装饰器
