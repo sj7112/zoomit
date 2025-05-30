@@ -15,85 +15,9 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
   PY_REL_DATE="20250517" # 使用稳定的发布版本
 
   PY_INST_DIR="$HOME/.local/python-$PY_VERSION"
-  PY_TAR_URL="https://www.python.org/ftp/python/${PY_VERSION}/Python-${PY_VERSION}.tgz"
-  PY_TAR_FILE="/tmp/Python-${PY_VERSION}.tgz"
   PY_GZ_FILE="/tmp/cpython-${PY_VERSION}-standalone.tar.gz"
   PY_BIN=""
   VENV_DIR="$HOME/.venv"
-
-  # 检查 glibc 版本 >= 2.17
-  check_glibc() {
-    local GLIBC_OK=0
-    if command -v ldd >/dev/null; then
-      GLIBC_VER=$(ldd --version 2>/dev/null | head -n1 | grep -oE '[0-9]+\.[0-9]+')
-      GLIBC_MAJOR=${GLIBC_VER%%.*}
-      GLIBC_MINOR=${GLIBC_VER##*.}
-      if [ "$GLIBC_MAJOR" -gt 2 ] || { [ "$GLIBC_MAJOR" -eq 2 ] && [ "$GLIBC_MINOR" -ge 17 ]; }; then
-        GLIBC_OK=1
-      fi
-    fi
-    echo "$GLIBC_OK"
-  }
-
-  # 源码编译安装python 3.10
-  install_py() {
-    # 下载源码
-    echo "wget -c -q --show-progress -O $PY_TAR_FILE $PY_TAR_URL"
-    wget -c -q --show-progress -O "$PY_TAR_FILE" "$PY_TAR_URL"
-    tar -xf "$PY_TAR_FILE" -C /tmp
-    cd "/tmp/Python-${PY_VERSION}"
-
-    # 编译安装
-    ./configure --prefix="$PY_INST_DIR" --enable-optimizations
-    make -j$(nproc)
-    make install
-
-    # 成功后输出路径
-    PY_BIN="$PY_INST_DIR/bin/python3.10"
-  }
-
-  check_py_version() {
-    # 判断是否已有 Python 3.10+
-    local py_path=$(command -v python3 2>/dev/null || true)
-    if [ -n "$py_path" ] && "$py_path" -c 'import sys; exit(0) if sys.version_info >= (3,10) else exit(1)'; then
-      # 确保 venv 和 ensurepip 都存在
-      if "$py_path" -m venv --help >/dev/null 2>&1 \
-        && "$py_path" -m ensurepip --version >/dev/null 2>&1; then
-        PY_BIN="$py_path"
-        return 0
-      fi
-    fi
-
-    # 检查编译工具
-    if [ "$(check_glibc)" -eq 0 ]; then
-      exiterr "系统 glibc 版本过低，不能安装 Python 3.10"
-    fi
-
-    # 询问是否安装
-    local prompt
-    if [ -n "$py_path" ]; then
-      prompt=$(string "无法创建虚拟环境，是否安装 Python ${PY_VERSION} 到 ~/.local？")
-    else
-      prompt=$(string "Python 版本过低，是否安装 Python ${PY_VERSION} 到 ~/.local？")
-    fi
-    if ! confirm_action "$prompt"; then
-      exiterr "用户取消安装"
-    fi
-
-    # 源码编译安装python 3.10
-    install_py
-    if [ -x "$PY_BIN" ]; then
-      return 0
-    else
-      exiterr "Python ${PY_VERSION} 安装失败"
-    fi
-  }
-
-  # install_py_venv() {
-  #   if check_py_version; then
-  #     "$PY_BIN" -m venv "$VENV_DIR" # 创建虚拟环境
-  #   fi
-  # }
 
   ## ---------------------------------------------
   ## ---------------------------------------------
@@ -176,6 +100,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     fi
 
     # 清理临时文件
+    PY_BIN="$PY_INST_DIR/bin/python3"
     info "Python $PY_VERSION 安装完成！"
   }
 
@@ -210,11 +135,11 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     fi
 
     # 创建虚拟环境
-    if ! "$PY_BIN" -m venv "$VENV_DIR"; then
-      exiterr "创建虚拟环境失败"
-    else
+    if "$PY_BIN" -m venv "$VENV_DIR"; then
       sh_pip_install # 激活虚拟环境并安装所需的基础包
       success "虚拟环境创建成功！"
+    else
+      exiterr "创建虚拟环境失败"
     fi
   }
 
