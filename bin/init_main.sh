@@ -31,11 +31,8 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   # 功能1: 检查root权限并自动升级
   # ==============================================================================
 
-  # ==============================================================================
-  # 函数: initial_env 检查root权限和sudo
-  # @i18n: This function needs internationalization
-  # ==============================================================================
-  initial_env() {
+  # 检查当前用户是否为 root（非root检测sudo是否可用）
+  check_user_sudo() {
     # 1. 校验非root用户：是否已安装sudo；是否有sudo权限
     if [ "$(id -u)" -ne 0 ]; then
       if ! command -v sudo &>/dev/null; then
@@ -49,6 +46,15 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     if [ "$(id -u)" -ne 0 ]; then
       SUDO_CMD="sudo"
     fi
+  }
+
+  # ==============================================================================
+  # 函数: initial_env 检查root权限和sudo
+  # @i18n: This function needs internationalization
+  # ==============================================================================
+  initial_env() {
+    # 1. 检查当前用户是否为 root（非root检测sudo是否可用）
+    check_user_sudo
 
     # 2. 检查并安装 Python3 虚拟环境
     install_py_venv # 安装 Python 虚拟环境
