@@ -12,6 +12,11 @@ LOG_FILE = "/var/log/sj_pkg_error.log"
 
 def setup_logging():
     """初始化日志配置"""
+    logger = logging.getLogger()
+    if logger.hasHandlers():
+        # 清除现有处理器
+        logger.handlers.clear()
+
     try:
         os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
         logging.basicConfig(
@@ -21,7 +26,6 @@ def setup_logging():
             filemode="a",
         )
     except Exception:
-        # 如果无法写入日志文件，则输出到控制台
         logging.basicConfig(level=logging.ERROR)
 
 

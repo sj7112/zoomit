@@ -10,13 +10,17 @@ if [[ -z "${LOADED_PYTHON_BRIDGE:-}" ]]; then
 
   PYTHON="/$HOME/.venv/bin/python" # python3虚拟环境
 
-  # ===== 从myshell.py中统一调用对应函数 =====
+  # ===== 调用 myshell.py 中的命令 =====
   sh_check_ip() {
-    "$PYTHON" "$PYTHON_DIR/myshell.py" sh_check_ip "$SUDO_CMD" </dev/tty # 调用 myshell.py 的 sh_check_ip 命令
+    "$PYTHON" "$PYTHON_DIR/myshell.py" sh_check_ip "$SUDO_CMD" </dev/tty
   }
 
-  sh_pip_install() {
-    "$PYTHON" "$PYTHON_DIR/myshell.py" sh_pip_install # 调用 myshell.py 的 sh_pip_install 命令
+  sh_install_pip() {
+    "$PYTHON" "$PYTHON_DIR/myshell.py" sh_install_pip
+  }
+
+  sh_update_source() {
+    "$PYTHON" "$PYTHON_DIR/myshell.py" sh_update_source "$DISTRO_OSTYPE" "$SYSTEM_COUNTRY"
   }
 
   # ===== 从ast_parser.py导入的函数 =====

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-global pip speed tester, automatically selects the fastest mirror
+global pip speed tester, automatically selects the fastest pip mirror
 """
 
 import os
@@ -39,7 +39,7 @@ GLOBAL_MIRRORS = {
 }
 
 
-def test_mirror_speed(mirror_name, mirror_url, timeout=15):
+def test_mirror_speed(mirror_name, mirror_url, timeout=10):
     """speed test for a single mirror"""
 
     start_time = time.time()
@@ -247,7 +247,8 @@ def install_packages():
     packages = [
         "typer",  # CLI 框架
         "ruamel.yaml",  # YAML 处理
-        # "requests",   # HTTP 库
+        "requests",  # HTTP 库
+        "iso3166",  # 查国家名称
         # "pydantic",   # 数据验证
         # "pathlib"     # 路径处理（Python 3.4+ 内置，但确保可用）
     ]
@@ -268,7 +269,7 @@ def install_packages():
             print(f"错误详情: {e}")
 
 
-def pip_install():
+def install_pip():
     """主函数"""
 
     # 测试镜像速度，并选择镜像
@@ -282,4 +283,4 @@ def pip_install():
 
 
 if __name__ == "__main__":
-    pip_install()
+    install_pip()

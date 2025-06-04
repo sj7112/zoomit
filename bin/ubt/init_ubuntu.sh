@@ -21,8 +21,8 @@ source "$BIN_DIR/init_main.sh"
 
 set -euo pipefail # 启用严格模式
 
-# 获取sources的配置路径
-get_ubt_source_file() {
+# 获取包管理器文件名
+get_source_list() {
   if check_root_file "/etc/apt/sources.list.d/ubuntu.sources"; then
     echo "/etc/apt/sources.list.d/ubuntu.sources"
   else
@@ -33,7 +33,7 @@ get_ubt_source_file() {
 # Ubuntu (apt)
 init_sources_list() {
   # 1. 动态决定使用旧版还是新版文件
-  local sources_file=$(get_ubt_source_file)
+  local sources_file=$(get_source_list)
 
   # 2. 检查是否需要初始化（存在 cdrom 或文件为空）
   if grep -q "^deb cdrom:" "$sources_file" || [ ! -s "$sources_file" ]; then
@@ -122,7 +122,7 @@ pick_sources_list() {
   local MAIN_SOURCE=".ubuntu.com/ubuntu"
   local NEW_SOURCE="deb $1 $DISTRO_CODENAME main contrib non-free non-free-firmware"
   # 1. 动态决定使用旧版还是新版文件
-  local sources_file=$(get_ubt_source_file)
+  local sources_file=$(get_source_list)
   warning $sources_file
   if [[ "$sources_file" == *.sources ]]; then
     # 新版本

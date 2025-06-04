@@ -32,6 +32,11 @@ fi
 BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd .. && pwd)" # bin directory
 source "$BIN_DIR/init_main.sh"                                   # main script
 
+# 获取包管理器文件名
+get_source_list() {
+  echo "/etc/apt/sources.list"
+}
+
 # 改cdrom为标准包管理器
 init_sources_list() {
   local sources_file="/etc/apt/sources.list"

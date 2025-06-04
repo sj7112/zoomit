@@ -60,6 +60,31 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     install_py_venv # 安装 Python 虚拟环境
 
     # 3. 检查是否包含 cdrom 源
+    local sources_file=$(get_source_list)
+    local prompt
+    if check_cdrom; then
+      prompt=$(string "检测到 CD-ROM 作为软件源，是否重新选择软件源？")
+      if ! confirm_action "$prompt"; then exiterr "请手动修改软件源后再运行"; fi
+    else
+      prompt=$(string "是否重新选择软件源？")
+      if ! confirm_action "$prompt"; then return 1; fi
+    fi
+    # 选择包管理器
+    sh_update_source # 选择包管理器（内有交互）
+
+    # if [[ "$DISTRO_PM" == "apt" ]]; then
+    #   init_sources_list "$prompt"
+    # elif [[ "$DISTRO_PM" == "dnf" || "$DISTRO_PM" == "yum" ]]; then
+    #   init_sources_list "检测到 CD-ROM 作为软件源，修改为默认 {0} 官方源..." "$DISTRO_OSTYPE"
+    #   select_mirror # 选择速度快的镜像(内有交互)
+    # elif [[ "$DISTRO_PM" == "zypper" ]]; then
+    #   init_sources_list "检测到 CD-ROM 作为软件源，修改为默认 {0} 官方源..." "$DISTRO_OSTYPE"
+    #   select_mirror # 选择速度快的镜像(内有交互)
+    # elif [[ "$DISTRO_PM" == "pacman" ]]; then
+    #   init_sources_list "检测到 CD-ROM 作为软件源，修改为默认 {0} 官方源..." "$DISTRO_OSTYPE"
+    #   select_mirror # 选择速度快的镜像(内有交互)
+    # fi
+
     init_sources_list "检测到 CD-ROM 作为软件源，修改为默认 {0} 官方源..."
     select_mirror # 选择速度快的镜像(内有交互)
 
