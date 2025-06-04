@@ -138,9 +138,16 @@
             "request": "launch",
             "program": "${workspaceFolder}/python/myshell.py",
             "args": [
-                "sh_pip_install",
+                // "sh_install_pip",
                 // "sh_check_ip",
                 // ""
+                "sh_update_source",
+                // "Debian",
+                // "Ubuntu",
+                "CentOS",
+                // "Arch",
+                // "OpenSUSE",
+                "CN"
             ],
             "console": "integratedTerminal"
         }

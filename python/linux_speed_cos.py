@@ -22,10 +22,7 @@ import json
 # default python sys.path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from system import setup_logging
 from linux_speed import MirrorTester
-
-setup_logging()
 
 
 @dataclass
@@ -42,19 +39,13 @@ class MirrorResult:
 
 class CentosMirrorTester(MirrorTester):
     def __init__(self, distro_ostype, system_country):
-        super().__init__(distro_ostype, system_country)
-        self.globals = {"country": "Global", "url": "https://vault.centos.org/"}
-
-    def fetch_mirror_list(self) -> List[Dict]:
-        """获取CentOS镜像源列表"""
-
-        # 镜像源都会支持 CentOS 7 - 全球分布
+        # 镜像列表：全球常用的 13 个镜像站点
         self.mirrors = [
-            # 北美镜像
-            {"country": "US", "url": "https://mirror.math.princeton.edu/pub/centos-vault/"},
             # 欧洲镜像
             {"country": "Germany", "url": "https://ftp.plusline.net/centos-vault/"},
             {"country": "Germany", "url": "https://mirror.rackspeed.de/centos/"},
+            # 北美镜像
+            {"country": "US", "url": "https://mirror.math.princeton.edu/pub/centos-vault/"},
             # 亚太镜像
             {"country": "China", "url": "https://mirrors.aliyun.com/centos-vault/"},
             {"country": "China", "url": "https://mirrors.tuna.tsinghua.edu.cn/centos-vault/"},
@@ -68,6 +59,11 @@ class CentosMirrorTester(MirrorTester):
             {"country": "Colombia", "url": "http://mirror.unimagdalena.edu.co/centos/"},
             {"country": "Brazil", "url": "http://ftp.unicamp.br/pub/centos/"},
         ]
+        self.globals = {"country": "Global", "url": "https://vault.centos.org/"}
+        super().__init__(distro_ostype, system_country)
+
+    def fetch_mirror_list(self) -> None:
+        return
 
     def run(self):
         """运行完整的测试流程"""

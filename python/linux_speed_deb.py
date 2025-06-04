@@ -22,10 +22,7 @@ import json
 # default python sys.path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from system import setup_logging
 from linux_speed import MirrorTester
-
-setup_logging()
 
 
 @dataclass
@@ -42,97 +39,79 @@ class MirrorResult:
 
 class DebianMirrorTester(MirrorTester):
     def __init__(self, distro_ostype, system_country):
-        super().__init__(distro_ostype, system_country)
-        self.globals = {"country": "Global", "url": "https://deb.debian.org/debian"}
-
-    def fetch_mirror_list(self) -> List[dict]:
-        """从官方页面获取镜像列表"""
-        print("正在获取Debian官方镜像列表...")
-
-        try:
-            response = self.session.get("https://www.debian.org/mirror/mirrors_full", timeout=10)
-            response.raise_for_status()
-            lines = response.text.splitlines()
-
-            i = 0
-            self.default = []
-            self.mirrors = []
-
-            while i < len(lines):
-                line = lines[i].strip()
-
-                # 如果是国家开头行
-                name_match = re.search(r'<h3>\s*<a name="([A-Z]+)">([^<]+)</a>', line)
-                if name_match:
-                    country_code = name_match.group(1)
-                    country_name = name_match.group(2)
-                    i += 1
-                    country_mirrors = []
-
-                    # 内层循环处理该国家下的镜像
-                    while i < len(lines):
-                        site_line = lines[i].strip()
-
-                        # 如果遇到下一个国家段落，则跳出
-                        if re.search(r'<h3>\s*<a name="([A-Z]+)">([^<]+)</a>', site_line):
-                            break
-
-                        # 匹配 site 域名
-                        site_match = re.search(r"<tt>([a-zA-Z0-9\.\-]+)</tt>", site_line)
-                        if site_match:
-                            # 尝试在当前行或下一行匹配 href
-                            href_match = re.search(r'href="(http[^"]+/debian/)"', site_line)
-                            if not href_match and i + 1 < len(lines):
-                                next_line = lines[i + 1].strip()
-                                href_match = re.search(r'href="(http[^"]+/debian/)"', next_line)
-                                if href_match:
-                                    i += 1  # 消耗掉 href 行
-
-                            if href_match:
-                                country_mirrors.append(
-                                    {
-                                        "country": country_name,
-                                        "url": href_match.group(1),
-                                    }
-                                )
-
-                        i += 1  # 前进到下一行
-
-                    # 合并进 self.mirrors
-                    if country_code == self.system_country:
-                        self.default = country_mirrors
-                        self.mirrors = country_mirrors + self.mirrors
-                    else:
-                        self.mirrors.extend(country_mirrors)
-
-                else:
-                    i += 1
-
-        except Exception as e:
-            print(f"获取镜像列表失败: {e}")
-
-        if not self.default:
-            self.default = self._get_fallback_mirrors()  # 默认镜像列表
-            if not self.mirrors:
-                self.mirrors = self.default  # 使用后备镜像列表
-
-    def _get_fallback_mirrors(self) -> List[dict]:
-        """后备镜像列表：全球常用的 10 个 Debian 镜像站点"""
-        return [
+        # 后备镜像列表：全球常用的 10 个镜像站点
+        self.mirrors = [
             # 欧洲镜像
             {"country": "Germany", "url": "http://ftp.de.debian.org/debian/"},
             {"country": "UK", "url": "http://mirrorservice.org/sites/ftp.debian.org/debian/"},
             {"country": "France", "url": "http://ftp.fr.debian.org/debian/"},
             {"country": "Netherlands", "url": "http://ftp.nl.debian.org/debian/"},
-            # 美洲镜像
-            {"country": "USA", "url": "http://ftp.us.debian.org/debian/"},
-            {"country": "Brazil", "url": "http://ftp.br.debian.org/debian/"},
+            # 北美镜像
+            {"country": "US", "url": "http://ftp.us.debian.org/debian/"},
             # 亚太镜像
             {"country": "China", "url": "https://mirrors.tuna.tsinghua.edu.cn/debian/"},
             {"country": "Japan", "url": "http://ftp.jp.debian.org/debian/"},
             {"country": "Singapore", "url": "http://mirror.nus.edu.sg/debian/"},
             {"country": "Australia", "url": "http://ftp.au.debian.org/debian/"},
+            # 南美和其他地区
+            {"country": "Brazil", "url": "http://ftp.br.debian.org/debian/"},
         ]
+        self.globals = {"country": "Global", "url": "https://deb.debian.org/debian"}
+        super().__init__(distro_ostype, system_country)
+        self.mirror_list = "https://www.debian.org/mirror/mirrors_full"
+
+    def parse_mirror_list(self, lines: List[str]) -> List[dict]:
+        """解析镜像列表HTML内容"""
+
+        i = 0
+        while i < len(lines):
+            line = lines[i].strip()
+
+            # 如果是国家开头行
+            name_match = re.search(r'<h3>\s*<a name="([A-Z]+)">([^<]+)</a>', line)
+            if name_match:
+                country_code = name_match.group(1)
+                country_name = name_match.group(2)
+                i += 1
+                country_mirrors = []
+
+                # 内层循环处理该国家下的镜像
+                while i < len(lines):
+                    site_line = lines[i].strip()
+
+                    # 如果遇到下一个国家段落，则跳出
+                    if re.search(r'<h3>\s*<a name="([A-Z]+)">([^<]+)</a>', site_line):
+                        break
+
+                    # 匹配 site 域名
+                    site_match = re.search(r"<tt>([a-zA-Z0-9\.\-]+)</tt>", site_line)
+                    if site_match:
+                        # 尝试在当前行或下一行匹配 href
+                        href_match = re.search(r'href="(http[^"]+/debian/)"', site_line)
+                        if not href_match and i + 1 < len(lines):
+                            next_line = lines[i + 1].strip()
+                            href_match = re.search(r'href="(http[^"]+/debian/)"', next_line)
+                            if href_match:
+                                i += 1  # 消耗掉 href 行
+
+                        if href_match:
+                            country_mirrors.append(
+                                {
+                                    "country": country_name,
+                                    "url": href_match.group(1),
+                                }
+                            )
+
+                    i += 1  # 前进到下一行
+
+                # 合并进 self.mirrors
+                if country_code == self.system_country:
+                    self.mirrors = country_mirrors + self.mirrors
+                else:
+                    self.mirrors.extend(country_mirrors)
+
+            else:
+                i += 1
 
     def run(self):
         """运行完整的测试流程"""

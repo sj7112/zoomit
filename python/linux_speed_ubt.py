@@ -22,10 +22,7 @@ import json
 # default python sys.path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from system import setup_logging
 from linux_speed import MirrorTester
-
-setup_logging()
 
 
 @dataclass
@@ -42,46 +39,8 @@ class MirrorResult:
 
 class UbuntuMirrorTester(MirrorTester):
     def __init__(self, distro_ostype, system_country):
-        super().__init__(distro_ostype, system_country)
-        self.globals = {"country": "Global", "url": "https://archive.ubuntu.com/ubuntu/"}
-
-    def get_countries_list(self) -> List[str]:
-        """获取所有国家/地区的镜像列表"""
-        try:
-            response = requests.get("http://mirrors.ubuntu.com/", timeout=10)
-            response.raise_for_status()
-
-            # 提取国家代码
-            countries = re.findall(r'<a href="([A-Z]{2})\.txt', response.text)
-            return sorted(set(countries))
-        except requests.RequestException as e:
-            print(f"获取国家列表失败: {e}")
-            return []
-
-    def get_mirrors_by_country(self, country_code: str) -> List[str]:
-        """根据国家代码获取镜像列表"""
-        try:
-            url = f"http://mirrors.ubuntu.com/{country_code}.txt"
-            response = requests.get(url, timeout=10)
-            response.raise_for_status()
-
-            # 提取HTTP镜像地址
-            for line in response.text.splitlines():
-                line = line.strip()
-                if line.startswith(("http://", "https://")):
-                    self.mirrors.append({"url": line})
-
-            print(f"找到 {len(self.mirrors)} 个镜像")
-
-        except requests.RequestException as e:
-            print(f"获取 {country_code} 镜像列表失败: {e}")
-
-        if not self.mirrors:
-            self.mirrors = self._get_fallback_mirrors()  # 默认镜像列表
-
-    def _get_fallback_mirrors(self) -> List[dict]:
-        """后备镜像列表：全球常用的 10 个 Ubuntu 镜像站点"""
-        return [
+        # 后备镜像列表：全球常用的 10 个镜像站点
+        self.mirrors = [
             # 欧洲镜像
             {"country": "Germany", "url": "http://ftp.halifax.rwth-aachen.de/ubuntu/"},
             {"country": "UK", "url": "http://mirror.bytemark.co.uk/ubuntu/"},
@@ -89,32 +48,52 @@ class UbuntuMirrorTester(MirrorTester):
             {"country": "Netherlands", "url": "http://mirror.nl.leaseweb.net/ubuntu/"},
             {"country": "Sweden", "url": "http://ftp.acc.umu.se/mirror/ubuntu.com/ubuntu/"},
             # 美洲镜像
-            {"country": "USA", "url": "http://mirror.math.princeton.edu/pub/ubuntu/"},
+            {"country": "US", "url": "http://mirror.math.princeton.edu/pub/ubuntu/"},
             # 亚太镜像
             {"country": "China", "url": "https://mirrors.tuna.tsinghua.edu.cn/ubuntu/"},
             {"country": "Japan", "url": "http://ftp.jaist.ac.jp/pub/Linux/ubuntu/"},
             {"country": "Singapore", "url": "http://mirror.nus.edu.sg/ubuntu/"},
             {"country": "Australia", "url": "http://mirror.aarnet.edu.au/Ubuntu/"},
         ]
+        self.globals = {"country": "Global", "url": "https://archive.ubuntu.com/ubuntu/"}
+        super().__init__(distro_ostype, system_country)
 
     def fetch_mirror_list(self) -> None:
         """主函数：计算最快的镜像并保存到文件"""
         # 获取所有国家列表
-        countries = self.get_countries_list()
-        if not countries:
-            return
+        try:
+            response = requests.get("http://mirrors.ubuntu.com/", timeout=10)
+            response.raise_for_status()
 
-        # 交互式选择国家
-        while True:
-            user_input = input(f"请选择国家/地区代码（回车使用默认值 '{self.system_country}'）：").strip().upper()
-            country_code = user_input if user_input else self.system_country
+            # 提取国家代码
+            countries = re.findall(r'<a href="([A-Z]{2})\.txt', response.text)
+            countries = sorted(set(countries))
 
-            if country_code not in countries:
-                print(f"国家代码 {country_code} 不存在于列表中！请核对 http://mirrors.ubuntu.com/")
-                continue
+            # 交互式选择国家
+            while True:
+                user_input = input(f"请选择国家/地区代码（回车使用默认值 '{self.system_country}'）：").strip().upper()
+                country_code = user_input if user_input else self.system_country
 
-            self.get_mirrors_by_country(country_code)
-            break
+                if country_code not in countries:
+                    print(f"国家代码 {country_code} 不存在于列表中！请核对 http://mirrors.ubuntu.com/")
+                    continue
+
+                self.mirror_list = f"http://mirrors.ubuntu.com/{country_code}.txt"
+                break
+
+            super().fetch_mirror_list()  # 调用公共方法获取镜像列表
+
+        except requests.RequestException as e:
+            print(f"获取国家列表失败: {e}")
+
+    def parse_mirror_list(self, lines: List[str]) -> List[dict]:
+        """解析镜像列表HTML内容"""
+
+        # 提取HTTP镜像地址
+        for line in lines:
+            line = line.strip()
+            if line.startswith(("http://", "https://")):
+                self.mirrors.append({"url": line})
 
     def run(self):
         """运行完整的测试流程"""

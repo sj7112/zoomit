@@ -50,9 +50,10 @@ class MirrorTester:
         )
         self.distro_ostype = distro_ostype
         self.system_country = system_country
-        self.mirrors = []
-        self.default = []
+        self.mirror_list = ""
         self.results = []
+        self.mirrors.append(self.globals)  # 添加全球镜像站点
+        self.netlocs = set()  # 用于去重的域名集合
 
     def get_country_name(self, country_code):
         """
@@ -65,18 +66,36 @@ class MirrorTester:
         except KeyError:
             return country_code
 
-    def url_exists(mirrors: List[Dict], url: str) -> bool:
-        """检查URL是否已存在（去重）"""
-        parsed_new = urlparse(url)
-        new_domain = parsed_new.netloc
+    def fetch_mirror_list(self) -> None:
+        """读取数据"""
+        try:
+            response = requests.get(self.mirror_list, timeout=10)
+            response.raise_for_status()
+            lines = response.text.split("\n")
+            self.mirrors = []
+            self.parse_mirror_list(lines)
+            self.mirrors.append(self.globals)  # 添加全球镜像站点
+        except requests.RequestException as e:
+            print(f"获取镜像列表失败: {e}")
 
-        for mirror in mirrors:
-            parsed_existing = urlparse(mirror["url"])
-            if new_domain == parsed_existing.netloc:
-                # 如果新URL是https，旧URL是http，则更新
-                if url.startswith("https://") and mirror["url"].startswith("http://"):
-                    mirror["url"] = url
-                return True
+    def url_exists(self, mirrors: List[Dict], url: str) -> bool:
+        """
+        检查URL是否已存在（去重）
+        如果是https协议，且已存在相同域名的http镜像，则予以替换
+        """
+        parsed_new = urlparse(url)
+        new_scheme = parsed_new.scheme
+        new_domain = parsed_new.netloc
+        if not new_domain in self.netlocs:
+            self.netlocs.add(new_domain)  # 添加到集合中，避免重复
+        elif new_scheme != "https":
+            return True
+        else:  # 如果是https协议，且已存在相同域名的http镜像，予以替换
+            for mirror in mirrors:
+                parsed_existing = urlparse(mirror["url"])
+                if new_domain == parsed_existing.netloc:
+                    mirror["url"] = url  # 新URL是https，旧URL是http，则更新URL
+                    return True
 
         return False
 
@@ -84,17 +103,18 @@ class MirrorTester:
         """测试单个镜像的速度"""
         url = mirror["url"]
         country = mirror.get("country", "N/A")
+        is_global = mirror.get("country") == "Global"
 
         files_map = {
             "Debian": ["ls-lR.gz", "dists/bookworm/main/binary-amd64/Packages.gz"],
             "Ubuntu": ["ls-lR.gz", "dists/jammy/main/binary-amd64/Packages.gz"],
-            "Centos": [
+            "CentOS": [
                 "filelist.gz",
                 "7.9.2009/os/x86_64/repodata/5319616dde574d636861a6e632939f617466a371e59b555cf816cf1f52f3e873-filelists.xml.gz",
             ],
             "RHEL": ["repodata/repomd.xml", "RPM-GPG-KEY-redhat-release"],
             "Arch": ["core/os/x86_64/core.db.tar.gz", "extra/os/x86_64/extra.db.tar.gz"],
-            "OpenSUSE": ["repodata/repomd.xml", "content"],
+            "OpenSUSE": ["distribution/leap/15.5/repo/oss/ls-lR.gz", "distribution/leap/15.5/repo/oss/INDEX.gz"],
         }
         # 测试文件列表（从小到大）
         test_files = files_map.get(self.distro_ostype)  # 通常几MB  # 几KB  # 很小
@@ -130,7 +150,7 @@ class MirrorTester:
                             speed = downloaded / elapsed / 1024  # KB/s
 
                             # 检查是否超过速率限制 (设置阈值为 < limit_cap的1/3)
-                            if limit_cap:
+                            if limit_cap and not is_global:
                                 max_speed = max(max_speed, speed)
                                 if max_speed < limit_cap / test_count:
                                     return None  # 超过限制，退出
@@ -173,6 +193,7 @@ class MirrorTester:
 
         lock = threading.Lock()
         fastest_results: List[MirrorResult] = []
+        global_result: MirrorResult = None
         limit_cap = None
         completed = 0
 
@@ -199,14 +220,17 @@ class MirrorTester:
 
         def test_wrapper(mirror):
             nonlocal limit_cap
+            nonlocal global_result
             try:
                 result = self.test_mirror_speed(mirror, limit_cap)
-                if not result:
-                    return  # 异常退出
-                with lock:
-                    insert_sorted(fastest_results, result, top_n)
-                    if len(fastest_results) >= top_n:
-                        limit_cap = fastest_results[-1].avg_speed  # 更新速率限制
+                if result:
+                    if mirror.get("country") == "Global":
+                        global_result = result
+                    else:
+                        with lock:
+                            insert_sorted(fastest_results, result, top_n)
+                            if len(fastest_results) >= top_n:
+                                limit_cap = fastest_results[-1].avg_speed  # 更新速率限制
             except Exception:
                 pass  # 静默跳过失败项
             finally:
@@ -217,9 +241,8 @@ class MirrorTester:
             for future in as_completed(futures):
                 future.result()
 
-        # 补充测试全球镜像
-        result = self.test_mirror_speed(self.globals)
-        fastest_results.append(result) if result else None
+        # 补充全球镜像Global mirror
+        insert_sorted(fastest_results, global_result, top_n + 1)
         print()  # 结束后换行
         return fastest_results
 
@@ -280,11 +303,11 @@ class MirrorTester:
             "top_10_mirrors": [result_to_dict(r) for r in top_10],
         }
 
-        with open("mirror_test_results.json", "w", encoding="utf-8") as f:
+        with open("tests/mirror_test_results.json", "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
 
         # 保存为sources.list格式
-        with open("sources_top10.list", "w") as f:
+        with open("tests/sources_top10.list", "w") as f:
             f.write("# 镜像源配置文件 - 按速度排序的前10个镜像\n")
             f.write(f"# 测试时间: {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n")
 

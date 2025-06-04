@@ -18,11 +18,7 @@ from iso3166 import countries
 # default python sys.path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from file_util import print_array
-from system import setup_logging
 from linux_speed import MirrorTester
-
-setup_logging()
 
 
 @dataclass
@@ -39,23 +35,30 @@ class MirrorResult:
 
 class ArchMirrorTester(MirrorTester):
     def __init__(self, distro_ostype, system_country):
-        super().__init__(distro_ostype, system_country)
+        # 后备镜像列表：全球常用的 10 个镜像站点
+        self.mirrors = [
+            # 欧洲镜像
+            {"country": "Germany", "url": "https://ftp.fau.de/archlinux/"},
+            {"country": "UK", "url": "https://www.mirrorservice.org/sites/ftp.archlinux.org/"},
+            {"country": "France", "url": "https://mirrors.ircam.fr/pub/archlinux/"},
+            # 北美镜像
+            {"country": "USA", "url": "https://mirrors.mit.edu/archlinux/"},
+            {"country": "Canada", "url": "https://mirror.csclub.uwaterloo.ca/archlinux/"},
+            # 亚太镜像
+            {"country": "China", "url": "https://mirrors.tuna.tsinghua.edu.cn/archlinux/"},
+            {"country": "China", "url": "https://mirrors.aliyun.com/archlinux/"},
+            {"country": "China", "url": "https://mirrors.163.com/archlinux/"},
+            {"country": "Korea", "url": "https://mirror.kaist.ac.kr/archlinux/"},
+            {"country": "Australia", "url": "https://mirror.aarnet.edu.au/pub/archlinux/"},
+        ]
         self.globals = {"country": "Global", "url": "https://geo.mirror.pkgbuild.com/"}
+        super().__init__(distro_ostype, system_country)
+        self.mirror_list = "https://archlinux.org/mirrorlist/?country=all"
 
-    def fetch_mirror_list(self) -> str:
-        """读取数据"""
-        try:
-            response = self.session.get("https://archlinux.org/mirrorlist/?country=all", timeout=10)
-            response.raise_for_status()
-            self.parse_mirror_list(response.text)
-        except requests.RequestException as e:
-            print(f"获取镜像列表失败: {e}")
-            return ""
-
-    def parse_mirror_list(self, content: str) -> List[Dict]:
+    def parse_mirror_list(self, lines: List[str]) -> List[Dict]:
         """解析镜像列表内容"""
-        lines = content.split("\n")
 
+        system_country_name = self.get_country_name(self.system_country)
         i = 0
         while i < len(lines):
             line = lines[i].strip()
@@ -63,7 +66,7 @@ class ArchMirrorTester(MirrorTester):
             # 匹配国家名称 (## Country Name)
             country_match = re.match(r"^##\s+(.+)$", line)
             if country_match:
-                current_country = country_match.group(1).strip()
+                country_name = country_match.group(1).strip()
 
                 # 获取该国家的所有URL
                 mirrors_country = []
@@ -86,29 +89,20 @@ class ArchMirrorTester(MirrorTester):
                         url = re.sub(r"/\$repo.*$", "/", url)
 
                         # 检查URL是否有效且不重复
-                        if self.is_valid_url(url) and not self.url_exists(mirrors_country, url):
-                            mirrors_country.append({"country": current_country, "url": url})
+                        if not self.url_exists(mirrors_country, url):
+                            mirrors_country.append({"country": country_name, "url": url})
 
                     i += 1
 
                 # 将mirrors_country添加到mirrors中
                 if mirrors_country:
-                    country_name = self.get_country_name(self.system_country)
                     # 如果国家匹配输入参数，添加到前面；否则从尾部添加
-                    if country_name and country_name.lower() in current_country.lower():
+                    if country_name and country_name.lower() in system_country_name.lower():
                         self.mirrors = mirrors_country + self.mirrors
                     else:
                         self.mirrors.extend(mirrors_country)
 
             i += 1
-
-    def is_valid_url(self, url: str) -> bool:
-        """检查URL是否有效"""
-        try:
-            result = urlparse(url)
-            return all([result.scheme, result.netloc])
-        except:
-            return False
 
     def run(self):
         """运行完整的测试流程"""

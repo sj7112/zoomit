@@ -23,10 +23,7 @@ import json
 # default python sys.path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from system import setup_logging
 from linux_speed import MirrorTester
-
-setup_logging()
 
 
 @dataclass
@@ -43,90 +40,93 @@ class MirrorResult:
 
 class OpenSUSEMirrorTester(MirrorTester):
     def __init__(self, distro_ostype, system_country):
+        # 后备镜像列表：全球常用的 10 个镜像站点
+
+        self.mirrors = [
+            # 北美镜像
+            {"country": "US", "url": "https://mirrors.kernel.org/opensuse/"},
+            {"country": "US", "url": "https://mirror.math.princeton.edu/pub/opensuse/"},
+            # 欧洲镜像
+            {"country": "Germany", "url": "https://ftp.fau.de/opensuse/"},
+            {"country": "Germany", "url": "https://ftp.halifax.rwth-aachen.de/opensuse/"},
+            {"country": "UK", "url": "https://www.mirrorservice.org/sites/download.opensuse.org/"},
+            {"country": "Netherlands", "url": "https://ftp.nluug.nl/pub/os/Linux/distr/opensuse/"},
+            {"country": "Italy", "url": "https://opensuse.mirror.garr.it/opensuse/"},
+            {"country": "Sweden", "url": "https://ftp.lysator.liu.se/pub/opensuse/"},
+            # 亚太镜像
+            {"country": "China", "url": "https://mirrors.aliyun.com/opensuse/"},
+            {"country": "China", "url": "https://mirrors.tuna.tsinghua.edu.cn/opensuse/"},
+            {"country": "China", "url": "https://mirrors.ustc.edu.cn/opensuse/"},
+            {"country": "China", "url": "https://mirrors.huaweicloud.com/opensuse/"},
+            {"country": "China", "url": "https://mirror.sjtu.edu.cn/opensuse/"},
+            {"country": "China", "url": "https://mirrors.bfsu.edu.cn/opensuse/"},
+            {"country": "Japan", "url": "https://ftp.riken.jp/Linux/opensuse/"},
+            {"country": "Japan", "url": "https://ftp.jaist.ac.jp/pub/Linux/openSUSE/"},
+            {"country": "Korea", "url": "https://mirror.kakao.com/opensuse/"},
+            {"country": "Singapore", "url": "https://download.nus.edu.sg/mirror/opensuse/"},
+            {"country": "Australia", "url": "https://mirror.aarnet.edu.au/pub/opensuse/"},
+            {"country": "Australia", "url": "https://ftp.iinet.net.au/pub/opensuse/"},
+            {"country": "India", "url": "https://mirror.niser.ac.in/opensuse/"},
+            # 南美和其他地区
+            {"country": "Brazil", "url": "https://opensuse.c3sl.ufpr.br/"},
+            {"country": "Brazil", "url": "https://mirror.ufscar.br/opensuse/"},
+            {"country": "Argentina", "url": "https://mirror.fcaglp.unlp.edu.ar/opensuse/"},
+            {"country": "South Africa", "url": "https://opensuse.mirror.ac.za/"},
+            {"country": "Russia", "url": "https://mirror.yandex.ru/opensuse/"},
+            {"country": "Turkey", "url": "https://ftp.linux.org.tr/opensuse/"},
+        ]
+
+        self.globals = {"country": "Global", "url": "https://download.opensuse.org/"}
         super().__init__(distro_ostype, system_country)
-        self.globals = {"country": "Global", "url": "http://download.opensuse.org/"}
+        self.mirror_list = "https://mirrors.opensuse.org/"
 
-    def fetch_mirror_list(self) -> str:
-        """读取数据"""
-        try:
-            response = requests.get("https://mirrors.opensuse.org/", timeout=10)
-            response.raise_for_status()
-            self.parse_mirror_list(response.text)
-        except requests.RequestException as e:
-            print(f"获取镜像列表失败: {e}")
-            return ""
-
-    def parse_mirror_list(self, html_content: str):
+    def parse_mirror_list(self, lines: List[str]):
         """解析镜像列表HTML内容"""
 
-        lines = html_content.split("\n")
         i = 0
-
         while i < len(lines):
             line = lines[i].strip()
-            if "<tr>" in line:
+            if "<tr>" in line and not "</tr>" in line:  # 只处理<tr>开始的多行文本
                 i = self._process_tr_section(lines, i)
             else:
                 i += 1
 
     def _process_tr_section(self, lines, start_index):
         """处理<tr>到</tr>之间的内容"""
-        i = start_index
+        i = start_index + 1
 
         # 1) 判断第一个td是否包含country信息
         country_code = None
         while i < len(lines):
             line = lines[i].strip()
-            i += 1
+            i += 1  # 当前行处理完毕，指针跳到下一行
             if "</tr>" in line:
-                return i  # 返回下一个行的索引
+                return i  # 返回下一行索引
 
             country_match = re.search(r'<div class="country">([^<]+)</div>', line)
             if country_match:
                 country_code = country_match.group(1).strip()
                 break
 
-            # 2) 搜索包含distribution/leap/15.5/repo的链接
-        url_found = False
+        # 2) 搜索包含distribution/leap/15.5/repo的链接
         while i < len(lines):
             line = lines[i].strip()
-            i += 1
+            i += 1  # 当前行处理完毕，指针跳到下一行
             if "</tr>" in line:
-                return i  # 返回下一个行的索引
+                return i  # 返回下一行索引
 
-            # 如果已经找到URL，继续处理下一行
-            if url_found:
-                continue
-
-            if 'class="repoperfect"' in line and "href=" in line and '/distribution/leap/15\.5/repo"' in line:
-                href_match = re.search(r'href="([^"]+)/leap/15\.5/repo"', line)
-                if href_match:
-                    url = href_match.group(1).strip()
-                    url_found = True
-                    if not self.url_exists(self.mirrors, url):
-                        mirror_item = {"country": self.get_country_name(country_code), "url": url}
-                        # 根据是否为本地国家来决定插入位置
-                        if country_code.lower() == self.system_country.lower():
-                            self.mirrors.insert(0, mirror_item)
-                        else:
-                            self.mirrors.append(mirror_item)
-                        break
-
-    def get_default_opensuse_mirrors() -> List[Dict]:
-        """获取默认的openSUSE镜像列表（备用方案）"""
-        default_mirrors = [
-            {"country": "Global", "url": "https://download.opensuse.org/"},
-            {"country": "Germany", "url": "https://ftp.gwdg.de/pub/linux/opensuse/"},
-            {"country": "United States", "url": "https://mirrors.kernel.org/opensuse/"},
-            {"country": "China", "url": "https://mirrors.tuna.tsinghua.edu.cn/opensuse/"},
-            {"country": "China", "url": "https://mirrors.aliyun.com/opensuse/"},
-            {"country": "Japan", "url": "https://ftp.jaist.ac.jp/pub/Linux/openSUSE/"},
-            {"country": "United Kingdom", "url": "https://www.mirrorservice.org/sites/download.opensuse.org/"},
-            {"country": "France", "url": "https://ftp.free.fr/mirrors/ftp.opensuse.org/"},
-            {"country": "Netherlands", "url": "https://ftp.nluug.nl/pub/os/Linux/distr/opensuse/"},
-            {"country": "Australia", "url": "https://mirror.aarnet.edu.au/pub/opensuse/"},
-        ]
-        return default_mirrors
+            href_match = re.search(r'href="([^"]+)distribution/leap/15\.5/repo"', line)
+            if href_match:
+                mirror_item = {
+                    "country": self.get_country_name(country_code),
+                    "url": href_match.group(1).strip(),
+                }
+                # 根据是否为本地国家来决定插入位置
+                if country_code.lower() == self.system_country.lower():
+                    self.mirrors.insert(0, mirror_item)
+                else:
+                    self.mirrors.append(mirror_item)
+                return i  # 返回下一行索引
 
     def run(self):
         """运行完整的测试流程"""
