@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 
+import glob
 import os
 from pathlib import Path
 import pprint
 import shutil
 import sys
 
+
 # default python sys.path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
+from msg_handler import error, exiterr, info, warning
 
 # from debug_tool import print_array
 
@@ -89,6 +92,105 @@ def copy_file(filepath1, filepath2):
     except Exception as e:
         print(f"❌ 复制失败: {e}")
         return None
+
+
+def file_backup_sj(*patterns: str, postfix: str = "sjbk") -> None:
+    """
+    生成 .sjbk 后缀的备份文件（智能防重复备份）
+
+    特性：
+      1. 支持通配符匹配和多文件备份（如 *.conf）
+      2. 自动检查源文件是否存在
+      3. 自动跳过已存在的备份文件
+      4. 保留原文件权限
+
+    参数：
+      *patterns - 需要备份的源文件路径（支持通配符）
+
+    异常：
+      有文件备份失败则退出程序
+
+    示例:
+      file_backup_sj("/etc/apt/sources.list")          # 备份单个文件
+      file_backup_sj("/etc/nginx/*.conf")              # 备份所有匹配文件
+      file_backup_sj("/etc/*.conf", "/etc/*.repo")     # 批量备份多类文件
+    """
+    # 参数检查
+    if not patterns:
+        exiterr("未指定需要备份的文件")
+
+    backup_count = 0
+    skip_count = 0
+    error_count = 0
+
+    # 处理每个参数（可能包含通配符）
+    for pattern in patterns:
+        # 使用glob查找匹配的文件
+        matched_files = glob.glob(pattern)
+
+        if not matched_files:
+            warning(f"未找到匹配 '{pattern}' 的文件")
+            continue
+
+        # 处理每个匹配的文件
+        for src_file in matched_files:
+            # 确保是普通文件
+            if not os.path.isfile(src_file):
+                continue
+
+            backup_file = f"{src_file}.{postfix}"
+
+            # 检查备份文件是否已存在
+            if os.path.exists(backup_file):
+                warning(f"备份文件 {backup_file} 已存在，跳过")
+                skip_count += 1
+                continue
+
+            # 执行备份
+            try:
+                # 使用shutil.copy2保留文件属性和权限
+                shutil.copy2(src_file, backup_file)
+                info(f"已创建备份: {src_file} -> {backup_file}")
+                backup_count += 1
+            except (IOError, OSError, PermissionError) as e:
+                error(f"无法创建备份文件 {backup_file}: {e}")
+                error_count += 1
+
+    # 输出统计信息
+    if error_count > 0:
+        exiterr("重要文件无法备份")
+    elif (backup_count + skip_count + error_count) > 1:
+        info(f"备份完成：成功 {backup_count} 个，跳过 {skip_count} 个，失败 {error_count} 个")
+
+
+def file_restore_sj(src_file: str, postfix: str = "sjbk") -> None:
+    """
+    .sjbk 后缀的备份文件还原
+
+    特性：
+      1. 自动检查源文件是否存在
+      2. 保留原文件权限
+
+    参数：
+      src_file - 需要还原的源文件路径
+
+    异常：
+      文件还原失败则退出程序
+    """
+    # 检查备份文件是否已存在
+    backup_file = f"{src_file}.{postfix}"
+    if not os.path.exists(backup_file):
+        exiterr(f"备份文件 {backup_file} 不存在，还原失败")
+
+    # 执行还原
+    try:
+        # 使用shutil.copy2保留文件属性和权限
+        shutil.copy2(backup_file, src_file)
+        info(f"已还原文件: {backup_file} -> {src_file}")
+    except (IOError, OSError, PermissionError) as e:
+        exiterr(f"无法创建备份文件 {src_file}: {e}")
+
+    info(f"还原文件：{src_file}")
 
 
 def read_file(fn):

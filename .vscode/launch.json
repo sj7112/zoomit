@@ -142,11 +142,11 @@
                 // "sh_check_ip",
                 // ""
                 "sh_update_source",
-                // "Debian",
-                // "Ubuntu",
-                "CentOS",
-                // "Arch",
-                // "OpenSUSE",
+                "debian",
+                // "ubuntu",
+                // "centos",
+                // "arch",
+                // "opensuse",
                 "CN"
             ],
             "console": "integratedTerminal"

@@ -7,47 +7,8 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
   LOG_FILE="/var/log/sj_install.log"
 
   # ==============================================================================
-  # 公共子函数（兼容：debian | ubuntu | centos | RHEL | openSUSE | arch Linux）
+  # 公共子函数（兼容：debian | ubuntu | centos | rhel | openSUSE | arch Linux）
   # ==============================================================================
-
-  # ==============================================================================
-  # 函数: 调整 root 语言设置
-  # ==============================================================================
-  source_defualt_lang() {
-    local profile="/root/.profile"
-    local need_update=0
-
-    # 如果 /root/.profile 存在，检查是否存在未注释的 LANG=C 或 LANGUAGE=C
-    if [[ -f "$profile" ]]; then
-      if $SUDO_CMD grep -qE '^LANG(C)?=C' "$profile"; then
-        $SUDO_CMD sed -i -E 's/^(LANG(C)?=C)/#\1/' "$profile"
-        need_update=1
-      fi
-      if $SUDO_CMD grep -q '^LANGUAGE=C' "$profile"; then
-        $SUDO_CMD sed -i 's/^LANGUAGE=C/#LANGUAGE=C/' "$profile"
-        need_update=1
-      fi
-    fi
-
-    if [[ "$need_update" -eq 1 ]]; then
-      # 使用 sudo 以 root 权限执行 source
-      case "$DISTRO_PM" in
-        apt)
-          # debian | ubuntu
-          source /etc/default/locale
-          ;;
-        zypper)
-          # openSUSE
-          source /etc/sysconfig/language
-          ;;
-        *)
-          # centos | RHEL | arch Linux
-          source /etc/locale.conf
-          ;;
-      esac
-      info "root 语言设置已更新"
-    fi
-  }
 
   # ==============================================================================
   # install_base_pkg - 检查命令是否存在，不存在自动安装
@@ -63,7 +24,7 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
         cmd="pacman -Sy --noconfirm $lnx_cmd"
       elif [ "$DISTRO_PM" = "apt" ]; then # debian | ubuntu
         cmd="apt-get update && apt-get install -y $lnx_cmd"
-      else # centos | RHEL | openSUSE
+      else # centos | rhel | openSUSE
         cmd="'$DISTRO_PM' install -y $lnx_cmd"
       fi
       local result=$(cmd_exec "$cmd")

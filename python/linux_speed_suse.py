@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-OpenSUSE镜像速度测试工具
+openSUSE镜像速度测试工具
 从官方镜像列表获取所有镜像，并进行速度测试
 """
 
@@ -26,20 +26,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from linux_speed import MirrorTester
 
 
-@dataclass
-class MirrorResult:
-    """镜像测试结果"""
-
-    url: str
-    country: str
-    avg_speed: float  # KB/s
-    response_time: float  # seconds
-    success_rate: float  # 0-1
-    error_msg: Optional[str] = None
-
-
 class OpenSUSEMirrorTester(MirrorTester):
-    def __init__(self, distro_ostype, system_country):
+    def __init__(self, system_country):
         # 后备镜像列表：全球常用的 10 个镜像站点
 
         self.mirrors = [
@@ -77,7 +65,7 @@ class OpenSUSEMirrorTester(MirrorTester):
         ]
 
         self.globals = {"country": "Global", "url": "https://download.opensuse.org/"}
-        super().__init__(distro_ostype, system_country)
+        super().__init__(system_country)
         self.mirror_list = "https://mirrors.opensuse.org/"
 
     def parse_mirror_list(self, lines: List[str]):
@@ -130,9 +118,6 @@ class OpenSUSEMirrorTester(MirrorTester):
 
     def run(self):
         """运行完整的测试流程"""
-        print("OpenSUSE镜像速度测试工具")
-        print("=" * 50)
-
         # 1. 获取镜像列表
         self.fetch_mirror_list()
 
@@ -147,7 +132,7 @@ class OpenSUSEMirrorTester(MirrorTester):
             return
 
         # 4. 显示结果
-        self.print_results(top_10, f"前{len(results)}个最快的OpenSUSE镜像+全球站 (共耗时{end_time - start_time:.2f}秒)")
+        self.print_results(top_10, f"前{len(results)}个最快的openSUSE镜像+全球站 (共耗时{end_time - start_time:.2f}秒)")
 
         # 5. 保存结果
         self.save_results(top_10)
@@ -156,9 +141,9 @@ class OpenSUSEMirrorTester(MirrorTester):
         print(f"找到 {len([r for r in results if r.success_rate > 0])} 个可用镜像")
 
 
-def update_source_suse(distro_ostype: str, system_country: str) -> None:
+def update_source_suse(system_country: str) -> None:
     """主函数"""
-    tester = OpenSUSEMirrorTester(distro_ostype, system_country)
+    tester = OpenSUSEMirrorTester(system_country)
     try:
         tester.run()
     except KeyboardInterrupt:

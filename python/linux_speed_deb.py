@@ -5,41 +5,25 @@ Debian镜像速度测试工具
 从官方镜像列表获取所有镜像，并进行速度测试
 """
 
-import logging
 import os
+from pathlib import Path
 import re
 import sys
-import time
-import threading
 import requests
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from urllib.parse import urljoin, urlparse
-import statistics
-from dataclasses import dataclass
-from typing import List, Optional
-import json
+from typing import List
+
 
 # default python sys.path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from linux_speed import MirrorTester
-
-
-@dataclass
-class MirrorResult:
-    """镜像测试结果"""
-
-    url: str
-    country: str
-    avg_speed: float  # KB/s
-    response_time: float  # seconds
-    success_rate: float  # 0-1
-    error_msg: Optional[str] = None
+from linux_speed import MirrorResult, MirrorTester
+from file_util import file_backup_sj
+from msg_handler import info, error
 
 
 class DebianMirrorTester(MirrorTester):
-    def __init__(self, distro_ostype, system_country):
-        # 后备镜像列表：全球常用的 10 个镜像站点
+    def __init__(self, system_country):
+        # 后备镜像列表：全球常用的 10 个镜像站点（debian镜像更新慢，目前继续采用http）
         self.mirrors = [
             # 欧洲镜像
             {"country": "Germany", "url": "http://ftp.de.debian.org/debian/"},
@@ -56,9 +40,52 @@ class DebianMirrorTester(MirrorTester):
             # 南美和其他地区
             {"country": "Brazil", "url": "http://ftp.br.debian.org/debian/"},
         ]
-        self.globals = {"country": "Global", "url": "https://deb.debian.org/debian"}
-        super().__init__(distro_ostype, system_country)
+        self.globals = {"country": "Global", "url": "http://deb.debian.org/debian"}
+        super().__init__(system_country)
         self.mirror_list = "https://www.debian.org/mirror/mirrors_full"
+
+    def match_patterns(self, line):
+        """匹配的关键词（cdrom, deb, deb-src）"""
+        if line.startswith("cdrom:"):
+            return "cdrom:"
+        match = re.match(r"^\s*(?:deb|deb-src)\s+(http[s]?://[^\s]+)", line)
+        if match:
+            return match.group(1)
+        return None
+
+    def check_file(self, file_path):
+        """检测匹配到的文件名和urls"""
+        urls = []
+        with open(file_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith("#") or not line:
+                    continue
+                matched = self.match_patterns(line)
+                if matched:
+                    urls.append(matched)
+        if urls:
+            return file_path, urls
+        return None, urls
+
+    def find_apt_source(self):
+        """找到默认apt配置文件，写入path和urls"""
+
+        SOURCE_FILE = "/etc/apt/sources.list"
+        SOURCE_LIST_D_DIR = "/etc/apt/sources.list.d/"
+
+        # Step 1: check /etc/apt/sources.list
+        self.path, self.urls = self.check_file(SOURCE_FILE)
+        if self.path:
+            return
+
+        # Step 2: check files in /etc/apt/sources.list.d/
+        for full_path in Path(SOURCE_LIST_D_DIR).glob("*.list"):
+            self.path, self.urls = self.check_file(full_path)
+            if self.path:
+                return
+
+        self.path = None
 
     def parse_mirror_list(self, lines: List[str]) -> List[dict]:
         """解析镜像列表HTML内容"""
@@ -113,37 +140,98 @@ class DebianMirrorTester(MirrorTester):
             else:
                 i += 1
 
+    def check_mirror(self, selected_mirror: MirrorResult) -> int:
+        """
+        检查镜像站的 bookworm, updates, security 可用性
+
+        Args:
+            selected_mirror: MirrorResult 对象，包含 url 属性
+
+        Returns:
+            如果updates存在，改写 selected_mirror.url_upd
+            如果security存在，改写 selected_mirror.url_sec
+        """
+
+        def _is_url_accessible(url: str) -> bool:
+            """检查URL是否可访问"""
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
+            }
+            try:
+                response = requests.head(url, headers=headers, timeout=5, allow_redirects=True)
+                return response.status_code == 200
+            except:
+                return False
+
+        # 检查 bookworm-updates
+        base_url = selected_mirror.url.rstrip("/")
+        updates_url = f"{base_url}/dists/bookworm-updates/Release"
+        if _is_url_accessible(updates_url):
+            selected_mirror.url_upd = selected_mirror.url
+
+        # 检查 bookworm-security
+        if base_url.endswith("/debian"):
+            # 将 /debian 替换为 /debian-security/
+            security_url = base_url + "-security/"
+            if _is_url_accessible(security_url):
+                selected_mirror.url_sec = security_url
+                return
+
+    def update_path(self, mirror):
+        source_file = self.path
+        url, url_upd, url_sec = mirror.url, mirror.url_upd, mirror.url_sec
+        def_url = "http://deb.debian.org/debian"
+        def_url_sec = "http://security.debian.org/debian-security"
+
+        # 1. 备份当前源文件
+        file_backup_sj(source_file)
+
+        # 2. 生成镜像源内容
+        lines = []
+        if not def_url == url:
+            lines.extend(self.add_sources(url, url_upd, url_sec))
+
+        # 3. 生成默认官方源内容
+        lines.extend(self.add_sources(def_url, def_url, def_url_sec))
+
+        # 4. 写入源文件
+        try:
+            with open(source_file, "w", encoding="utf-8") as f:
+                f.write("\n".join(lines) + "\n")
+            info(f"已更新 source list: {source_file}")
+        except Exception as e:
+            error(f"写入失败: {e}")
+
+    def add_sources(self, url, url_upd, url_sec):
+        # 2. 生成默认官方源内容
+        codename = self.os_info.codename
+        sources = [
+            f"deb {url} {codename} main contrib non-free non-free-firmware",
+        ]
+        if url_upd:
+            sources.append(f"deb {url_upd} {codename}-updates main contrib non-free non-free-firmware")
+        if url_sec:
+            sources.append(f"deb {url_sec} {codename}-security main contrib non-free non-free-firmware")
+        return sources
+
     def run(self):
         """运行完整的测试流程"""
-        print("Debian镜像速度测试工具")
-        print("=" * 50)
-
         # 1. 获取镜像列表
-        self.fetch_mirror_list()
-
-        # 2. 测试所有镜像
-        start_time = time.time()
-        results = self.test_all_mirrors()
-        end_time = time.time()
-        # 3. 筛选和排序
-        top_10 = self.filter_and_rank_mirrors(results)
-        if not top_10:
-            print("没有找到可用的镜像")
+        self.find_apt_source()
+        if not self.path:
+            print("没有找到APT源配置文件")
             return
 
-        # 4. 显示结果
-        self.print_results(top_10, f"前{len(results)}个最快的Debian镜像+全球站 (共耗时{end_time - start_time:.2f}秒)")
+        # 2. 获取所有镜像
+        self.fetch_mirror_list()
 
-        # 5. 保存结果
-        self.save_results(top_10)
-
-        print(f"\n测试完成! 共测试了 {len(results)} 个镜像")
-        print(f"找到 {len([r for r in results if r.success_rate > 0])} 个可用镜像")
+        # 3. 修改镜像
+        self.update_mirror()
 
 
-def update_source_deb(distro_ostype: str, system_country: str) -> None:
+def update_source_deb(system_country: str) -> None:
     """主函数"""
-    tester = DebianMirrorTester(distro_ostype, system_country)
+    tester = DebianMirrorTester(system_country)
     try:
         tester.run()
     except KeyboardInterrupt:

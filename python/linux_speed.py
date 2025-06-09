@@ -23,9 +23,24 @@ from typing import Dict, List, Optional
 # default python sys.path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from system import setup_logging
+from os_info import init_os_info, OSInfo
+from system import confirm_action, setup_logging
+from msg_handler import error, info, warning
+from file_util import print_array
 
 setup_logging()
+
+files_map = {
+    "debian": ["ls-lR.gz", "dists/bookworm/main/binary-amd64/Packages.gz"],
+    "ubuntu": ["ls-lR.gz", "dists/jammy/main/binary-amd64/Packages.gz"],
+    "centos": [
+        "filelist.gz",
+        "7.9.2009/os/x86_64/repodata/5319616dde574d636861a6e632939f617466a371e59b555cf816cf1f52f3e873-filelists.xml.gz",
+    ],
+    "rhel": ["repodata/repomd.xml", "RPM-GPG-KEY-redhat-release"],
+    "arch": ["core/os/x86_64/core.db.tar.gz", "extra/os/x86_64/extra.db.tar.gz"],
+    "opensuse": ["distribution/leap/15.5/repo/oss/ls-lR.gz", "distribution/leap/15.5/repo/oss/INDEX.gz"],
+}
 
 
 @dataclass
@@ -33,6 +48,8 @@ class MirrorResult:
     """镜像测试结果"""
 
     url: str
+    url_upd: str
+    url_sec: str
     country: str
     avg_speed: float  # KB/s
     response_time: float  # seconds
@@ -41,14 +58,15 @@ class MirrorResult:
 
 
 class MirrorTester:
-    def __init__(self, distro_ostype, system_country):
+    def __init__(self, system_country):
+
         self.session = requests.Session()
         self.session.headers.update(
             {
                 "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
             }
         )
-        self.distro_ostype = distro_ostype
+        self.os_info = init_os_info()
         self.system_country = system_country
         self.mirror_list = ""
         self.results = []
@@ -66,14 +84,18 @@ class MirrorTester:
         except KeyError:
             return country_code
 
-    def fetch_mirror_list(self) -> None:
+    def fetch_mirror_list(self, limit: int = None) -> None:
         """读取数据"""
+        print(f"{self.os_info.ostype}镜像速度测试工具")
+        print("=" * 50)
         try:
             response = requests.get(self.mirror_list, timeout=10)
             response.raise_for_status()
             lines = response.text.split("\n")
             self.mirrors = []
             self.parse_mirror_list(lines)
+            if limit:
+                self.mirrors = self.mirrors[:limit]  # 限制镜像数量(用于测试)
             self.mirrors.append(self.globals)  # 添加全球镜像站点
         except requests.RequestException as e:
             print(f"获取镜像列表失败: {e}")
@@ -105,19 +127,8 @@ class MirrorTester:
         country = mirror.get("country", "N/A")
         is_global = mirror.get("country") == "Global"
 
-        files_map = {
-            "Debian": ["ls-lR.gz", "dists/bookworm/main/binary-amd64/Packages.gz"],
-            "Ubuntu": ["ls-lR.gz", "dists/jammy/main/binary-amd64/Packages.gz"],
-            "CentOS": [
-                "filelist.gz",
-                "7.9.2009/os/x86_64/repodata/5319616dde574d636861a6e632939f617466a371e59b555cf816cf1f52f3e873-filelists.xml.gz",
-            ],
-            "RHEL": ["repodata/repomd.xml", "RPM-GPG-KEY-redhat-release"],
-            "Arch": ["core/os/x86_64/core.db.tar.gz", "extra/os/x86_64/extra.db.tar.gz"],
-            "OpenSUSE": ["distribution/leap/15.5/repo/oss/ls-lR.gz", "distribution/leap/15.5/repo/oss/INDEX.gz"],
-        }
         # 测试文件列表（从小到大）
-        test_files = files_map.get(self.distro_ostype)  # 通常几MB  # 几KB  # 很小
+        test_files = files_map.get(self.os_info.ostype)  # 通常几MB  # 几KB  # 很小
 
         speeds = []
         max_speed = 0
@@ -131,7 +142,7 @@ class MirrorTester:
                     test_url = urljoin(url + "/", test_file)
 
                     start_time = time.time()
-                    response = self.session.get(test_url, timeout=6, stream=True)  # 6秒超时
+                    response = self.session.get(test_url, timeout=5, stream=True)  # 6秒超时
 
                     if response.status_code == 200:
                         # 下载部分数据来测试速度
@@ -174,6 +185,8 @@ class MirrorTester:
         if speeds:
             return MirrorResult(
                 url=url,
+                url_upd=None,
+                url_sec=None,
                 country=country,
                 avg_speed=statistics.mean(speeds),
                 response_time=statistics.mean(response_times),
@@ -270,11 +283,84 @@ class MirrorTester:
         # 选择前10个 + global站点
         return sorted_results
 
-    def print_results(self, results: List[MirrorResult], title: str):
+    def update_mirror(self) -> bool:
+        """是否需要重新选择镜像"""
+        curr_url = None
+        if len(self.urls) > 0:
+            for mirror in self.mirrors:
+                if mirror["url"] == self.urls[0]:
+                    curr_url = mirror["url"]
+                    break
+
+        prompt = f"{'已选镜像: ' + curr_url + ' ' if curr_url else ''}是否重新选择镜像?"
+        confirm_action(prompt, self.choose_mirror)
+
+    def choose_mirror(self) -> None:
+        """选择最快镜像，并更新包管理器文件"""
+        # 1 测试所有镜像
+        start_time = time.time()
+        results = self.test_all_mirrors()
+        end_time = time.time()
+
+        # 2 筛选和排序
+        top_10 = self.filter_and_rank_mirrors(results)
+        if not top_10:
+            print("没有找到可用的镜像")
+            return
+
+        # 3 显示结果
+        tot_len = len(top_10)
+        tot_time = end_time - start_time
+        self.print_results(top_10)
+        print(f"\n找到前{tot_len-1}个最快的{self.os_info.ostype}镜像 + 全球站 (共耗时{tot_time:.2f}秒)")
+
+        # 3 无限循环直到用户选中合法镜像
+        while True:
+            print(f"\n请选择要使用的镜像 (1-{tot_len})，输入 0 表示不更改:")
+
+            try:
+                # 获取用户输入并去除首尾空格
+                choice = input(f"请输入选择 (0-{tot_len}): ").strip()
+
+                # 处理输入为 0 的情况（不更改配置）
+                if choice == "0":
+                    print("\n已取消配置，保持当前设置")
+                    return
+
+                # 将输入转换为整数
+                choice_num = int(choice)
+
+                # 检查输入是否在有效范围内
+                if 1 <= choice_num <= tot_len:
+                    # 获取用户选择的镜像（注意索引从0开始，所以要减1）
+                    selected_mirror = top_10[choice_num - 1]
+
+                    # 显示用户选择的镜像信息
+                    print(f"\n✨ 您选择了: {selected_mirror.url}")
+                    print(f"   下载速度: {selected_mirror.avg_speed:.1f}s")
+                    self.check_mirror(selected_mirror)
+                    self.update_path(selected_mirror)
+                    return
+                else:
+                    # 输入的数字超出范围
+                    error(f"输入错误！请输入 0-{tot_len} 之间的数字")
+
+            except ValueError:
+                # 输入的不是数字
+                error("输入错误！请输入数字")
+
+            except KeyboardInterrupt:
+                # 用户按 Ctrl+C 中断
+                print("\n\n已取消操作")
+                return
+
+        # 4 保存结果
+        self.save_results(top_10)
+
+    def print_results(self, results: List[MirrorResult]):
         """打印测试结果"""
-        print(f"\n{'='*80}")
-        print(f"{title}")
-        print(f"{'='*80}")
+        print()
+        print("-" * 80)
         print(f"{'排名':<3} {'速度(KB/s)':<9} {'响应时间(s)':<8} {'成功率':<4} {'国家/地区':<10} {'镜像URL'}")
         print("-" * 80)
 

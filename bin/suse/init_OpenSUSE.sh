@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# 一键配置Linux（One-click Configure OpenSUSE）
+# 一键配置Linux（One-click Configure openSUSE）
 # 自动操作：
 #   1）换默认语言、自动升级安装包
 #   3）安装ssh
@@ -19,7 +19,7 @@ set -euo pipefail                                                # strict mode
 BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd .. && pwd)" # bin directory
 source "$BIN_DIR/init_main.sh"                                   # main script
 
-# OpenSUSE (zypper)
+# openSUSE (zypper)
 init_sources_list() {
   # 检查是否包含 cdrom 源
   if grep -q "cdrom" /etc/zypp/repos.d/*.repo; then
@@ -31,7 +31,7 @@ init_sources_list() {
     # 修改 repo 配置文件，将 cdrom 源替换为官方源
     for repo_file in /etc/zypp/repos.d/*.repo; do
       if grep -q "cdrom" "$repo_file"; then
-        # 替换为默认的官方 OpenSUSE 源
+        # 替换为默认的官方 openSUSE 源
         cat >"$repo_file" <<EOF
 [openSUSE-oss]
 name=Main Repository

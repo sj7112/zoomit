@@ -21,20 +21,20 @@ from linux_speed_suse import update_source_suse
 def update_source(distro_ostype: str, system_country: str) -> None:
     """主函数"""
 
-    if distro_ostype == "Debian":
-        update_source_deb(distro_ostype, system_country)
+    if distro_ostype == "debian":
+        update_source_deb(system_country)
 
-    elif distro_ostype == "Ubuntu":
-        update_source_ubt(distro_ostype, system_country)
+    elif distro_ostype == "ubuntu":
+        update_source_ubt(system_country)
 
-    elif distro_ostype == "CentOS":
-        update_source_cos(distro_ostype, system_country)
+    elif distro_ostype == "centos":
+        update_source_cos(system_country)
 
-    elif distro_ostype == "Arch":
-        update_source_arch(distro_ostype, system_country)
+    elif distro_ostype == "arch":
+        update_source_arch(system_country)
 
-    elif distro_ostype == "OpenSUSE":
-        update_source_suse(distro_ostype, system_country)
+    elif distro_ostype == "opensuse":
+        update_source_suse(system_country)
 
 
 if __name__ == "__main__":

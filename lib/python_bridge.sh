@@ -8,7 +8,12 @@ if [[ -z "${LOADED_PYTHON_BRIDGE:-}" ]]; then
   : "${LIB_DIR:=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}" # bin direcotry
   : "${PYTHON_DIR:=$(dirname "$BIN_DIR")/python}"               # python directory
 
-  PYTHON="/$HOME/.venv/bin/python" # python3虚拟环境
+  # python3虚拟环境（区分是否需要 sudo 包装）
+  if [ -n "$SUDO_CMD" ]; then
+    PYTHON="$SUDO_CMD /$HOME/.venv/bin/python"
+  else
+    PYTHON="/$HOME/.venv/bin/python"
+  fi
 
   # ===== 调用 myshell.py 中的命令 =====
   sh_check_ip() {

@@ -21,20 +21,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from linux_speed import MirrorTester
 
 
-@dataclass
-class MirrorResult:
-    """镜像测试结果"""
-
-    url: str
-    country: str
-    avg_speed: float  # KB/s
-    response_time: float  # seconds
-    success_rate: float  # 0-1
-    error_msg: Optional[str] = None
-
-
 class ArchMirrorTester(MirrorTester):
-    def __init__(self, distro_ostype, system_country):
+    def __init__(self, system_country):
         # 后备镜像列表：全球常用的 10 个镜像站点
         self.mirrors = [
             # 欧洲镜像
@@ -52,7 +40,7 @@ class ArchMirrorTester(MirrorTester):
             {"country": "Australia", "url": "https://mirror.aarnet.edu.au/pub/archlinux/"},
         ]
         self.globals = {"country": "Global", "url": "https://geo.mirror.pkgbuild.com/"}
-        super().__init__(distro_ostype, system_country)
+        super().__init__(system_country)
         self.mirror_list = "https://archlinux.org/mirrorlist/?country=all"
 
     def parse_mirror_list(self, lines: List[str]) -> List[Dict]:
@@ -106,9 +94,6 @@ class ArchMirrorTester(MirrorTester):
 
     def run(self):
         """运行完整的测试流程"""
-        print("Arch镜像速度测试工具")
-        print("=" * 50)
-
         # 1. 获取镜像列表
         self.fetch_mirror_list()
 
@@ -132,9 +117,9 @@ class ArchMirrorTester(MirrorTester):
         print(f"找到 {len([r for r in results if r.success_rate > 0])} 个可用镜像")
 
 
-def update_source_arch(distro_ostype: str, system_country: str) -> None:
+def update_source_arch(system_country: str) -> None:
     """主函数"""
-    tester = ArchMirrorTester(distro_ostype, system_country)
+    tester = ArchMirrorTester(system_country)
     try:
         tester.run()
     except KeyboardInterrupt:

@@ -25,38 +25,26 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from linux_speed import MirrorTester
 
 
-@dataclass
-class MirrorResult:
-    """镜像测试结果"""
-
-    url: str
-    country: str
-    avg_speed: float  # KB/s
-    response_time: float  # seconds
-    success_rate: float  # 0-1
-    error_msg: Optional[str] = None
-
-
 class UbuntuMirrorTester(MirrorTester):
-    def __init__(self, distro_ostype, system_country):
+    def __init__(self, system_country):
         # 后备镜像列表：全球常用的 10 个镜像站点
         self.mirrors = [
             # 欧洲镜像
-            {"country": "Germany", "url": "http://ftp.halifax.rwth-aachen.de/ubuntu/"},
-            {"country": "UK", "url": "http://mirror.bytemark.co.uk/ubuntu/"},
+            {"country": "Germany", "url": "https://ftp.halifax.rwth-aachen.de/ubuntu/"},
+            {"country": "UK", "url": "https://mirror.bytemark.co.uk/ubuntu/"},
             {"country": "France", "url": "http://ftp.rezopole.net/ubuntu/"},
-            {"country": "Netherlands", "url": "http://mirror.nl.leaseweb.net/ubuntu/"},
-            {"country": "Sweden", "url": "http://ftp.acc.umu.se/mirror/ubuntu.com/ubuntu/"},
+            {"country": "Netherlands", "url": "https://mirror.nl.leaseweb.net/ubuntu/"},
+            {"country": "Sweden", "url": "https://ftp.acc.umu.se/mirror/ubuntu/"},
             # 美洲镜像
-            {"country": "US", "url": "http://mirror.math.princeton.edu/pub/ubuntu/"},
+            {"country": "US", "url": "https://mirror.math.princeton.edu/pub/ubuntu/"},
             # 亚太镜像
             {"country": "China", "url": "https://mirrors.tuna.tsinghua.edu.cn/ubuntu/"},
-            {"country": "Japan", "url": "http://ftp.jaist.ac.jp/pub/Linux/ubuntu/"},
+            {"country": "Japan", "url": "https://ftp.jaist.ac.jp/pub/Linux/ubuntu/"},
             {"country": "Singapore", "url": "http://mirror.nus.edu.sg/ubuntu/"},
-            {"country": "Australia", "url": "http://mirror.aarnet.edu.au/Ubuntu/"},
+            {"country": "Australia", "url": "https://mirror.aarnet.edu.au/ubuntu/"},
         ]
         self.globals = {"country": "Global", "url": "https://archive.ubuntu.com/ubuntu/"}
-        super().__init__(distro_ostype, system_country)
+        super().__init__(system_country)
 
     def fetch_mirror_list(self) -> None:
         """主函数：计算最快的镜像并保存到文件"""
@@ -97,9 +85,6 @@ class UbuntuMirrorTester(MirrorTester):
 
     def run(self):
         """运行完整的测试流程"""
-        print("Ubuntu镜像速度测试工具")
-        print("=" * 50)
-
         # 1. 获取镜像列表
         self.fetch_mirror_list()
 
@@ -123,9 +108,9 @@ class UbuntuMirrorTester(MirrorTester):
         print(f"找到 {len([r for r in results if r.success_rate > 0])} 个可用镜像")
 
 
-def update_source_ubt(distro_ostype: str, system_country: str) -> None:
+def update_source_ubt(system_country: str) -> None:
     """主函数"""
-    tester = UbuntuMirrorTester(distro_ostype, system_country)
+    tester = UbuntuMirrorTester(system_country)
     try:
         tester.run()
     except KeyboardInterrupt:
