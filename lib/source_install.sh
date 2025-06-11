@@ -30,31 +30,6 @@ if [[ -z "${LOADED_SOURCE_INSTALL:-}" ]]; then
     echo "----------------------------------------"
 
     case "$DISTRO_OSTYPE" in
-      "debian")
-        # 检查 Debian/Ubuntu 的 sources.list
-        local sources_files=(
-          "/etc/apt/sources.list"
-          "/etc/apt/sources.list.d/*.list"
-        )
-
-        echo "检查 APT 源配置..."
-        for file_pattern in "${sources_files[@]}"; do
-          for file in $file_pattern; do
-            if [ -f "$file" ]; then
-              echo "检查文件: $file"
-              # 查找包含 cdrom 的行
-              local cdrom_lines=$(grep -n "cdrom\|cd-rom\|file:///media" "$file" 2>/dev/null | grep -v "^#")
-              if [ -n "$cdrom_lines" ]; then
-                has_cdrom=1
-                cdrom_sources+=("$file")
-                echo "  发现CD-ROM源:"
-                echo "$cdrom_lines" | sed 's/^/    /'
-              fi
-            fi
-          done
-        done
-        ;;
-
       "rhel")
         # 检查 CentOS/RHEL 的 yum/dnf 配置
         echo "检查 YUM/DNF 源配置..."
@@ -145,11 +120,6 @@ if [[ -z "${LOADED_SOURCE_INSTALL:-}" ]]; then
 
       # 提供修复建议
       case "$DISTRO_OSTYPE" in
-        "debian")
-          echo "修复命令示例:"
-          echo "  sudo sed -i 's/^deb cdrom/#&/' /etc/apt/sources.list"
-          echo "  sudo apt update"
-          ;;
         "rhel")
           echo "修复建议:"
           echo "  禁用或删除包含file://的仓库配置"
