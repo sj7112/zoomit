@@ -11,24 +11,23 @@ import sys
 # default python sys.path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from linux_speed_deb import update_source_deb
-from linux_speed_ubt import update_source_ubt
-from linux_speed_cos import update_source_cos
+from linux_speed_deb import DebianMirrorTester
+from linux_speed_ubt import UbuntuMirrorTester
+from linux_speed_cos import CentosMirrorTester
 from linux_speed_arch import update_source_arch
 from linux_speed_suse import update_source_suse
 
 
 def update_source(distro_ostype: str, system_country: str) -> None:
     """主函数"""
-
     if distro_ostype == "debian":
-        update_source_deb(system_country)
+        DebianMirrorTester(system_country).run()
 
     elif distro_ostype == "ubuntu":
-        update_source_ubt(system_country)
+        UbuntuMirrorTester(system_country).run()
 
     elif distro_ostype == "centos":
-        update_source_cos(system_country)
+        CentosMirrorTester(system_country).run()
 
     elif distro_ostype == "arch":
         update_source_arch(system_country)

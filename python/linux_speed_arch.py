@@ -18,7 +18,7 @@ from iso3166 import countries
 # default python sys.path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from linux_speed import MirrorTester
+from linux_speed import MirrorTester, get_country_name
 
 
 class ArchMirrorTester(MirrorTester):
@@ -46,7 +46,7 @@ class ArchMirrorTester(MirrorTester):
     def parse_mirror_list(self, lines: List[str]) -> List[Dict]:
         """解析镜像列表内容"""
 
-        system_country_name = self.get_country_name(self.system_country)
+        system_country_name = get_country_name(self.system_country)
         i = 0
         while i < len(lines):
             line = lines[i].strip()

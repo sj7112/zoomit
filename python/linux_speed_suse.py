@@ -23,7 +23,7 @@ import json
 # default python sys.path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from linux_speed import MirrorTester
+from linux_speed import MirrorTester, get_country_name
 
 
 class OpenSUSEMirrorTester(MirrorTester):
@@ -106,7 +106,7 @@ class OpenSUSEMirrorTester(MirrorTester):
             href_match = re.search(r'href="([^"]+)distribution/leap/15\.5/repo"', line)
             if href_match:
                 mirror_item = {
-                    "country": self.get_country_name(country_code),
+                    "country": get_country_name(country_code),
                     "url": href_match.group(1).strip(),
                 }
                 # 根据是否为本地国家来决定插入位置

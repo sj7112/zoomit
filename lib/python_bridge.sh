@@ -9,23 +9,26 @@ if [[ -z "${LOADED_PYTHON_BRIDGE:-}" ]]; then
   : "${PYTHON_DIR:=$(dirname "$BIN_DIR")/python}"               # python directory
 
   # python3虚拟环境（区分是否需要 sudo 包装）
-  if [ -n "$SUDO_CMD" ]; then
-    PYTHON="$SUDO_CMD /$HOME/.venv/bin/python"
-  else
-    PYTHON="/$HOME/.venv/bin/python"
-  fi
+  # PYTHON="$HOME/.venv/bin/python"
+  py_get_path() {
+    if [ -n "$SUDO_CMD" ]; then
+      echo "$SUDO_CMD $HOME/.venv/bin/python"
+    else
+      echo "$HOME/.venv/bin/python"
+    fi
+  }
 
   # ===== 调用 myshell.py 中的命令 =====
   sh_check_ip() {
-    "$PYTHON" "$PYTHON_DIR/myshell.py" sh_check_ip "$SUDO_CMD" </dev/tty
+    "$(py_get_path)" "$PYTHON_DIR/myshell.py" sh_check_ip "$SUDO_CMD" </dev/tty
   }
 
   sh_install_pip() {
-    "$PYTHON" "$PYTHON_DIR/myshell.py" sh_install_pip
+    "$(py_get_path)" "$PYTHON_DIR/myshell.py" sh_install_pip
   }
 
   sh_update_source() {
-    "$PYTHON" "$PYTHON_DIR/myshell.py" sh_update_source "$DISTRO_OSTYPE" "$SYSTEM_COUNTRY"
+    "$(py_get_path)" "$PYTHON_DIR/myshell.py" sh_update_source "$DISTRO_OSTYPE" "$SYSTEM_COUNTRY"
   }
 
   # ===== 从ast_parser.py导入的函数 =====

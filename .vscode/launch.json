@@ -142,9 +142,9 @@
                 // "sh_check_ip",
                 // ""
                 "sh_update_source",
-                "debian",
+                // "debian",
                 // "ubuntu",
-                // "centos",
+                "centos",
                 // "arch",
                 // "opensuse",
                 "CN"

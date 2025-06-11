@@ -218,7 +218,11 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     # 3. 检查并调整当前用户的语言设置
     check_user_lang
 
-    # 4. 检查是否包含 cdrom 源
+    # 4. 选择包管理器
+    sh_update_source # 选择包管理器（内有交互）
+    exiterr "请手动修改软件源后再运行" "$DISTRO_OSTYPE" \
+      "如果需要，请手动修改软件源列表 /etc/apt/sources.list 或 /etc/yum.repos.d/*.repo"
+
     # local sources_file=$(get_source_list)
     local prompt
     if check_cdrom; then
@@ -228,8 +232,6 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
       prompt=$(string "是否重新选择软件源？")
       if ! confirm_action "$prompt"; then return 1; fi
     fi
-    # 选择包管理器
-    sh_update_source # 选择包管理器（内有交互）
 
     # if [[ "$DISTRO_PM" == "apt" ]]; then
     #   init_sources_list "$prompt"
@@ -417,19 +419,30 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     fi
 
     # ** 环境变量：发行版代号 | 版本号 **
-    if command -v lsb_release &>/dev/null; then
+    if [ -f /etc/os-release ]; then
+      DISTRO_CODENAME=$(grep "^VERSION_CODENAME=" /etc/os-release | cut -d'=' -f2)
+
+      # 部分发行版如没有VERSION_CODENAME
+      if [ -z "$DISTRO_CODENAME" ]; then
+        # Rocky Linux、AlmaLinux 等用版本号替代
+        DISTRO_CODENAME=$(grep "^VERSION_ID=" /etc/os-release | cut -d= -f2 | tr -d '"')
+        case "$DISTRO_OSTYPE" in
+          centos)
+            # CentOS 6/7 特判
+            if [[ "$DISTRO_CODENAME" = "6" || "$DISTRO_CODENAME" = "7" ]]; then
+              DISTRO_CODENAME=$(sed 's/.*release \([0-9.]*\) .*/\1/' /etc/centos-release)
+            fi
+            ;;
+          arch)
+            # Arch无代号
+            DISTRO_CODENAME="arch"
+            ;;
+        esac
+      fi
+    elif command -v lsb_release &>/dev/null; then
       DISTRO_CODENAME=$(lsb_release -c | awk '{print $2}')
     else
-      # 如果 lsb_release 不存在，根据其他方法获取发行版代号
-      if [ "$(id -u)" = "yum" ]; then
-        DISTRO_CODENAME=$(rpm -q --qf '%{VERSION}' centos-release) # Centos 没有代号，返回版本号
-      elif [ "$(id -u)" = "pacman" ]; then
-        DISTRO_CODENAME="arch" # Arch Linux 没有代号，返回 "arch"
-      elif [ -f /etc/os-release ]; then
-        DISTRO_CODENAME=$(grep "^VERSION_CODENAME=" /etc/os-release | cut -d'=' -f2)
-      else
-        DISTRO_CODENAME="unknown"
-      fi
+      DISTRO_CODENAME="unknown"
     fi
 
     echo "=== init system start ($PRETTY_NAME) ==="
