@@ -420,12 +420,12 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
 
     # ** 环境变量：发行版代号 | 版本号 **
     if [ -f /etc/os-release ]; then
-      DISTRO_CODENAME=$(grep "^VERSION_CODENAME=" /etc/os-release | cut -d'=' -f2)
+      DISTRO_CODENAME=$(grep "^VERSION_CODENAME=" /etc/os-release | cut -d'=' -f2 || true)
 
       # 部分发行版如没有VERSION_CODENAME
       if [ -z "$DISTRO_CODENAME" ]; then
         # Rocky Linux、AlmaLinux 等用版本号替代
-        DISTRO_CODENAME=$(grep "^VERSION_ID=" /etc/os-release | cut -d= -f2 | tr -d '"')
+        DISTRO_CODENAME=$(grep "^VERSION_ID=" /etc/os-release | cut -d= -f2 | tr -d '"' || true)
         case "$DISTRO_OSTYPE" in
           centos)
             # CentOS 6/7 特判
@@ -440,7 +440,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
         esac
       fi
     elif command -v lsb_release &>/dev/null; then
-      DISTRO_CODENAME=$(lsb_release -c | awk '{print $2}')
+      DISTRO_CODENAME=$(lsb_release -c | awk '{print $2}' || true)
     else
       DISTRO_CODENAME="unknown"
     fi
