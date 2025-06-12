@@ -5,10 +5,8 @@ Linux镜像速度测试工具
 从官方镜像列表获取所有镜像，并进行速度测试
 """
 
-import json
 import logging
 import os
-import re
 import sys
 import time
 import threading

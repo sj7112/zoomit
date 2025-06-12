@@ -9,7 +9,6 @@ import os
 from pathlib import Path
 import re
 import sys
-import requests
 from typing import List
 
 
@@ -17,7 +16,6 @@ from typing import List
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from linux_speed import MirrorResult, MirrorTester, _is_url_accessible
-from file_util import file_backup_sj
 from msg_handler import info, error
 
 

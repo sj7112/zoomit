@@ -209,6 +209,10 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   # @i18n: This function needs internationalization
   # ==============================================================================
   initial_env() {
+    # 设置环境变量(只能用utf8运行)
+    export LANG="en_US.utf8"
+    export LANGUAGE="en_US:en"
+
     # 1. 检查当前用户是否为 root（非root检测sudo是否可用）
     check_user_sudo
 
