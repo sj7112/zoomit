@@ -445,12 +445,12 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
       DISTRO_CODENAME="unknown"
     fi
 
-    echo "=== init system start ($PRETTY_NAME) ==="
+    echo "=== init system start - $PRETTY_NAME ==="
     initial_env # 基础值初始化
     # config_sshd # SSH配置
     configure_ip   # 静态IP配置
     docker_compose # 安装软件
     # system_config
-    echo "=== init system end ($PRETTY_NAME) ==="
+    echo "=== init system end - $PRETTY_NAME ==="
   }
 fi

@@ -25,7 +25,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
   # 判断是否已有 Python 3.10+
   check_python_version() {
     local py_path=$1
-    if [ -n "$py_path" ] && "$py_path" -c 'import sys; exit(0) if sys.version_info >= (3,10) else exit(1)'; then
+    if [ -n "$py_path" ] && "$py_path" -c 'import sys; exit(0) if sys.version_info >= (3,10) else exit(1)' 2>/dev/null; then
       # 确保 venv 和 ensurepip 都存在
       if "$py_path" -m venv --help >/dev/null 2>&1 \
         && "$py_path" -m ensurepip --version >/dev/null 2>&1; then
@@ -80,6 +80,20 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     esac
   }
 
+  # 智能 wget 函数
+  smart_wget() {
+    local output="$1"
+    local url="$2"
+
+    if wget --help 2>&1 | grep -q -- '--show-progress'; then
+      echo "wget -c -q --show-progress -O $output $url"
+      wget -c -q --show-progress -O "$output" "$url"
+    else
+      echo "wget -c -q -O $output $url"
+      wget -c -q -O "$output" "$url"
+    fi
+  }
+
   # 下载并安装 Python standalone
   install_python_standalone() {
     local system_type=$(detect_system)
@@ -89,8 +103,9 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     info "下载地址: $python_url"
 
     # 下载文件（支持断点续传）
-    echo "wget -c -q --show-progress -O $PY_GZ_FILE $python_url"
-    wget -c -q --show-progress -O "$PY_GZ_FILE" "$python_url"
+    smart_wget "$PY_GZ_FILE" "$python_url"
+    # echo "wget -c -q --show-progress -O $PY_GZ_FILE $python_url"
+    # wget -c -q --show-progress -O "$PY_GZ_FILE" "$python_url"
 
     # 解压到安装目录
     info "安装 Python 到 $PY_INST_DIR..."
@@ -122,16 +137,20 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
 
   # 创建虚拟环境并安装常用包
   create_venv_with_packages() {
-    info "创建虚拟环境 $VENV_DIR..."
-
     # 删除已存在的虚拟环境
     if [[ -d "$VENV_DIR" ]]; then
       if confirm_action "虚拟环境 $VENV_DIR 已存在，是否删除重建？"; then
         rm -rf "$VENV_DIR"
       else
-        warning "跳过虚拟环境创建"
+        if confirm_action "是否重建 pip 和所需 python 库？"; then
+          sh_install_pip
+        else
+          warning "跳过虚拟环境创建"
+        fi
         return
       fi
+    else
+      info "创建虚拟环境 $VENV_DIR..."
     fi
 
     # 创建虚拟环境
