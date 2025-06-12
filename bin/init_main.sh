@@ -23,8 +23,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   DISTRO_PM=""       # 包管理器
   DISTRO_OSTYPE=""   # 发行版名称
   DISTRO_CODENAME="" # 发行版代号 | 版本号
-  SYSTEM_LANG=""     # 语言代码（默认=en）
-  SYSTEM_COUNTRY=""  # 国家代码（默认=CN）
+  SYS_LANG=""        # 系统语言设置（如 en_US.UTF-8）
   SUDO_CMD=""        # sudo 默认为空字符串
 
   # ==============================================================================
@@ -81,14 +80,17 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
       if [ -f "$file" ]; then
         default_lang=$(grep "^LANG=" "$file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '"')
         if [ -n "$default_lang" ]; then
-          echo "$default_lang"
+          SYS_LANG="$default_lang"
+          local base_lang="${SYS_LANG%.*}"             # 移除 .utf8 / .UTF-8
+          local short_lang="${base_lang%_*}"           # 语言代码
+          export LANGUAGE="${base_lang}:${short_lang}" # 获取语言代码（如 en_US.utf8 -> en_US:en）
           return 0
         fi
       fi
     done
 
     # Check if the system default language was retrieved
-    echo "No default language retrieved. Please enter the language (e.g., en_US.utf8):"
+    echo "Please set shell language (e.g., en_US.utf8):"
     while true; do
       read -r input_lang
 
@@ -106,7 +108,10 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
         echo "Invalid language format. Please re-enter (e.g., en_US.utf8):"
       fi
     done
-    echo "$default_lang"
+    SYS_LANG="$default_lang"
+    local base_lang="${SYS_LANG%.*}"             # 移除 .utf8 / .UTF-8
+    local short_lang="${base_lang%_*}"           # 语言代码
+    export LANGUAGE="${base_lang}:${short_lang}" # 获取语言代码（如 en_US.utf8 -> en_US:en）
   }
 
   # 更新或添加 LANG 设置到 ~/.profile
@@ -189,19 +194,16 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
 
   # 检查当前用户的语言是否为C或POSIX
   check_user_lang() {
-    local sys_lang=$(get_default_lang)    # 系统语言设置
     local curr_lang=${LC_ALL:-${LANG:-C}} # 当前用户语言设置
-    if [ "${curr_lang,,}" != "${sys_lang,,}" ]; then
-      if confirm_action "Set default language as $sys_lang？"; then
-        set_user_language "$sys_lang" # 设置用户语言
+    if [ "${curr_lang,,}" != "${SYS_LANG,,}" ]; then
+      if confirm_action "Set default language as $SYS_LANG"; then
+        set_user_language "$SYS_LANG" # 设置用户语言
       else
-        export LANG="en_US.utf8"
+        export LANG="en_US.UTF-8"
         export LANGUAGE="en_US:en"
       fi
     fi
-    SYSTEM_LANG=${LANG%.*}           # 获取系统语言代码
-    SYSTEM_COUNTRY=${SYSTEM_LANG#*_} # 取下划线后的部分，比如 CN
-    info "User default language: $sys_lang"
+    info "User default language: $SYS_LANG"
   }
 
   # ==============================================================================
@@ -209,18 +211,14 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   # @i18n: This function needs internationalization
   # ==============================================================================
   initial_env() {
-    # 设置环境变量(只能用utf8运行)
-    export LANG="en_US.utf8"
-    export LANGUAGE="en_US:en"
-
-    # 1. 检查当前用户是否为 root（非root检测sudo是否可用）
+    # 1. 检查用户是否为 root（非root检测sudo可用）
     check_user_sudo
 
-    # 2. 检查并安装 Python3 虚拟环境
-    install_py_venv
-
-    # 3. 检查并调整当前用户的语言设置
+    # 2. 检查并调整当前用户的语言设置
     check_user_lang
+
+    # 3. 检查并安装 Python3 虚拟环境
+    install_py_venv
 
     # 4. 选择包管理器
     sh_update_source # 选择包管理器（内有交互）
@@ -448,6 +446,10 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     else
       DISTRO_CODENAME="unknown"
     fi
+
+    # 设置 shell 语言
+    get_default_lang
+    load_lang_msgs
 
     echo "=== init system start - $PRETTY_NAME ==="
     initial_env # 基础值初始化

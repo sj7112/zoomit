@@ -135,7 +135,7 @@ class CentosMirrorTester(MirrorTester):
             return file_path, urls
         return None, []
 
-    def find_source(self) -> None:
+    def find_source(self):
         """找到默认yum配置文件，写入path和urls"""
         SOURCE_FILE = "/etc/yum.repos.d/CentOS-Base.repo"
 

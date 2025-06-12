@@ -32,7 +32,7 @@ def main():
     # 选择包管理器
     elif command == "sh_update_source":
         distro_ostype = sys.argv[2]
-        system_country = sys.argv[3]
+        system_country = os.environ.get("LANGUAGE").split("_")[1].split(":")[0]
         update_source(distro_ostype, system_country)
 
     else:

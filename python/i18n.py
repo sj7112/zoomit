@@ -27,9 +27,6 @@ from system import confirm_action
 os.makedirs(LANG_DIR, exist_ok=True)
 
 
-SYSTEM_LANG = os.environ.get("SYSTEM_LANG", get_lang_code())  # 2位语言代码
-
-
 def resolve_lang_files(lang_code: str, mode: str = "", max_files: int = 1) -> List[str]:
     """找到多个语言文件路径，并进行存在性检查
 
@@ -238,7 +235,7 @@ def main():
         lang: Optional[List[str]] = typer.Option(None, "-l", "--lang", help="指定语言包"),
     ):
         """新增语言文件"""
-        langs = parse_multi_val(lang) if lang else [SYSTEM_LANG]
+        langs = parse_multi_val(lang) if lang else [get_lang_code()]
         add_lang_files(langs)
 
     @app.command("del")
@@ -247,7 +244,7 @@ def main():
         yes: bool = typer.Option(False, "--yes", "-y", help="不提示直接执行"),
     ):
         """删除语言文件"""
-        langs = parse_multi_val(lang) if lang else [SYSTEM_LANG]
+        langs = parse_multi_val(lang) if lang else [get_lang_code()]
         del_lang_files(langs, yes)
 
     @app.command()

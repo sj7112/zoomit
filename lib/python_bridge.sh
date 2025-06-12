@@ -28,7 +28,7 @@ if [[ -z "${LOADED_PYTHON_BRIDGE:-}" ]]; then
   }
 
   sh_update_source() {
-    py_exec "$PYTHON_DIR/myshell.py" sh_update_source "$DISTRO_OSTYPE" "$SYSTEM_COUNTRY"
+    py_exec "$PYTHON_DIR/myshell.py" sh_update_source "$DISTRO_OSTYPE"
   }
 
   # ===== 从ast_parser.py导入的函数 =====

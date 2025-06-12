@@ -114,7 +114,7 @@ def check_heredoc_block(lines, line_number, total_lines):
     stripped_line = remove_quotes(line)
 
     # 查找heredoc标记
-    match = re.search(r"<<-?\s*([_A-Za-z0-9]+)", stripped_line)
+    match = re.search(r"<<-?\s*([A-Za-z0-9_]+)", stripped_line)
     if match:
         heredoc_end = match.group(1)
         # 从下一行开始搜索 heredoc 结束
@@ -158,7 +158,7 @@ def split_match_type(line):
     function_pattern = r"(string|exiterr|error|success|warning|info)"
 
     # 完整匹配模式
-    pattern = r"([\s;{\(\[]|&&|\|\|)(" + function_pattern + r")([\s;}\)\]]|&&|\|\||$)"
+    pattern = r"([\s;{\(\[]|&&|\|\|)" + function_pattern + r"([\s;}\)\]]|&&|\|\||$)"
 
     matches = []
     last_pos = 0

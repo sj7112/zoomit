@@ -326,7 +326,7 @@ def msg_parse_tmpl(template, *args):
 #
 # 选项：
 # ignore = i - 忽略翻译
-# stack = s - 显示调用栈
+# stack = s - 显示调用栈(测试)
 # error = e - 返回错误状态
 #
 # 使用示例：
@@ -411,11 +411,12 @@ def parse_options(args):
 #
 # params:
 # ignore = i - 忽略翻译
-# stack = s - 显示调用栈
+# stack = s - 显示调用栈(测试)
 # error = e - 返回错误状态
 # ==============================================================================
 def string(*args, **kwargs):
-    """格式化字符串，支持参数替换
+    """
+    格式化字符串，支持参数替换
     直接返回字符串转换结果
     """
     return msg_parse_param(kwargs, *args)

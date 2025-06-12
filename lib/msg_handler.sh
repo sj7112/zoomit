@@ -6,6 +6,7 @@ if [[ -z "${LOADED_MSG_HANDLER:-}" ]]; then
 
   # 声明全局变量
   : "${LIB_DIR:=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}" # lib direcotry
+  : "${LANG_DIR:=$(dirname "$LIB_DIR")/config/lang}"            # lang directory
   source "$LIB_DIR/json_handler.sh"
 
   # 颜色定义
@@ -16,6 +17,9 @@ if [[ -z "${LOADED_MSG_HANDLER:-}" ]]; then
   CYAN='\033[0;36m'      # 青色 (Cyan)
   RED_BG='\033[41m'      # 红色背景
   NC='\033[0m'           # No Color
+
+  # 声明全局二维关联数组
+  declare -A LANGUAGE_MSGS
 
   # 获取当前系统语言
   ENVIRONMENT="TEST"    # TEST 测试环境 | PROD 生产环境
@@ -59,6 +63,89 @@ if [[ -z "${LOADED_MSG_HANDLER:-}" ]]; then
     MSG_INFO="INFO"
   fi
 
+  # 获取语言配置文件路径
+  get_language_prop() {
+    local lang_format="${1:-$LANGUAGE}"
+    # 解析语言格式 zh_CN:zh -> zh_CN 和 zh
+    local primary_lang="${lang_format%%:*}"  # zh_CN
+    local fallback_lang="${lang_format##*:}" # zh
+
+    # 优先查找完整语言文件
+    if [[ -f "$LANG_DIR/${primary_lang}.properties" ]]; then
+      echo "$LANG_DIR/${primary_lang}.properties"
+      return 0
+    fi
+
+    # 其次查找简化语言文件
+    if [[ -f "$LANG_DIR/${fallback_lang}.properties" ]]; then
+      echo "$LANG_DIR/${fallback_lang}.properties"
+      return 0
+    fi
+
+    # 都没找到返回错误
+    echo "Error: No language file found for '$lang_format'" >&2
+    return 1
+  }
+
+  # 加载语言消息(手动 key 拼接模拟子 map)
+  load_lang_msgs() {
+    # 判断是否已经加载过
+    if [[ -v LANGUAGE_MSGS ]] && [[ ${#LANGUAGE_MSGS[@]} -ne 0 ]]; then
+      return 0 # 已加载，直接返回
+    fi
+
+    local properties_file=$(get_language_prop)
+    if [[ $? -ne 0 ]]; then
+      echo "Use default language 'en_US:en'" >&2
+      properties_file=$(get_language_prop 'en_US:en')
+    fi
+
+    local current_file=""
+    while IFS= read -r line; do
+      # 跳过空行
+      [[ -z "$line" ]] && continue
+
+      # 跳过普通注释行，但保留文件标记
+      if [[ "$line" =~ ^[[:space:]]*# ]]; then
+        # 匹配文件标记 ■=filename
+        if [[ "$line" =~ ^#[[:space:]]*■=(.+)$ ]]; then
+          current_file="${BASH_REMATCH[1]}"
+        fi
+        continue
+      fi
+
+      # 跳过分隔行
+      [[ "$line" =~ ^[[:space:]]*--- ]] && continue
+
+      # 匹配键值对 KEY=VALUE
+      if [[ "$line" =~ ^([A-Za-z0-9_-]+)=(.*)$ ]]; then
+        local key="${BASH_REMATCH[1]}"
+        local value="${BASH_REMATCH[2]}"
+
+        # 处理多行值（以 \ 结尾的行）
+        while [[ "$value" =~ \\[[:space:]]*$ ]]; do
+          # 移除末尾的反斜杠和空白
+          value="${value%\\*}"
+          # 读取下一行并追加
+          if IFS= read -r next_line; then
+            # 移除前导空白
+            next_line="${next_line#"${next_line%%[![:space:]]*}"}"
+            value="${value}${next_line}"
+          else
+            break
+          fi
+        done
+
+        # 存储到数组中，使用文件名作为key前缀
+        if [[ -n "$current_file" ]]; then
+          LANGUAGE_MSGS["${current_file}:${key}"]="$value"
+        fi
+      fi
+    done <"$properties_file"
+
+    echo "Loaded ${#LANGUAGE_MSGS[@]} messages from $properties_file"
+  }
+
   # 返回所有输入参数中的最小值
   min() {
     local min_val=$1
@@ -83,6 +170,24 @@ if [[ -z "${LOADED_MSG_HANDLER:-}" ]]; then
     done
 
     echo $max_val
+  }
+
+  # 显示使用帮助
+  _show_usage() {
+    cat <<EOF
+使用方法: string | info | exiterr | error | success | warning  [选项] [消息内容]
+
+选项:
+    -i    无需翻译
+    -s    显示错误堆栈
+    -e    返回错误状态(返回值1)
+
+示例:
+    info "Hello World"
+    info -i "不翻译消息"
+    info -se "错误消息带堆栈"
+    info -ise "所有选项组合"
+EOF
   }
 
   # **get translations**
@@ -368,25 +473,62 @@ if [[ -z "${LOADED_MSG_HANDLER:-}" ]]; then
   # 1) 调试只能用echo "..." >&2 ！！！否则父函数接收echo输出时，会出错
   # ==============================================================================
   msg_parse_param() {
-    eval "$(parse_options "$@")" # 需在cmd_meta定义同名子对象
-    local options="$1"
-    shift
+    # 初始化默认值
+    local no_translate=false
+    local show_stack=false
+    local error_exit=false
+
+    # 使用getopts解析参数
+    # i: 无需翻译
+    # s: 显示堆栈
+    # e: 错误退出
+    local OPTIND=1 # 重置OPTIND
+    while getopts "ise" opt; do
+      case $opt in
+        i) no_translate=true ;;
+        s) show_stack=true ;;
+        e) error_exit=true ;;
+        \?)
+          echo "[error]: Unknown parameters -$OPTARG" >&2
+          _show_usage
+          return 1
+          ;;
+      esac
+    done
+
+    # 移除已处理的选项，剩余参数作为消息
+    shift $((OPTIND - 1))
 
     # 自动翻译
-    # if  [[ "$1" == "" ]] && ! json_getopt "i"; then
-    #   get_current_context
-    #   # 构建消息ID
-    #   local msg_id=$(get_message_id "$CURRENT_FUNCTION" "${FUNCNAME[1]}")
-    #   update_message_counter "$CURRENT_FUNCTION" "${FUNCNAME[1]}"
+    if [[ "$no_translate" == false && -n "$1" ]]; then
+      local current_hash=$(_djb2_with_salt_20 "$1")             # 使用DJB2哈希算法生成消息ID
+      current_hash=$(padded_number_to_base64 "$current_hash"_6) # 转换为6位base64编码
+      source_file="${BASH_SOURCE[2]#$(dirname "$LIB_DIR")/}"    # 去掉根目录
+      local key="${source_file}:$current_hash"
+      local result=""
 
-    #   # 获取翻译
-    #   local translated_message
-    #   translated_message=$(get_translation "$msg_id" "$message")
-    # fi
+      # 检查键是否存在
+      if [[ -v "LANGUAGE_MSGS[$key]" ]]; then
+        result="${LANGUAGE_MSGS[$key]}"
+      fi
 
-    local template=$(msg_parse_tmpl "$@") # parse text by template
+      if [[ -z "$result" ]]; then
+        # 如果没有找到翻译，使用MD5再试一次
+        current_hash=$(md5 "$1")
+        key="${source_file}:$current_hash"
+        if [[ -v "LANGUAGE_MSGS[$key]" ]]; then
+          result="${LANGUAGE_MSGS[$key]}"
+        fi
+      fi
 
-    if json_getopt "$options" "s"; then
+      if [[ -z "$result" ]]; then
+        # 如果还是没有找到翻译，使用原始消息
+        result="$1"
+      fi
+    fi
+    local template=$(msg_parse_tmpl "$result" "${@:2}") # parse text by template
+
+    if [[ "$show_stack" == true ]]; then
       template+=" $(print_stack_err 6 3)" # print stack error (level ≤ 6)
     fi
 
@@ -402,7 +544,7 @@ if [[ -z "${LOADED_MSG_HANDLER:-}" ]]; then
       echo -e "$template" # normal text (no color)
     fi
 
-    if json_getopt "$options" "e"; then return 1; fi # 如有需要，返回错误，供调用者使用
+    if [[ "$error_exit" == true ]]; then return 1; fi # 如有需要，返回错误，供调用者使用
   }
 
   #

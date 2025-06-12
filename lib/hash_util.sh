@@ -18,6 +18,9 @@ if [[ -z "${LOADED_HASH_UTIL:-}" ]]; then
   declare -A LANG_PROPS   # prop definition: key=Hash Code + "_" + LineNo + "_" + order; value = translated words
   declare -A LANG_PROPS_T # prop definition: key=Hash Code + "_" + position + "_" + order; value = translated words
 
+  # Base64字符集 (URL安全)
+  BASE64_CHARS="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+
   hash_init_msg() {
     declare -n _MSG_FUNC_CALLS="$1" # 结果数组 filename function_name line_number matched_type order
     # 当前处理的函数名和哈希码
@@ -67,7 +70,7 @@ if [[ -z "${LOADED_HASH_UTIL:-}" ]]; then
   # change number to base64
   number_to_base64() {
     local num="$1"
-    local base64chars="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+    # local base64chars="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
     local result=""
 
     # 处理0的特殊情况
@@ -76,10 +79,95 @@ if [[ -z "${LOADED_HASH_UTIL:-}" ]]; then
       return
     fi
 
-    while [ $num -gt 0 ]; do
-      result="${base64chars:((num % 64)):1}$result"
+    while [ "$num" -gt 0 ]; do
+      result="${BASE64_CHARS:((num % 64)):1}$result"
       num=$((num / 64))
     done
+    echo "$result"
+  }
+
+  # # 将数字转换为base64字符串
+  # _number_to_base64() {
+  #   local num=$1
+  #   local result=""
+
+  #   # 处理0的特殊情况
+  #   if [ "$num" -eq 0 ]; then
+  #     echo "A" # 0在base64中通常表示为A
+  #     return
+  #   fi
+
+  #   # # 转换为整数
+  #   # num=$((num))
+
+  #   while [ "$num" -gt 0 ]; do
+  #     local remainder=$((num % 64))
+  #     local char="${BASE64_CHARS:$remainder:1}"
+  #     result="$char$result"
+  #     num=$((num / 64))
+  #   done
+
+  #   echo "$result"
+  # }
+
+  # ==============================================================================
+  # fixed length 64进制
+  # 支持读入多个数值，合并成一个
+  # 数值可以指定输出位数，如："123456_3"
+  #     结果不满3位，自动左侧填充
+  #     结果超过3位，只取右侧3位
+  # 如果是这种输入："123456"，则直接输出结果
+  # 如果有多个数值，每个数值单独计算，最终结果，依次拼成一个字符串返回
+  # 例子：
+  # ==============================================================================
+  _padded_number_to_base64() {
+    local result=""
+
+    for arg in "$@"; do
+      local value=""
+      local length=""
+      local s_64=""
+
+      # 检查是否包含长度指定 (格式: value_length)
+      if [[ "$arg" == *"_"* ]]; then
+        # 分割参数获取值和长度
+        value="${arg%_*}"
+        length="${arg##*_}"
+
+        # 检查是否为64进制字符串 (以!结尾)
+        if [[ "$value" == *"!" ]]; then
+          # 去掉!后缀，直接使用64进制字符串
+          s_64="${value%!}"
+        else
+          # 将10进制数字转换为64进制
+          s_64=$(_number_to_base64 "$value")
+        fi
+
+        # 格式化为指定长度
+        local s_64_len=${#s_64}
+        if [ "$s_64_len" -lt "$length" ]; then
+          # 长度不足，左侧填充A
+          local padding_count=$((length - s_64_len))
+          local padding=$(printf "A%.0s" $(seq 1 $padding_count))
+          result="$result$padding$s_64"
+        else
+          # 长度超过，只取右侧指定位数
+          local start_pos=$((s_64_len - length))
+          result="$result${s_64:$start_pos:$length}"
+        fi
+      else
+        # 无长度指定的情况
+        if [[ "$arg" == *"!" ]]; then
+          # 64进制字符串，去掉!后缀
+          result="$result${arg%!}"
+        else
+          # 10进制数字，转换为64进制
+          local converted=$(_number_to_base64 "$arg")
+          result="$result$converted"
+        fi
+      fi
+    done
+
     echo "$result"
   }
 
@@ -173,6 +261,72 @@ if [[ -z "${LOADED_HASH_UTIL:-}" ]]; then
       _idx=$((($_idx + (($_idx & 63) == 63 ? 2 : 1)) & mask)) # 探测下一个索引（跳过64倍数）
     done
     _LANG_PROPS[$_idx]="$str" # 写入新值
+  }
+
+  # ==============================================================================
+  # 函数 字符串文本的hash code计算（6位字符串 | 22位字符串）
+  # ==============================================================================
+
+  # 均匀采样若干个字符参与DJB2哈希计算，加上字符串长度作为salt
+  _djb2_with_salt() {
+    local text="$1"
+    local freq="${2:-20}"
+
+    if [[ -z "$text" ]]; then
+      echo 0
+      return
+    fi
+
+    local hash_value=5381
+    local text_len=${#text}
+    local step=$((text_len / freq))
+
+    # step 至少为1
+    if [[ $step -eq 0 ]]; then
+      step=1
+    fi
+
+    # local max_chars=$((step * freq))
+    # if [[ $text_len -lt $max_chars ]]; then
+    #   max_chars=$text_len
+    # fi
+
+    # 均匀采样字符参与哈希计算
+    local max_chars=$(((step * freq < text_len) ? step * freq : text_len))
+    for ((i = 0; i < max_chars; i += step)); do
+      local char="${text:$i:1}"
+      local ord_value
+
+      # 获取字符的ASCII值
+      ord_value=$(printf "%d" "'$char")
+
+      # DJB2 哈希算法：hash = ((hash << 5) + hash) + c
+      hash_value=$((((hash_value << 5) + hash_value + ord_value) & 0xFFFFFFFF))
+    done
+
+    # 加上字符串长度作为salt
+    hash_value=$((((hash_value << 5) + hash_value + text_len) & 0xFFFFFFFF))
+
+    echo "$hash_value"
+  }
+
+  # 均匀采样20个字符参与DJB2哈希计算，字符串长度作为salt
+  _djb2_with_salt_20() {
+    _djb2_with_salt "$1" 20
+  }
+
+  # 返回MD5数值
+  md5() {
+    local text="$1"
+
+    # 检查可用的MD5命令
+    if command -v md5sum >/dev/null 2>&1; then
+      echo -n "$text" | md5sum | awk '{print $1}'
+    elif command -v openssl >/dev/null 2>&1; then
+      echo -n "$text" | openssl dgst -md5 | awk '{print $2}'
+    else
+      exiterr -i "No MD5 tool found"
+    fi
   }
 
   # ==============================================================================
