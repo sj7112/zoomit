@@ -10,25 +10,25 @@ if [[ -z "${LOADED_PYTHON_BRIDGE:-}" ]]; then
 
   # python3虚拟环境（区分是否需要 sudo 包装）
   # PYTHON="$HOME/.venv/bin/python"
-  py_get_path() {
+  py_exec() {
     if [ -n "$SUDO_CMD" ]; then
-      echo "$SUDO_CMD $HOME/.venv/bin/python"
+      env LANG="$LANG" LANGUAGE="$LANGUAGE" $SUDO_CMD "$HOME/.venv/bin/python" "$@"
     else
-      echo "$HOME/.venv/bin/python"
+      env LANG="$LANG" LANGUAGE="$LANGUAGE" "$HOME/.venv/bin/python" "$@"
     fi
   }
 
   # ===== 调用 myshell.py 中的命令 =====
   sh_check_ip() {
-    "$(py_get_path)" "$PYTHON_DIR/myshell.py" sh_check_ip "$SUDO_CMD" </dev/tty
+    py_exec "$PYTHON_DIR/myshell.py" sh_check_ip "$SUDO_CMD" </dev/tty
   }
 
   sh_install_pip() {
-    "$(py_get_path)" "$PYTHON_DIR/myshell.py" sh_install_pip
+    py_exec "$PYTHON_DIR/myshell.py" sh_install_pip
   }
 
   sh_update_source() {
-    "$(py_get_path)" "$PYTHON_DIR/myshell.py" sh_update_source "$DISTRO_OSTYPE" "$SYSTEM_COUNTRY"
+    py_exec "$PYTHON_DIR/myshell.py" sh_update_source "$DISTRO_OSTYPE" "$SYSTEM_COUNTRY"
   }
 
   # ===== 从ast_parser.py导入的函数 =====

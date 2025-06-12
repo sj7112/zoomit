@@ -15,6 +15,9 @@ from source_util import update_source
 
 def main():
     """服务器管理工具库 - 提供多种配置和管理功能(对接shell脚本)"""
+    print("LANG:", os.environ.get("LANG"))
+    print("LANGUAGE:", os.environ.get("LANGUAGE"))
+
     command = sys.argv[1]
 
     # 检查服务器是否使用静态IP并提供交互式选项
