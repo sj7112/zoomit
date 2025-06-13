@@ -8,7 +8,56 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
   : "${LIB_DIR:=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}" # lib direcotry
 
   declare -A LANGUAGE_MSGS # 二维语言关联数组
-  SYS_LANG=""              # 系统语言设置（如 en_US.UTF-8）
+
+  # 测试终端是否支持UTF-8字符
+  # 返回 0 表示支持，1 表示不支持
+  test_terminal_display() {
+    local temp_file=$(mktemp)
+    local test_strings=(
+      "café résumé € ¥"
+      "→ ← ↑ ↓"
+      "± × ÷ ≈"
+      "😊 🌟 ❤️"
+      "⚡ 🔥 💻"
+      "你好世界"
+      "こんにちは"
+      "안녕하세요"
+    )
+
+    local total_expected_bytes=0
+    local actual_bytes=0
+
+    # 计算预期字节数并测试输出
+    for test_str in "${test_strings[@]}"; do
+      if printf "%s\n" "$test_str" >>"$temp_file" 2>/dev/null; then
+        # 计算这个字符串的UTF-8字节长度
+        local str_bytes=$(printf "%s" "$test_str" | wc -c 2>/dev/null || echo 0)
+        total_expected_bytes=$((total_expected_bytes + str_bytes + 1)) # +1 for newline
+      else
+        # 如果无法输出，说明不支持
+        rm -f "$temp_file"
+        return 1
+      fi
+    done
+
+    # 检查实际文件大小
+    actual_bytes=$(wc -c <"$temp_file" 2>/dev/null || echo 0)
+    rm -f "$temp_file"
+
+    # 如果实际字节数明显小于预期，说明UTF-8字符被截断或转换
+    if [[ $actual_bytes -lt $((total_expected_bytes - 10)) ]]; then
+      return 1
+    fi
+
+    # 额外检查：locale是否支持UTF-8
+    if command -v locale >/dev/null 2>&1; then
+      if ! locale charmap 2>/dev/null | grep -qi "utf"; then
+        return 1
+      fi
+    fi
+
+    return 0
+  }
 
   # ==============================================================================
   # 初始化语言相关函数
@@ -169,7 +218,7 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
   }
 
   # 更新或添加 LANG 设置
-  set_user_language() {
+  update_user_locale() {
     local profile_file="$HOME/.profile"
     if [ -n "$profile_file" ]; then
       set_user_lang_profile "$1" # 优先设置 ~/.profile
@@ -187,22 +236,26 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
     local lang=$(get_default_lang)         # 返回 LANG 系统默认值
     local new_lang=$(check_locale "$lang") # UTF-8修复
     if [ $? -ne 0 ]; then
-      echo "Does not support UTF-8, use language $new_lang"
-    else
-      echo "Use language $new_lang"
+      echo "Need UTF-8, try to fix LANG: $lang..."
     fi
-    local curr_lang=${LC_ALL:-${LANG:-C}} # 读取用户语言设置
+
+    if ! test_terminal_display; then
+      new_lang="en_US.UTF-8" # 终端不支持UTF-8，强制设置为 en_US.UTF-8
+      echo "Terminal does not support UTF-8, set LANG to $new_lang"
+    else
+      echo "set LANG to $new_lang"
+      local curr_lang=${LC_ALL:-${LANG:-C}} # 读取用户语言设置
+      if [ "${curr_lang,,}" != "${new_lang,,}" ]; then
+        if confirm_action "Change $USER language from [$curr_lang] to [$new_lang]?"; then
+          update_user_locale "$new_lang" # 永久改变 LANG 和 LANGUAGE
+        fi
+      fi
+    fi
 
     export LANG="$new_lang"            # 设置 LANG
     local base="${new_lang%.*}"        # 移除 .utf8 / .UTF-8
     local short="${base%_*}"           # 语言代码
     export LANGUAGE="${base}:${short}" # 设置 LANGUAGE
-
-    if [ "${curr_lang,,}" != "${new_lang,,}" ]; then
-      if confirm_action "Reset User default language[$curr_lang => $new_lang]?"; then
-        set_user_language "$new_lang" # 永久改变 LANG 和 LANGUAGE
-      fi
-    fi
   }
 
   # ==============================================================================
