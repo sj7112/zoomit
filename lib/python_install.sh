@@ -67,17 +67,130 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     esac
   }
 
-  # 智能 wget 函数
+  # 增强版智能 wget 函数
   smart_wget() {
     local output="$1"
     local url="$2"
+    local pid
+    local counter=0
+    local prev_size=0
+    local start_time
+    local display_content=""
+    local cached_stats=""
 
-    if wget --help 2>&1 | grep -q -- '--show-progress'; then
-      echo "wget -c -q --show-progress -O $output $url"
-      wget -c -q --show-progress -O "$output" "$url"
+    # 检查参数
+    if [ -z "$output" ] || [ -z "$url" ]; then
+      echo "错误: 用法 smart_wget <输出文件> <URL>"
+      return 1
+    fi
+
+    echo "开始下载: $url -> $output"
+    echo "开始时间: $(date)"
+
+    # 启动wget后台下载
+    wget -c -q -O "$output" "$url" &
+
+    pid=$!
+    start_time=$(date +%s)
+
+    # 每0.5秒监控循环
+    while kill -0 "$pid" 2>/dev/null; do
+      counter=$((counter + 1))
+
+      # 旋转指示器（每0.5秒更新）
+      case $((counter % 4)) in
+        0) spinner="-" ;;
+        1) spinner="\\" ;;
+        2) spinner="|" ;;
+        3) spinner="/" ;;
+      esac
+
+      # 计算运行时间
+      local elapsed=$(($(date +%s) - start_time))
+      local elapsed_formatted=$(printf "%02d:%02d:%02d" $((elapsed / 3600)) $((elapsed % 3600 / 60)) $((elapsed % 60)))
+
+      # 每3秒进行一次完整计算（counter * 0.5秒，所以 counter % 6 == 0）
+      if [ $((counter % 6)) -eq 0 ] || [ $counter -eq 1 ]; then
+
+        # 获取文件信息
+        if [ -f "$output" ]; then
+          # 获取文件大小（字节）
+          local current_size
+          if stat -c%s "$output" >/dev/null 2>&1; then
+            current_size=$(stat -c%s "$output" 2>/dev/null)
+          elif stat -f%z "$output" >/dev/null 2>&1; then
+            current_size=$(stat -f%z "$output" 2>/dev/null)
+          else
+            current_size=0
+          fi
+
+          # 人类可读大小
+          local human_size
+          if [ "$current_size" -gt 1073741824 ]; then
+            human_size="$(echo "$current_size" | awk '{printf "%.1fG", $1/1073741824}')"
+          elif [ "$current_size" -gt 1048576 ]; then
+            human_size="$(echo "$current_size" | awk '{printf "%.0fM", $1/1048576}')"
+          elif [ "$current_size" -gt 1024 ]; then
+            human_size="$(echo "$current_size" | awk '{printf "%.0fK", $1/1024}')"
+          else
+            human_size="${current_size}B"
+          fi
+
+          # 计算变化
+          local size_change=$((current_size - prev_size))
+
+          # 计算平均速度
+          local avg_speed_text="计算中..."
+          if [ "$elapsed" -gt 0 ] && [ "$current_size" -gt 0 ]; then
+            local avg_speed=$((current_size / elapsed))
+            if [ "$avg_speed" -gt 1048576 ]; then
+              avg_speed_text="$(echo "$avg_speed" | awk '{printf "%.1fMB/s", $1/1048576}')"
+            elif [ "$avg_speed" -gt 1024 ]; then
+              avg_speed_text="$(echo "$avg_speed" | awk '{printf "%.1fKB/s", $1/1024}')"
+            else
+              avg_speed_text="${avg_speed}B/s"
+            fi
+          fi
+
+          # 缓存统计信息（除了spinner和时间）
+          cached_stats="大小: $human_size ↑$size_change | 平均: $avg_speed_text"
+          prev_size=$current_size
+        else
+          cached_stats="等待文件创建..."
+        fi
+      fi
+
+      # 每0.5秒更新显示（只更新spinner和当前时间）
+      display_content="[$spinner] $(date '+%H:%M:%S') | 运行时间: $elapsed_formatted | $cached_stats"
+      printf "\r$display_content                    "
+      sleep 0.5
+    done
+
+    # 检查结果
+    echo ""
+    wait "$pid"
+    local exit_code=$?
+
+    if [ $exit_code -eq 0 ] && [ -f "$output" ]; then
+      local final_size
+      if [ -f "$output" ]; then
+        local final_bytes
+        if stat -c%s "$output" >/dev/null 2>&1; then
+          final_bytes=$(stat -c%s "$output")
+        elif stat -f%z "$output" >/dev/null 2>&1; then
+          final_bytes=$(stat -f%z "$output")
+        fi
+
+        if [ "$final_bytes" -gt 1048576 ]; then
+          final_size="$(echo "$final_bytes" | awk '{printf "%.1fMB", $1/1048576}')"
+        else
+          final_size="$(du -h "$output" 2>/dev/null | cut -f1)"
+        fi
+      fi
+      echo "✓ 下载完成! 文件大小: $final_size"
     else
-      echo "wget -c -q -O $output $url"
-      wget -c -q -O "$output" "$url"
+      echo "✗ 下载失败"
+      return $exit_code
     fi
   }
 
@@ -139,6 +252,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     # 检查是否需要重新安装 Python
     local def_bin="$(command -v python3 2>/dev/null || true)"
     local loc_bin="$PY_INST_DIR/bin/python3"
+
     if ! check_py_version "$def_bin" && ! check_py_version "$loc_bin"; then
       install_py_standalone "$loc_bin"
     fi
