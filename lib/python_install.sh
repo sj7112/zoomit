@@ -23,7 +23,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
   # 安装python虚拟环境
   # ==============================================================================
   # 判断是否已有 Python 3.10+
-  check_python_version() {
+  check_py_version() {
     local py_path=$1
     if [ -n "$py_path" ] && "$py_path" -c 'import sys; exit(0) if sys.version_info >= (3,10) else exit(1)' 2>/dev/null; then
       # 确保 venv 和 ensurepip 都存在
@@ -34,19 +34,6 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
       fi
     fi
     return 1
-  }
-
-  # 检查 Python 是否已安装
-  check_existing_python() {
-    local default_bin="$(command -v python3 2>/dev/null || true)"
-    local local_bin="$PY_INST_DIR/bin/python3"
-    if check_python_version "$default_bin"; then
-      return 0
-    elif check_python_version "$local_bin"; then
-      return 0
-    else
-      return 1
-    fi
   }
 
   # 检测系统架构和发行版
@@ -95,17 +82,14 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
   }
 
   # 下载并安装 Python standalone
-  install_python_standalone() {
+  install_py_standalone() {
+    local loc_bin="$1"
     local system_type=$(detect_system)
     local python_url=$(get_python_url "$system_type")
 
-    info "下载 Python $PY_VERSION standalone..."
-    info "下载地址: $python_url"
-
     # 下载文件（支持断点续传）
+    info "下载 Python $PY_VERSION standalone..."
     smart_wget "$PY_GZ_FILE" "$python_url"
-    # echo "wget -c -q --show-progress -O $PY_GZ_FILE $python_url"
-    # wget -c -q --show-progress -O "$PY_GZ_FILE" "$python_url"
 
     # 解压到安装目录
     info "安装 Python 到 $PY_INST_DIR..."
@@ -114,40 +98,27 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
       exiterr "解压安装失败"
     fi
 
-    # 清理临时文件
-    PY_BIN="$PY_INST_DIR/bin/python3"
-    info "Python $PY_VERSION 安装完成！"
-  }
-
-  # 验证 Python 安装
-  verify_python() {
-    local python_bin="$PY_INST_DIR/bin/python3"
-
-    if [[ ! -x "$python_bin" ]]; then
-      exiterr "Python 安装验证失败: $python_bin 不存在或不可执行"
+    # 验证是否可用
+    if ! check_py_version "$loc_bin"; then
+      exiterr "Python 安装失败: $loc_bin 不存在或不可执行"
+    else
+      info "Python $PY_VERSION 安装完成！"
     fi
-
-    local inst_version=$("$python_bin" --version 2>&1 | awk '{print $2}')
-    if [[ "$inst_version" != "$PY_VERSION" ]]; then
-      exiterr "版本不匹配: 期望 $PY_VERSION, 实际 $inst_version"
-    fi
-
-    info "Python 验证成功: $inst_version"
   }
 
   # 创建虚拟环境并安装常用包
-  create_venv_with_packages() {
+  create_py_venv() {
     # 删除已存在的虚拟环境
     if [[ -d "$VENV_DIR" ]]; then
-      if confirm_action "虚拟环境 $VENV_DIR 已存在，是否删除重建？"; then
-        rm -rf "$VENV_DIR"
-      else
+      if ! confirm_action "虚拟环境 $VENV_DIR 已存在，是否删除重建？"; then
         if confirm_action "是否重建 pip 和所需 python 库？"; then
-          sh_install_pip
+          return 0 # 重建pip
         else
           warning "跳过虚拟环境创建"
+          return 1
         fi
-        return
+      else
+        rm -rf "$VENV_DIR"
       fi
     else
       info "创建虚拟环境 $VENV_DIR..."
@@ -155,23 +126,27 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
 
     # 创建虚拟环境
     if "$PY_BIN" -m venv "$VENV_DIR"; then
-      sh_install_pip # 激活虚拟环境并安装所需的基础包
       success "虚拟环境创建成功！"
+      return 0 # 创建pip
     else
       exiterr "创建虚拟环境失败"
+      return 1
     fi
   }
 
   # 安装 Python 并创建虚拟环境
   install_py_venv() {
     # 检查是否需要重新安装 Python
-    if ! check_existing_python; then
-      install_python_standalone
-      verify_python
+    local def_bin="$(command -v python3 2>/dev/null || true)"
+    local loc_bin="$PY_INST_DIR/bin/python3"
+    if ! check_py_version "$def_bin" && ! check_py_version "$loc_bin"; then
+      install_py_standalone "$loc_bin"
     fi
 
     # 创建虚拟环境并安装包
-    create_venv_with_packages
+    if create_py_venv; then
+      sh_install_pip # 安装 pip 和所需的基础包
+    fi
   }
 
   # ==============================================================================

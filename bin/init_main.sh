@@ -6,6 +6,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
 
   LIB_DIR="$(dirname "$BIN_DIR")/lib" # lib direcotry
   source "$LIB_DIR/msg_handler.sh"
+  source "$LIB_DIR/lang_utils.sh"
   source "$LIB_DIR/bash_utils.sh"
   source "$LIB_DIR/cmd_handler.sh"
   source "$LIB_DIR/json_handler.sh"
@@ -23,8 +24,72 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   DISTRO_PM=""       # 包管理器
   DISTRO_OSTYPE=""   # 发行版名称
   DISTRO_CODENAME="" # 发行版代号 | 版本号
-  SYS_LANG=""        # 系统语言设置（如 en_US.UTF-8）
   SUDO_CMD=""        # sudo 默认为空字符串
+
+  # ** 环境变量：包管理器 | 操作系统名称 **
+  initial_global() {
+    if [ -f /etc/os-release ]; then
+      . /etc/os-release
+      case "$ID" in
+        debian)
+          DISTRO_OSTYPE="debian"
+          DISTRO_PM="apt" # Debian | Ubuntu
+          ;;
+        ubuntu)
+          DISTRO_OSTYPE="ubuntu"
+          DISTRO_PM="apt" # Debian | Ubuntu
+          ;;
+        centos)
+          DISTRO_OSTYPE="centos"
+          DISTRO_PM="yum" # CentOS
+          ;;
+        rhel)
+          DISTRO_OSTYPE="rhel"
+          DISTRO_PM="dnf" # RHEL
+          ;;
+        opensuse* | suse)
+          DISTRO_OSTYPE="opensuse"
+          DISTRO_PM="zypper" # openSUSE
+          ;;
+        arch)
+          DISTRO_OSTYPE="arch"
+          DISTRO_PM="pacman" # Arch
+          ;;
+        *)
+          exiterr "Unsupported distribution: $ID ($PRETTY_NAME)"
+          ;;
+      esac
+    else
+      exiterr "Unable to detect Linux distribution, cannot proceed"
+    fi
+
+    # ** 环境变量：发行版代号 | 版本号 **
+    if [ -f /etc/os-release ]; then
+      DISTRO_CODENAME=$(grep "^VERSION_CODENAME=" /etc/os-release | cut -d'=' -f2 || true)
+
+      # 部分发行版如没有VERSION_CODENAME
+      if [ -z "$DISTRO_CODENAME" ]; then
+        # Rocky Linux、AlmaLinux 等用版本号替代
+        DISTRO_CODENAME=$(grep "^VERSION_ID=" /etc/os-release | cut -d= -f2 | tr -d '"' || true)
+        case "$DISTRO_OSTYPE" in
+          centos)
+            # CentOS 6/7 特判
+            if [[ "$DISTRO_CODENAME" = "6" || "$DISTRO_CODENAME" = "7" ]]; then
+              DISTRO_CODENAME=$(sed 's/.*release \([0-9.]*\) .*/\1/' /etc/centos-release)
+            fi
+            ;;
+          arch)
+            # Arch无代号
+            DISTRO_CODENAME="arch"
+            ;;
+        esac
+      fi
+    elif command -v lsb_release &>/dev/null; then
+      DISTRO_CODENAME=$(lsb_release -c | awk '{print $2}' || true)
+    else
+      DISTRO_CODENAME="unknown"
+    fi
+  }
 
   # ==============================================================================
   # 兼容：debian | ubuntu | centos | rhel | openSUSE | arch Linux
@@ -48,164 +113,6 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     fi
   }
 
-  # 格式化语言代码
-  normalize_locale() {
-    input="$1"
-
-    # 提取语言部分和编码部分
-    lang_part=$(echo "$input" | cut -d. -f1)
-    charset_part=$(echo "$input" | cut -s -d. -f2)
-
-    # 分别处理语言国家部分（如 zh_CN）
-    # 小写语言码 + 大写国家码
-    lang_prefix=$(echo "$lang_part" | cut -d_ -f1 | tr '[:upper:]' '[:lower:]')
-    lang_suffix=$(echo "$lang_part" | cut -d_ -f2 | tr '[:lower:]' '[:upper:]')
-
-    # 重组语言部分
-    norm_lang="${lang_prefix}_${lang_suffix}"
-
-    # 编码部分统一成小写，如 utf8 / iso8859-1
-    if [ -n "$charset_part" ]; then
-      norm_charset=$(echo "$charset_part" | tr '[:upper:]' '[:lower:]')
-      echo "${norm_lang}.${norm_charset}"
-    else
-      echo "$norm_lang"
-    fi
-  }
-
-  # 获取默认语言
-  get_default_lang() {
-    default_lang=""
-    for file in /etc/locale.conf /etc/default/locale /etc/sysconfig/i18n; do
-      if [ -f "$file" ]; then
-        default_lang=$(grep "^LANG=" "$file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '"')
-        if [ -n "$default_lang" ]; then
-          SYS_LANG="$default_lang"
-          local base_lang="${SYS_LANG%.*}"             # 移除 .utf8 / .UTF-8
-          local short_lang="${base_lang%_*}"           # 语言代码
-          export LANGUAGE="${base_lang}:${short_lang}" # 获取语言代码（如 en_US.utf8 -> en_US:en）
-          return 0
-        fi
-      fi
-    done
-
-    # Check if the system default language was retrieved
-    echo "Please set shell language (e.g., en_US.utf8):"
-    while true; do
-      read -r input_lang
-
-      # Validate the format (e.g., xx_YY.utf8)
-      normalized=$(normalize_locale "$input_lang")
-      if [[ "$normalized" =~ ^[a-z]{2}_[A-Z]{2}(\.[a-z0-9-]+)?$ ]]; then
-        # Check if it exists in the locale -a list
-        if locale -a | grep -Fxq "$normalized"; then
-          default_lang="$normalized"
-          break
-        else
-          echo "Language not in the system locale list (locale -a). Please re-enter:"
-        fi
-      else
-        echo "Invalid language format. Please re-enter (e.g., en_US.utf8):"
-      fi
-    done
-    SYS_LANG="$default_lang"
-    local base_lang="${SYS_LANG%.*}"             # 移除 .utf8 / .UTF-8
-    local short_lang="${base_lang%_*}"           # 语言代码
-    export LANGUAGE="${base_lang}:${short_lang}" # 获取语言代码（如 en_US.utf8 -> en_US:en）
-  }
-
-  # 更新或添加 LANG 设置到 ~/.profile
-  set_user_lang_profile() {
-    local lang="$1" # 目标语言（如 zh_CN.utf8）
-
-    local profile_file="$HOME/.profile" # 优先修改 ~/.profile
-    if [ ! -f "$profile_file" ]; then
-      touch "$profile_file"
-    fi
-
-    # 更新或添加 LANG 设置
-    if grep -q "^LANG=" "$profile_file"; then
-      sed -i "s|^LANG=.*|LANG=\"$lang\"|" "$profile_file"
-    else
-      echo "LANG=\"$lang\"" | tee -a "$profile_file" >/dev/null
-    fi
-
-    # 从 lang 生成 LANGUAGE 值，例如 en_US.utf8 -> en_US:en
-    local base_lang="${lang%.*}"       # 移除 .utf8 / .UTF-8
-    local short_lang="${base_lang%_*}" # 语言代码
-    local language_value="${base_lang}:${short_lang}"
-    # 更新或添加 LANGUAGE 设置
-    if grep -q "^LANGUAGE=" "$profile_file"; then
-      sed -i "s|^LANGUAGE=.*|LANGUAGE=\"$language_value\"|" "$profile_file"
-    else
-      echo "LANGUAGE=\"$language_value\"" | tee -a "$profile_file" >/dev/null
-    fi
-    # shellcheck disable=SC1090
-    source "$profile_file" # 重新加载配置文件
-    return 0
-  }
-
-  # 更新或添加 LANG 设置
-  set_user_lang_sh() {
-    local config_file="$1"
-    local lang="$2" # 目标语言（如 en_US.utf8）
-
-    if [ ! -f "$config_file" ]; then
-      touch "$config_file"
-    fi
-
-    # 更新或添加 LANG 设置
-    export_line="export LANG=\"$lang\""
-    if grep -q "^export LANG=" "$config_file"; then
-      sed -i "s|^export LANG=.*|$export_line|" "$config_file"
-    else
-      echo "$export_line" | tee -a "$config_file" >/dev/null
-    fi
-
-    # 从 lang 生成 LANGUAGE 值，例如 en_US.utf8 -> en_US:en
-    local base_lang="${lang%.*}"       # 移除 .utf8 / .UTF-8
-    local short_lang="${base_lang%_*}" # 语言代码
-    local language_value="${base_lang}:${short_lang}"
-    # 更新或添加 LANGUAGE 设置
-    local export_line="export LANGUAGE=\"$language_value\""
-    if grep -q "^export LANGUAGE=" "$config_file"; then
-      sed -i "s|^export LANGUAGE=.*|$export_line|" "$config_file"
-    else
-      echo "$export_line" | tee -a "$config_file" >/dev/null
-    fi
-    # shellcheck disable=SC1090
-    source "$config_file" # 重新加载配置文件
-    return 0
-  }
-
-  # 更新或添加 LANG 设置
-  set_user_language() {
-    local profile_file="$HOME/.profile"
-    if [ -n "$profile_file" ]; then
-      set_user_lang_profile "$1" # 优先设置 ~/.profile
-    elif [[ "$SHELL" =~ "bash" ]]; then
-      set_user_lang_sh "$HOME/.bashrc" "$1" # 设置 ~/.bashrc
-    elif [[ "$SHELL" =~ "zsh" ]]; then
-      set_user_lang_sh "$HOME/.zshrc" "$1" # 设置 ~/.zshrc
-    else
-      set_user_lang_profile "$1" # 非bash或zsh，设置 ~/.profile
-    fi
-  }
-
-  # 检查当前用户的语言是否为C或POSIX
-  check_user_lang() {
-    local curr_lang=${LC_ALL:-${LANG:-C}} # 当前用户语言设置
-    if [ "${curr_lang,,}" != "${SYS_LANG,,}" ]; then
-      if confirm_action "Set default language as $SYS_LANG"; then
-        set_user_language "$SYS_LANG" # 设置用户语言
-      else
-        export LANG="en_US.UTF-8"
-        export LANGUAGE="en_US:en"
-      fi
-    fi
-    info "User default language: $SYS_LANG"
-  }
-
   # ==============================================================================
   # 函数: initial_env 检查root权限和sudo
   # @i18n: This function needs internationalization
@@ -213,13 +120,10 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   initial_env() {
     # 1. 检查用户是否为 root（非root检测sudo可用）
     check_user_sudo
-
     # 2. 检查并调整当前用户的语言设置
-    check_user_lang
-
+    reset_user_lang
     # 3. 检查并安装 Python3 虚拟环境
     install_py_venv
-
     # 4. 选择包管理器
     sh_update_source # 选择包管理器（内有交互）
     exiterr "请手动修改软件源后再运行" "$DISTRO_OSTYPE" \
@@ -384,73 +288,8 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   # 公共初始化子函数（兼容：debian | ubuntu | centos | rhel | openSUSE | arch Linux）
   # ==============================================================================
   init_main() {
-    # ** 环境变量：包管理器 | 操作系统名称 **
-    if [ -f /etc/os-release ]; then
-      . /etc/os-release
-      case "$ID" in
-        debian)
-          DISTRO_OSTYPE="debian"
-          DISTRO_PM="apt" # Debian | Ubuntu
-          ;;
-        ubuntu)
-          DISTRO_OSTYPE="ubuntu"
-          DISTRO_PM="apt" # Debian | Ubuntu
-          ;;
-        centos)
-          DISTRO_OSTYPE="centos"
-          DISTRO_PM="yum" # CentOS
-          ;;
-        rhel)
-          DISTRO_OSTYPE="rhel"
-          DISTRO_PM="dnf" # RHEL
-          ;;
-        opensuse* | suse)
-          DISTRO_OSTYPE="opensuse"
-          DISTRO_PM="zypper" # openSUSE
-          ;;
-        arch)
-          DISTRO_OSTYPE="arch"
-          DISTRO_PM="pacman" # Arch
-          ;;
-        *)
-          exiterr "Unsupported distribution: $ID ($PRETTY_NAME)"
-          ;;
-      esac
-    else
-      exiterr "Unable to detect Linux distribution, cannot proceed"
-    fi
-
-    # ** 环境变量：发行版代号 | 版本号 **
-    if [ -f /etc/os-release ]; then
-      DISTRO_CODENAME=$(grep "^VERSION_CODENAME=" /etc/os-release | cut -d'=' -f2 || true)
-
-      # 部分发行版如没有VERSION_CODENAME
-      if [ -z "$DISTRO_CODENAME" ]; then
-        # Rocky Linux、AlmaLinux 等用版本号替代
-        DISTRO_CODENAME=$(grep "^VERSION_ID=" /etc/os-release | cut -d= -f2 | tr -d '"' || true)
-        case "$DISTRO_OSTYPE" in
-          centos)
-            # CentOS 6/7 特判
-            if [[ "$DISTRO_CODENAME" = "6" || "$DISTRO_CODENAME" = "7" ]]; then
-              DISTRO_CODENAME=$(sed 's/.*release \([0-9.]*\) .*/\1/' /etc/centos-release)
-            fi
-            ;;
-          arch)
-            # Arch无代号
-            DISTRO_CODENAME="arch"
-            ;;
-        esac
-      fi
-    elif command -v lsb_release &>/dev/null; then
-      DISTRO_CODENAME=$(lsb_release -c | awk '{print $2}' || true)
-    else
-      DISTRO_CODENAME="unknown"
-    fi
-
-    # 设置 shell 语言
-    get_default_lang
-    load_lang_msgs
-
+    initial_global  # 设置环境变量
+    load_trans_msgs # 加载翻译文件
     echo "=== init system start - $PRETTY_NAME ==="
     initial_env # 基础值初始化
     # config_sshd # SSH配置

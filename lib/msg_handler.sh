@@ -18,9 +18,6 @@ if [[ -z "${LOADED_MSG_HANDLER:-}" ]]; then
   RED_BG='\033[41m'      # 红色背景
   NC='\033[0m'           # No Color
 
-  # 声明全局二维关联数组
-  declare -A LANGUAGE_MSGS
-
   # 获取当前系统语言
   ENVIRONMENT="TEST"    # TEST 测试环境 | PROD 生产环境
   LANG_CODE=${LANG:0:2} # 取前两个字母，比如 "en"、"zh"
@@ -62,89 +59,6 @@ if [[ -z "${LOADED_MSG_HANDLER:-}" ]]; then
     MSG_WARNING="WARNING"
     MSG_INFO="INFO"
   fi
-
-  # 获取语言配置文件路径
-  get_language_prop() {
-    local lang_format="${1:-$LANGUAGE}"
-    # 解析语言格式 zh_CN:zh -> zh_CN 和 zh
-    local primary_lang="${lang_format%%:*}"  # zh_CN
-    local fallback_lang="${lang_format##*:}" # zh
-
-    # 优先查找完整语言文件
-    if [[ -f "$LANG_DIR/${primary_lang}.properties" ]]; then
-      echo "$LANG_DIR/${primary_lang}.properties"
-      return 0
-    fi
-
-    # 其次查找简化语言文件
-    if [[ -f "$LANG_DIR/${fallback_lang}.properties" ]]; then
-      echo "$LANG_DIR/${fallback_lang}.properties"
-      return 0
-    fi
-
-    # 都没找到返回错误
-    echo "Error: No language file found for '$lang_format'" >&2
-    return 1
-  }
-
-  # 加载语言消息(手动 key 拼接模拟子 map)
-  load_lang_msgs() {
-    # 判断是否已经加载过
-    if [[ -v LANGUAGE_MSGS ]] && [[ ${#LANGUAGE_MSGS[@]} -ne 0 ]]; then
-      return 0 # 已加载，直接返回
-    fi
-
-    local properties_file=$(get_language_prop)
-    if [[ $? -ne 0 ]]; then
-      echo "Use default language 'en_US:en'" >&2
-      properties_file=$(get_language_prop 'en_US:en')
-    fi
-
-    local current_file=""
-    while IFS= read -r line; do
-      # 跳过空行
-      [[ -z "$line" ]] && continue
-
-      # 跳过普通注释行，但保留文件标记
-      if [[ "$line" =~ ^[[:space:]]*# ]]; then
-        # 匹配文件标记 ■=filename
-        if [[ "$line" =~ ^#[[:space:]]*■=(.+)$ ]]; then
-          current_file="${BASH_REMATCH[1]}"
-        fi
-        continue
-      fi
-
-      # 跳过分隔行
-      [[ "$line" =~ ^[[:space:]]*--- ]] && continue
-
-      # 匹配键值对 KEY=VALUE
-      if [[ "$line" =~ ^([A-Za-z0-9_-]+)=(.*)$ ]]; then
-        local key="${BASH_REMATCH[1]}"
-        local value="${BASH_REMATCH[2]}"
-
-        # 处理多行值（以 \ 结尾的行）
-        while [[ "$value" =~ \\[[:space:]]*$ ]]; do
-          # 移除末尾的反斜杠和空白
-          value="${value%\\*}"
-          # 读取下一行并追加
-          if IFS= read -r next_line; then
-            # 移除前导空白
-            next_line="${next_line#"${next_line%%[![:space:]]*}"}"
-            value="${value}${next_line}"
-          else
-            break
-          fi
-        done
-
-        # 存储到数组中，使用文件名作为key前缀
-        if [[ -n "$current_file" ]]; then
-          LANGUAGE_MSGS["${current_file}:${key}"]="$value"
-        fi
-      fi
-    done <"$properties_file"
-
-    echo "Loaded ${#LANGUAGE_MSGS[@]} messages from $properties_file"
-  }
 
   # 返回所有输入参数中的最小值
   min() {
@@ -500,31 +414,11 @@ EOF
     shift $((OPTIND - 1))
 
     # 自动翻译
+    local result
     if [[ "$no_translate" == false && -n "$1" ]]; then
-      local current_hash=$(_djb2_with_salt_20 "$1")             # 使用DJB2哈希算法生成消息ID
-      current_hash=$(padded_number_to_base64 "$current_hash"_6) # 转换为6位base64编码
-      source_file="${BASH_SOURCE[2]#$(dirname "$LIB_DIR")/}"    # 去掉根目录
-      local key="${source_file}:$current_hash"
-      local result=""
-
-      # 检查键是否存在
-      if [[ -v "LANGUAGE_MSGS[$key]" ]]; then
-        result="${LANGUAGE_MSGS[$key]}"
-      fi
-
-      if [[ -z "$result" ]]; then
-        # 如果没有找到翻译，使用MD5再试一次
-        current_hash=$(md5 "$1")
-        key="${source_file}:$current_hash"
-        if [[ -v "LANGUAGE_MSGS[$key]" ]]; then
-          result="${LANGUAGE_MSGS[$key]}"
-        fi
-      fi
-
-      if [[ -z "$result" ]]; then
-        # 如果还是没有找到翻译，使用原始消息
-        result="$1"
-      fi
+      result=$(get_trans_msg "$1") # 获取翻译消息
+    else
+      result="$1" # 不需要翻译，直接使用原始消息
     fi
     local template=$(msg_parse_tmpl "$result" "${@:2}") # parse text by template
 
