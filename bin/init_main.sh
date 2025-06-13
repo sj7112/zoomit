@@ -120,11 +120,9 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   initial_env() {
     # 1. 检查用户是否为 root（非root检测sudo可用）
     check_user_sudo
-    # 2. 检查并调整当前用户的语言设置
-    reset_user_lang
-    # 3. 检查并安装 Python3 虚拟环境
+    # 2. 检查并安装 Python3 虚拟环境
     install_py_venv
-    # 4. 选择包管理器
+    # 3. 选择包管理器
     sh_update_source # 选择包管理器（内有交互）
     exiterr "请手动修改软件源后再运行" "$DISTRO_OSTYPE" \
       "如果需要，请手动修改软件源列表 /etc/apt/sources.list 或 /etc/yum.repos.d/*.repo"

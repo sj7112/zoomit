@@ -38,18 +38,21 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
     fi
   }
 
-  # 获取默认语言
+  # 获取默认语言(不允许使用 C 或 POSIX)
   get_default_lang() {
     default_lang=""
     for file in /etc/locale.conf /etc/default/locale /etc/sysconfig/i18n; do
       if [ -f "$file" ]; then
         default_lang=$(grep "^LANG=" "$file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '"')
         if [ -n "$default_lang" ]; then
-          SYS_LANG="$default_lang"
-          local base_lang="${SYS_LANG%.*}"             # 移除 .utf8 / .UTF-8
-          local short_lang="${base_lang%_*}"           # 语言代码
-          export LANGUAGE="${base_lang}:${short_lang}" # 获取语言代码（如 en_US.UTF-8 -> en_US:en）
-          return 0
+          if [[ "$LANG" == "C" || "$LANG" == "POSIX" ]]; then
+            break # 必须重新选择语言
+          fi
+          local base="${default_lang%.*}"    # 移除 .utf8 / .UTF-8
+          local short="${base%_*}"           # 语言代码
+          export LANGUAGE="${base}:${short}" # 获取语言代码（如 en_US.UTF-8 -> en_US:en）
+          echo "$default_lang"
+          return
         fi
       fi
     done
@@ -58,7 +61,9 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
     echo "Please set shell language (e.g., en_US.UTF-8):"
     while true; do
       read -r input_lang
-
+      if [[ "$LANG" == "C" || "$LANG" == "POSIX" ]]; then
+        echo "Invalid language format. Please re-enter (e.g., en_US.UTF-8):"
+      fi
       # Validate the format (e.g., xx_YY.UTF-8)
       normalized=$(normalize_locale "$input_lang")
       if [[ "$normalized" =~ ^[a-z]{2}_[A-Z]{2}(\.[a-z0-9-]+)?$ ]]; then
@@ -73,10 +78,38 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
         echo "Invalid language format. Please re-enter (e.g., en_US.UTF-8):"
       fi
     done
-    SYS_LANG="$default_lang"
-    local base_lang="${SYS_LANG%.*}"             # 移除 .utf8 / .UTF-8
-    local short_lang="${base_lang%_*}"           # 语言代码
-    export LANGUAGE="${base_lang}:${short_lang}" # 获取语言代码（如 en_US.UTF-8 -> en_US:en）
+    echo "$default_lang"
+  }
+
+  # 检查当前语言设置是否支持UTF-8
+  check_locale() {
+    lang=$1
+    need_change=0
+
+    case "$lang" in
+      *GB2312* | *GBK* | *Big5*)
+        new_lang=$(echo "$lang" | sed 's/\.[^.]*$/.UTF-8/')
+        ;;
+      *EUC-JP* | *SHIFT_JIS*)
+        new_lang=$(echo "$lang" | sed 's/\.[^.]*$/.UTF-8/')
+        ;;
+      *EUC-KR*)
+        new_lang=$(echo "$lang" | sed 's/\.[^.]*$/.UTF-8/')
+        ;;
+      *KOI8-R* | *CP1251*)
+        new_lang=$(echo "$lang" | sed 's/\.[^.]*$/.UTF-8/')
+        ;;
+      *ISO8859-6* | *TIS-620*)
+        new_lang=$(echo "$lang" | sed 's/\.[^.]*$/.UTF-8/')
+        ;;
+      *)
+        new_lang="$lang" # 其他语言或UTF-8，无需修改
+        need_change=1
+        ;;
+    esac
+
+    echo "$new_lang"    # 返回新的语言设置
+    return $need_change # 返回是否需要修改
   }
 
   # 更新或添加 LANG 设置到 ~/.profile
@@ -96,18 +129,13 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
     fi
 
     # 从 lang 生成 LANGUAGE 值，例如 en_US.UTF-8 -> en_US:en
-    local base_lang="${lang%.*}"       # 移除 .utf8 / .UTF-8
-    local short_lang="${base_lang%_*}" # 语言代码
-    local language_value="${base_lang}:${short_lang}"
+    local language_value="$LANGUAGE"
     # 更新或添加 LANGUAGE 设置
     if grep -q "^LANGUAGE=" "$profile_file"; then
       sed -i "s|^LANGUAGE=.*|LANGUAGE=\"$language_value\"|" "$profile_file"
     else
       echo "LANGUAGE=\"$language_value\"" | tee -a "$profile_file" >/dev/null
     fi
-    # shellcheck disable=SC1090
-    source "$profile_file" # 重新加载配置文件
-    return 0
   }
 
   # 更新或添加 LANG 设置
@@ -128,9 +156,9 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
     fi
 
     # 从 lang 生成 LANGUAGE 值，例如 en_US.UTF-8 -> en_US:en
-    local base_lang="${lang%.*}"       # 移除 .utf8 / .UTF-8
-    local short_lang="${base_lang%_*}" # 语言代码
-    local language_value="${base_lang}:${short_lang}"
+    local base="${lang%.*}"  # 移除 .utf8 / .UTF-8
+    local short="${base%_*}" # 语言代码
+    local language_value="${base}:${short}"
     # 更新或添加 LANGUAGE 设置
     local export_line="export LANGUAGE=\"$language_value\""
     if grep -q "^export LANGUAGE=" "$config_file"; then
@@ -138,9 +166,6 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
     else
       echo "$export_line" | tee -a "$config_file" >/dev/null
     fi
-    # shellcheck disable=SC1090
-    source "$config_file" # 重新加载配置文件
-    return 0
   }
 
   # 更新或添加 LANG 设置
@@ -157,19 +182,27 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
     fi
   }
 
-  # 检查当前用户的语言是否为C或POSIX
-  reset_user_lang() {
-    local curr_lang=${LC_ALL:-${LANG:-C}} # 当前用户语言设置
-    if [ "${curr_lang,,}" != "${SYS_LANG,,}" ]; then
-      if confirm_action "Set default language as $SYS_LANG"; then
-        set_user_language "$SYS_LANG" # 设置用户语言
-      else
-        # LANGUAGE 已设置过，此处不改变
-        export LANG="en_US.UTF-8" # 设置LANG参数
-        SYS_LANG=$LANG
+  # 如果当前语言设置不支持UTF-8，尝试修复
+  fix_shell_locale() {
+    local lang=$(get_default_lang)         # 返回 LANG 系统默认值
+    local new_lang=$(check_locale "$lang") # UTF-8修复
+    if [ $? -ne 0 ]; then
+      echo "Does not support UTF-8, use language $new_lang"
+    else
+      echo "Use language $new_lang"
+    fi
+    local curr_lang=${LC_ALL:-${LANG:-C}} # 读取用户语言设置
+
+    export LANG="$new_lang"            # 设置 LANG
+    local base="${new_lang%.*}"        # 移除 .utf8 / .UTF-8
+    local short="${base%_*}"           # 语言代码
+    export LANGUAGE="${base}:${short}" # 设置 LANGUAGE
+
+    if [ "${curr_lang,,}" != "${new_lang,,}" ]; then
+      if confirm_action "Reset User default language[$curr_lang => $new_lang]?"; then
+        set_user_language "$new_lang" # 永久改变 LANG 和 LANGUAGE
       fi
     fi
-    info "User default language: $SYS_LANG"
   }
 
   # ==============================================================================
@@ -202,7 +235,7 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
   # 加载语言消息(手动 key 拼接模拟子 map)
   load_trans_msgs() {
     # 设置 shell 语言
-    get_default_lang # 同时设置 LANGUAGE 和 SYS_LANG 变量
+    fix_shell_locale
 
     # 判断是否已经加载过
     if [[ -v LANGUAGE_MSGS ]] && [[ ${#LANGUAGE_MSGS[@]} -ne 0 ]]; then
