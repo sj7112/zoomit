@@ -162,7 +162,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
           fi
 
           # 缓存统计信息（除了spinner和时间）
-          cached_stats="大小: $human_size ↑$size_change | 平均: $avg_speed_text"
+          cached_stats=$(string "大小: $human_size ↑$size_change | 平均: $avg_speed_text")
           prev_size=$current_size
         else
           cached_stats="等待文件创建..."
@@ -170,7 +170,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
       fi
 
       # 每0.5秒更新显示（只更新spinner和当前时间）
-      display_content="[$spinner] $(date '+%H:%M:%S') | 运行时间: $elapsed_formatted | $cached_stats"
+      display_content=$(string "[$spinner] $(date '+%H:%M:%S') | 运行时间: $elapsed_formatted | $cached_stats")
       printf "\r$display_content                    "
       sleep 0.5
     done
