@@ -71,12 +71,6 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
   smart_wget() {
     local output="$1"
     local url="$2"
-    local pid
-    local counter=0
-    local prev_size=0
-    local start_time
-    local display_content=""
-    local cached_stats=""
 
     # 检查参数
     if [ -z "$output" ] || [ -z "$url" ]; then
@@ -84,14 +78,31 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
       return 1
     fi
 
-    echo "开始下载: $url -> $output"
-    echo "开始时间: $(date)"
-
     # 启动wget后台下载
+    echo "开始下载: wget -c -q -O $output $url"
+    echo "开始时间: $(date)"
     wget -c -q -O "$output" "$url" &
+    local pid=$!
+    local start_time=$(date +%s)
 
-    pid=$!
-    start_time=$(date +%s)
+    # 定义本地退出清理函数
+    on_exit() {
+      if kill -0 "$pid" 2>/dev/null; then
+        echo -e "\n检测到中断，正在终止后台下载进程（PID=$pid）..."
+        kill "$pid" 2>/dev/null
+        wait "$pid" 2>/dev/null
+      fi
+    }
+
+    # 开始trap（防止影响全局）
+    trap on_exit INT TERM EXIT
+
+    local counter=0
+    local prev_size=0
+    local display_content=""
+    local cached_stats=""
+    local elapsed
+    local elapsed_formatted
 
     # 每0.5秒监控循环
     while kill -0 "$pid" 2>/dev/null; do
@@ -106,25 +117,23 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
       esac
 
       # 计算运行时间
-      local elapsed=$(($(date +%s) - start_time))
-      local elapsed_formatted=$(printf "%02d:%02d:%02d" $((elapsed / 3600)) $((elapsed % 3600 / 60)) $((elapsed % 60)))
+      if [ $((counter % 2)) -eq 0 ] || [ $counter -eq 1 ]; then
+        elapsed=$(($(date +%s) - start_time))
+        elapsed_formatted=$(printf "%02d:%02d:%02d" $((elapsed / 3600)) $((elapsed % 3600 / 60)) $((elapsed % 60)))
+      fi
 
-      # 每3秒进行一次完整计算（counter * 0.5秒，所以 counter % 6 == 0）
+      # 每3秒进行一次完整计算
       if [ $((counter % 6)) -eq 0 ] || [ $counter -eq 1 ]; then
-
-        # 获取文件信息
+        # 获取文件大小（字节）
+        local current_size
         if [ -f "$output" ]; then
-          # 获取文件大小（字节）
-          local current_size
           if stat -c%s "$output" >/dev/null 2>&1; then
             current_size=$(stat -c%s "$output" 2>/dev/null)
-          elif stat -f%z "$output" >/dev/null 2>&1; then
-            current_size=$(stat -f%z "$output" 2>/dev/null)
           else
             current_size=0
           fi
 
-          # 人类可读大小
+          # 人类可读大小 (B, K, M, G)
           local human_size
           if [ "$current_size" -gt 1073741824 ]; then
             human_size="$(echo "$current_size" | awk '{printf "%.1fG", $1/1073741824}')"
@@ -169,16 +178,17 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     # 检查结果
     echo ""
     wait "$pid"
-    local exit_code=$?
 
+    # 取消trap（避免影响其它代码）
+    trap - INT TERM EXIT
+
+    local exit_code=$?
     if [ $exit_code -eq 0 ] && [ -f "$output" ]; then
       local final_size
       if [ -f "$output" ]; then
         local final_bytes
         if stat -c%s "$output" >/dev/null 2>&1; then
           final_bytes=$(stat -c%s "$output")
-        elif stat -f%z "$output" >/dev/null 2>&1; then
-          final_bytes=$(stat -f%z "$output")
         fi
 
         if [ "$final_bytes" -gt 1048576 ]; then
@@ -207,7 +217,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     # 解压到安装目录
     info "安装 Python 到 $PY_INST_DIR..."
     mkdir -p "$PY_INST_DIR" # 确保安装目录存在
-    if ! tar -xf "$PY_GZ_FILE" -C "$PY_INST_DIR" --strip-components=1; then
+    if ! tar -zxf "$PY_GZ_FILE" -C "$PY_INST_DIR" --strip-components=1; then
       exiterr "解压安装失败"
     fi
 
@@ -252,7 +262,6 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     # 检查是否需要重新安装 Python
     local def_bin="$(command -v python3 2>/dev/null || true)"
     local loc_bin="$PY_INST_DIR/bin/python3"
-
     if ! check_py_version "$def_bin" && ! check_py_version "$loc_bin"; then
       install_py_standalone "$loc_bin"
     fi
