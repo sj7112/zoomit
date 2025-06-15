@@ -13,8 +13,6 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from msg_handler import error, exiterr, info, warning
 
-# from debug_tool import print_array
-
 # 获取当前文件的绝对路径的父目录
 PARENT_DIR = Path(__file__).parent.parent.resolve()
 
@@ -46,7 +44,7 @@ def path_resolved(path_str, errMsg="文件不存在"):
     return src
 
 
-def print_array(arr, filename="./tests/data.tmp"):
+def write_array(arr, filename="./tests/data.tmp"):
     """
     将字典或列表的内容写入到指定文件中
 

@@ -17,7 +17,7 @@ from hash_util import (
 from file_util import (
     get_shell_files,
     read_file,
-    print_array as file_print_array,
+    write_array,
 )
 
 from debug_tool import (

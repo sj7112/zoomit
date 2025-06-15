@@ -16,7 +16,7 @@ from ast_parser import parse_shell_files
 from file_util import (
     read_lang_prop,
     write_lang_prop,
-    print_array as file_print_array,
+    write_array,
 )
 from debug_tool import test_assertion, print_array
 

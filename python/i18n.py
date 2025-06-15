@@ -20,7 +20,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from lang_util import debug_assertion, update_lang_files
 from msg_handler import string, info, warning, error, exiterr, get_lang_code
 from debug_tool import create_app, default_cmd, print_array
-from file_util import print_array as file_print_array
+from file_util import write_array
 from system import confirm_action
 
 # 确保目录存在

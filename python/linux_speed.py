@@ -24,7 +24,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from os_info import init_os_info, OSInfo
 from system import confirm_action, setup_logging
 from msg_handler import error, info, warning
-from file_util import file_backup_sj, print_array
+from file_util import file_backup_sj, write_array
 
 setup_logging()
 
