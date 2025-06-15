@@ -67,7 +67,7 @@ if [[ -z "${LOADED_DOCKER:-}" ]]; then
     # 显示默认已选项（如果有）
     selected_items=()
     for opt in "${_options[@]}"; do
-      [[ -v _selected[$opt] ]] && selected_items+=("$opt")
+      [[ -n "${_selected[$opt]+x}" ]] && selected_items+=("$opt")
     done
 
     if [[ ${#selected_items[@]} -gt 0 ]]; then
@@ -101,7 +101,7 @@ if [[ -z "${LOADED_DOCKER:-}" ]]; then
           continue
         fi
 
-        if [[ -v _selected[$name] ]]; then
+        if [[ -n "${_selected[$name]+x}" ]]; then
           unset '_selected[$name]'
           canceled_selections+=("$name")
         else
@@ -125,7 +125,7 @@ if [[ -z "${LOADED_DOCKER:-}" ]]; then
       echo -n "当前选择："
       selected_items=()
       for opt in "${_options[@]}"; do
-        [[ -v _selected[$opt] ]] && selected_items+=("$opt")
+        [[ -n "${_selected[$opt]+x}" ]] && selected_items+=("$opt")
       done
 
       if [[ ${#selected_items[@]} -eq 0 ]]; then

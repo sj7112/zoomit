@@ -127,7 +127,7 @@ if [[ -z "${LOADED_JSON_HANDLER:-}" ]]; then
           key="${key#--}"
           json_key="${long_to_json_key["$key"]:-$key}"
 
-          if [[ -v "long_opts_map[$json_key]" ]]; then
+          if [[ -n "${long_opts_map[$json_key]+x}" ]]; then
             value="${value:-1}"
             json set parsed_options "$json_key" "$value"
           else
@@ -141,7 +141,7 @@ if [[ -z "${LOADED_JSON_HANDLER:-}" ]]; then
           for ((j = 0; j < ${#short_opt}; j++)); do
             json_key="${short_opt:$j:1}"
 
-            if [[ -v "short_opts_map[$json_key]" ]]; then
+            if [[ -n "${short_opts_map[$json_key]+x}" ]]; then
               json set parsed_options "$json_key" 1
             else
               echo "警告: 未知选项 -$json_key" >&2

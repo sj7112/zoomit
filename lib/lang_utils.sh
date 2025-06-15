@@ -255,7 +255,7 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
     fix_shell_locale
 
     # 判断是否已经加载过
-    if [[ -v LANGUAGE_MSGS ]] && [[ ${#LANGUAGE_MSGS[@]} -ne 0 ]]; then
+    if [[ -n "${LANGUAGE_MSGS+x}" ]] && [[ ${#LANGUAGE_MSGS[@]} -ne 0 ]]; then
       return 0 # 已加载，直接返回
     fi
 
@@ -322,7 +322,8 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
     local result=""
 
     # 检查键是否存在
-    if [[ -v "LANGUAGE_MSGS[$key]" ]]; then
+    if [[ -n "${LANGUAGE_MSGS[$key]+x}" ]]; then
+      echo "key=====$key" >&2
       result="${LANGUAGE_MSGS[$key]}"
     fi
 
@@ -330,7 +331,7 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
       # 如果没有找到翻译，使用MD5再试一次
       current_hash=$(md5 "$msg")
       key="${source_file}:$current_hash"
-      if [[ -v "LANGUAGE_MSGS[$key]" ]]; then
+      if [[ -n "${LANGUAGE_MSGS[$key]+x}" ]]; then
         result="${LANGUAGE_MSGS[$key]}"
       fi
     fi

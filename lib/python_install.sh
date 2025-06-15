@@ -216,11 +216,6 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     # 下载文件（支持断点续传）
     info "下载 Python {} standalone..." $PY_VERSION
 
-    print_array LANGUAGE_MSGS
-    local current_hash=$(djb2_with_salt_20 "下载 Python {} standalone...") # 使用DJB2哈希算法生成消息ID
-    current_hash=$(padded_number_to_base64 "$current_hash"_6)            # 转换为6位base64编码
-    echo "LANG=$LANG ,  LANGUAGE=$LANGUAGE ,  Python standalone $current_hash" >&2
-
     smart_wget "$PY_GZ_FILE" "$python_url"
 
     # 解压到安装目录

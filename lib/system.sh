@@ -91,7 +91,7 @@ if [[ -z "${LOADED_SYSTEM:-}" ]]; then
     local uid="$1"
 
     # 检查是否存在该键
-    if [[ -v TMP_MAP["$uid"] ]]; then
+    if [[ -n "${TMP_MAP[$uid]+x}" ]]; then
       echo "${TMP_MAP[$uid]}"
     else
       echo "No value found for UID: $uid"

@@ -169,7 +169,7 @@ if [[ -z "${LOADED_UPDATE_ENV:-}" ]]; then
       local value=$(echo "$line" | cut -d '=' -f 2- | xargs)
 
       # 检查是否需要更新
-      if [[ -v env_array[$key] ]]; then
+      if [[ -n "${env_array[$key]+x}" ]]; then
         echo "$key=${env_array[$key]}" >>"$temp_file"
       else
         echo "$key=" >>"$temp_file" # 无需设置
