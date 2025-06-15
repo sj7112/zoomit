@@ -122,10 +122,23 @@ if [[ -z "${LOADED_DEBUGTOOL:-}" ]]; then
   }
 
   # 打印数组
+  # print_array() {
+  #   local -n arr=$1 # 引用传递数组参数
+  #   for key in "${!arr[@]}"; do
+  #     echo "$key: ${arr[$key]}" >&2
+  #   done
+  # }
+  # 打印数组（兼容 Bash 4.2）
   print_array() {
-    local -n arr=$1 # 引用传递数组参数
-    for key in "${!arr[@]}"; do
-      echo "$key: ${arr[$key]}" >&2
+    local arr_name="$1"
+    local -a keys
+    local -a values
+
+    eval "keys=(\"\${!${arr_name}[@]}\")"  # 获取所有键
+    eval "values=(\"\${${arr_name}[@]}\")" # 获取所有值
+
+    for i in "${!keys[@]}"; do
+      echo "${keys[$i]}: ${values[$i]}" >&2
     done
   }
 

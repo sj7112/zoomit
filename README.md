@@ -45,7 +45,7 @@ user with sudo authority
 (3) Deployment:
 
 cd ~
-wget -c https://github.com/sj7112/zoomit/archive/refs/heads/main.tar.gz
+wget -O main.tar.gz https://github.com/sj7112/zoomit/archive/refs/heads/main.tar.gz
    (or manully copy to home directory!)
 tar -zxf main.tar.gz
 zoomit-main/bin/init_main.sh
