@@ -9,54 +9,18 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
 
   declare -A LANGUAGE_MSGS # 二维语言关联数组
 
-  # 测试终端是否支持UTF-8字符
-  # 返回 0 表示支持，1 表示不支持
+  # 测试终端是否支持UTF-8字符 0 表示支持，1 表示不支持
   test_terminal_display() {
-    local temp_file=$(mktemp)
-    local test_strings=(
-      "café résumé € ¥"
-      "→ ← ↑ ↓"
-      "± × ÷ ≈"
-      "😊 🌟 ❤️"
-      "⚡ 🔥 💻"
-      "你好世界"
-      "こんにちは"
-      "안녕하세요"
-    )
-
-    local total_expected_bytes=0
-    local actual_bytes=0
-
-    # 计算预期字节数并测试输出
-    for test_str in "${test_strings[@]}"; do
-      if printf "%s\n" "$test_str" >>"$temp_file" 2>/dev/null; then
-        # 计算这个字符串的UTF-8字节长度
-        local str_bytes=$(printf "%s" "$test_str" | wc -c 2>/dev/null || echo 0)
-        total_expected_bytes=$((total_expected_bytes + str_bytes + 1)) # +1 for newline
-      else
-        # 如果无法输出，说明不支持
-        rm -f "$temp_file"
+    case "$TERM" in
+      # 明确不支持UTF-8的终端
+      vt100 | vt102 | vt220 | vt320 | ansi | dumb)
         return 1
-      fi
-    done
-
-    # 检查实际文件大小
-    actual_bytes=$(wc -c <"$temp_file" 2>/dev/null || echo 0)
-    rm -f "$temp_file"
-
-    # 如果实际字节数明显小于预期，说明UTF-8字符被截断或转换
-    if [[ $actual_bytes -lt $((total_expected_bytes - 10)) ]]; then
-      return 1
-    fi
-
-    # 额外检查：locale是否支持UTF-8
-    if command -v locale >/dev/null 2>&1; then
-      if ! locale charmap 2>/dev/null | grep -qi "utf"; then
-        return 1
-      fi
-    fi
-
-    return 0
+        ;;
+      # 其他情况
+      *)
+        return 0
+        ;;
+    esac
   }
 
   # ==============================================================================
