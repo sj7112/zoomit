@@ -142,18 +142,32 @@ if [[ -z "${LOADED_DEBUGTOOL:-}" ]]; then
     done
   }
 
+  # write_array() {
+  #   local array_name="$1" # 数组名
+  #   local filename="$2"   # 文件名
+
+  #   # 使用 nameref 方式引用传入的数组名（需要 Bash 4.3+）
+  #   local -n arr="$array_name"
+
+  #   # 创建或清空目标文件
+  #   : >"$filename" || return 1
+
+  #   # 遍历数组并写入文件
+  #   for item in "${arr[@]}"; do
+  #     printf '%s\n' "$item" >>"$filename"
+  #   done
+  # }
+  # 打印数组到文件（兼容 Bash 4.2）
   write_array() {
-    local array_name="$1" # 数组名
-    local filename="$2"   # 文件名
+    local array_name="$1"
+    local filename="$2"
 
-    # 使用 nameref 方式引用传入的数组名（需要 Bash 4.3+）
-    local -n arr="$array_name"
-
-    # 创建或清空目标文件
     : >"$filename" || return 1
 
-    # 遍历数组并写入文件
-    for item in "${arr[@]}"; do
+    local -a values
+    eval "values=(\"\${${array_name}[@]}\")" # 先复制数组到本地变量
+
+    for item in "${values[@]}"; do
       printf '%s\n' "$item" >>"$filename"
     done
   }
