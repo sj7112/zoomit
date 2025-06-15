@@ -39,7 +39,7 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
       cancel_msg="${last_arg#msg=}"
       set -- "${@:1:$(($# - 1))}" # 移除最后一个参数
     else
-      cancel_msg=$(string "操作已取消")
+      cancel_msg=$(string "operation is cancelled")
     fi
 
     read -p "$prompt [Y/n] " response

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import hashlib
+import math
 import os
 import sys
 from ruamel.yaml import YAML
@@ -131,18 +132,74 @@ def init_meta_props():
 # ==============================================================================
 # 函数 字符串文本的hash code计算（6位字符串 | 22位字符串）
 # ==============================================================================
-def _djb2_with_salt(text: str, freq: int = 20) -> int:
-    """均匀采样若干个字符参与DJB2哈希计算，加上字符串长度作为salt"""
+def _find_largest_prime_below(n: int) -> int:
+    """返回小于 n 的最大质数（针对小数 < 10^5 有效）"""
+    # 小于等于5时，直接查表（包含<0）
+    if n <= 5:
+        lookup = [0, 0, 1, 1, 2, 3]
+        return lookup[max(0, n)]
+
+    # 从 n-1 开始倒序搜索，只查 6k±1 形式的候选
+    i = n - 1 if (n - 1) % 6 in (1, 5) else n - 2
+    while i >= 5:
+        if i % 2 == 0 or i % 3 == 0:
+            i -= 1
+            continue
+        sqrt_i = int(math.isqrt(i))
+        is_prime = True
+        for d in range(5, sqrt_i + 1, 6):
+            if i % d == 0 or i % (d + 2) == 0:
+                is_prime = False
+                break
+        if is_prime:
+            return i
+        i -= 2 if i % 6 == 5 else 4  # 保证 6k±1 步进
+
+    return 3  # 最后兜底，理论上不会到这
+
+
+def _find_smaller_prime(step: int) -> int:
+    """找到和20互质，小于limit的合适质数"""
+    primes = [19, 17, 13, 11, 7, 3]
+    for prime in primes:
+        if prime < step:
+            return prime
+    return 1  # 默认返回3
+
+
+def _djb2_with_salt_bytes(text: str, freq: int = 20, encoding: str = "utf-8") -> int:
+    """基于字节的DJB2哈希函数"""
+    # 将字符串转换为字节流
+    byte_data = text.encode(encoding)
+    byte_length = len(byte_data)
+    step = max(1, byte_length // freq)
+
+    # 字节流采样
+    offset = _find_largest_prime_below(byte_length - step * freq)  # 用质数作为采样头部偏离值
+    new_byte_data = []
+    if step == 1:
+        new_byte_data = byte_data[offset : offset + freq]  # 全部采样
+    else:
+        times = _find_smaller_prime(step)  # 小于 step 和 20 的质数，增加step的随机性
+        idx = offset
+        for i in range(freq):
+            new_byte_data.append(byte_data[idx])  # 均匀采样
+            idx += step * times
+            if idx >= byte_length:
+                idx = offset  # 利用互质的特性(费马小定理)
+
+    # 用采样数据计算hash
     hash_value = 5381
-    step = max(1, len(text) // freq)
-    for i in range(0, min(len(text), step * freq), step):
-        hash_value = (((hash_value << 5) + hash_value) + ord(text[i])) & 0xFFFFFFFF
-    return (((hash_value << 5) + hash_value) + len(text)) & 0xFFFFFFFF
+    for byte_value in new_byte_data:
+        hash_value = (((hash_value << 5) + hash_value) + byte_value) & 0xFFFFFFFF
+
+    # 使用字节长度作为salt
+    return (((hash_value << 5) + hash_value) + byte_length) & 0xFFFFFFFF
 
 
 def _djb2_with_salt_20(text: str) -> int:
     """均匀采样20个字符参与DJB2哈希计算，字符串长度作为salt"""
-    return _djb2_with_salt(text, 20)
+    return _djb2_with_salt_bytes(text, 20)
 
 
 def md5(text: str) -> str:
@@ -195,8 +252,12 @@ def set_file_msgs(results, sh_file):
 # 调试测试函数（base64转换）
 # =============================================================================
 def main():
-    # 测试1：base64转换
-    a = 1213312
+    # 测试1：hash计算
+    a = "operation is cancelled"
+    b = _djb2_with_salt_20(a)
+    # 测试2：base64转换
+    a = b
+    b6 = _padded_number_to_base64(f"{a}_6")
     b = 0
     b64 = _padded_number_to_base64(f"{a}_4", f"{b}_2")
     c = _base64_to_number(b64[:4])  # 前4位

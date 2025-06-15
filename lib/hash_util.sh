@@ -266,53 +266,137 @@ if [[ -z "${LOADED_HASH_UTIL:-}" ]]; then
   # ==============================================================================
   # 函数 字符串文本的hash code计算（6位字符串 | 22位字符串）
   # ==============================================================================
-
-  # 均匀采样若干个字符参与DJB2哈希计算，加上字符串长度作为salt
-  _djb2_with_salt() {
-    local text="$1"
-    local freq="${2:-20}"
-
-    if [[ -z "$text" ]]; then
+  # 计算平方根的辅助函数
+  isqrt() {
+    local n=$1
+    if [ $n -eq 0 ]; then
       echo 0
       return
     fi
 
-    local hash_value=5381
-    local text_len=${#text}
-    local step=$((text_len / freq))
+    local x=$n
+    local y=$(((x + 1) / 2))
 
-    # step 至少为1
-    if [[ $step -eq 0 ]]; then
-      step=1
-    fi
-
-    # local max_chars=$((step * freq))
-    # if [[ $text_len -lt $max_chars ]]; then
-    #   max_chars=$text_len
-    # fi
-
-    # 均匀采样字符参与哈希计算
-    local max_chars=$(((step * freq < text_len) ? step * freq : text_len))
-    for ((i = 0; i < max_chars; i += step)); do
-      local char="${text:$i:1}"
-      local ord_value
-
-      # 获取字符的ASCII值
-      ord_value=$(printf "%d" "'$char")
-
-      # DJB2 哈希算法：hash = ((hash << 5) + hash) + c
-      hash_value=$((((hash_value << 5) + hash_value + ord_value) & 0xFFFFFFFF))
+    while [ $y -lt $x ]; do
+      x=$y
+      y=$(((x + n / x) / 2))
     done
 
-    # 加上字符串长度作为salt
-    hash_value=$((((hash_value << 5) + hash_value + text_len) & 0xFFFFFFFF))
+    echo $x
+  }
 
-    echo "$hash_value"
+  # 返回小于 n 的最大质数（针对小数 < 10^5 有效）
+  find_largest_prime_below() {
+    local n=$1
+
+    # 小于等于5时，直接查表（包含<0）
+    if [ "$n" -le 5 ]; then
+      # 预定义查找表（索引0~5）
+      local lookup=(0 0 1 1 2 3)
+      local index=$(max 0 "$n")
+      echo "${lookup[$index]}"
+      return
+    fi
+
+    # 从 n-1 开始倒序搜索，只查 6k±1 形式的候选
+    local i=$((n - 1))
+    local mod6=$(((n - 1) % 6))
+    if [ $mod6 -ne 1 ] && [ $mod6 -ne 5 ]; then
+      i=$((n - 2))
+    fi
+
+    while [ $i -ge 5 ]; do
+      # 跳过偶数和3的倍数
+      if [ $((i % 2)) -eq 0 ] || [ $((i % 3)) -eq 0 ]; then
+        i=$((i - 1))
+        continue
+      fi
+
+      local sqrt_i=$(isqrt $i)
+      local is_prime=1
+
+      # 检查是否为质数
+      for ((d = 5; d <= sqrt_i; d += 6)); do
+        if [ $((i % d)) -eq 0 ] || [ $((i % (d + 2))) -eq 0 ]; then
+          is_prime=0
+          break
+        fi
+      done
+
+      if [ $is_prime -eq 1 ]; then
+        echo $i
+        return
+      fi
+
+      # 保证 6k±1 步进
+      if [ $((i % 6)) -eq 5 ]; then
+        i=$((i - 2))
+      else
+        i=$((i - 4))
+      fi
+    done
+
+    echo 3 # 兜底返回
+  }
+
+  # 找到和20互质，小于limit的合适质数
+  find_smaller_prime() {
+    local step=$1
+    local primes=(19 17 13 11 7 3)
+
+    for prime in "${primes[@]}"; do
+      if [ $prime -lt $step ]; then
+        echo $prime
+        return
+      fi
+    done
+
+    echo 1 # 默认返回1
+  }
+
+  # 基于字节的DJB2哈希函数
+  djb2_with_salt_bytes() {
+    local text="$1"
+    local freq=${2:-20}
+
+    # 获取 UTF-8 编码的所有字节，按 1 字节分隔（16 进制格式）
+    readarray -t hex_bytes < <(printf "%s" "$text" | od -An -tx1 -v | tr -d ' \n' | fold -w2)
+    local byte_length=${#hex_bytes[@]}
+
+    local -a new_byte_data
+    local step=$((byte_length > freq ? byte_length / freq : 1))
+    local offset=$(find_largest_prime_below $((byte_length - step * freq)))
+    local idx=$offset
+
+    if [ $step -eq 1 ]; then
+      for ((i = 0; i < byte_length && i < freq; i++)); do
+        new_byte_data[$i]=$((16#${hex_bytes[$idx]}))
+        idx=$((idx + 1))
+      done
+    else
+      local times=$(find_smaller_prime $step)
+      for ((i = 0; i < freq; i++)); do
+        new_byte_data[$i]=$((16#${hex_bytes[$idx]}))
+        idx=$((idx + step * times))
+        if ((idx >= byte_length)); then
+          idx=$offset
+        fi
+      done
+    fi
+
+    # 用采样数据计算hash
+    local hash_value=5381
+    for byte_value in "${new_byte_data[@]}"; do
+      hash_value=$((((hash_value << 5) + hash_value + byte_value) & 0xFFFFFFFF))
+    done
+
+    # 使用字节长度作为salt
+    echo $((((hash_value << 5) + hash_value + byte_length) & 0xFFFFFFFF))
   }
 
   # 均匀采样20个字符参与DJB2哈希计算，字符串长度作为salt
-  _djb2_with_salt_20() {
-    _djb2_with_salt "$1" 20
+  djb2_with_salt_20() {
+    djb2_with_salt_bytes "$1" 20
   }
 
   # 返回MD5数值

@@ -351,7 +351,7 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
   get_trans_msg() {
     msg="$1" # 原始消息
 
-    local current_hash=$(_djb2_with_salt_20 "$msg")              # 使用DJB2哈希算法生成消息ID
+    local current_hash=$(djb2_with_salt_20 "$msg")               # 使用DJB2哈希算法生成消息ID
     current_hash=$(padded_number_to_base64 "$current_hash"_6)    # 转换为6位base64编码
     local source_file="${BASH_SOURCE[3]#$(dirname "$LIB_DIR")/}" # 去掉根目录
     local key="${source_file}:$current_hash"

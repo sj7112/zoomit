@@ -339,13 +339,15 @@ EOF
 
   # ==============================================================================
   # 功能：
-  # template自动合并动态参数
+  # template自动合并动态参数(每轮循环，替换第一个{}，和{i}占位符)
   #
   # 参数：
   # 第一个参数为模板；后续参数用来替换模板中的字符串
   #
   # 使用示例：
   # msg_parse_tmpl "How {0} {1} {0}!" "do" "you" ==> "How do you do!"
+  # msg_parse_tmpl "How {} {} {0}!" "do" "you" ==> "How do you do!"
+  # msg_parse_tmpl "How {0} {1} {}!" "do" "you" ==> "How do you do!"
   #
   # 注意事项：
   # 1) 调试只能用echo "..." >&2 ！！！否则父函数接收echo输出时，会出错
@@ -355,11 +357,35 @@ EOF
 
     local i=0
     for var in "${@:2}"; do
+      template="${template/\{\}/$var}"    # 替换第一个 {}
       template="${template//\{$i\}/$var}" # 替换 {i}
       ((i = i + 1))
     done
     echo -e "$template"
   }
+
+  # msg_parse_tmpl() {
+  #   local template="$1"
+  #   shift
+
+  #   local indexed_args=("$@")
+  #   local arg_count=${#indexed_args[@]}
+
+  #   # 替换 {} 为 {0}、{1}...（不影响已有的 {0}）
+  #   local index=0
+  #   while [[ "$template" =~ \{\} ]]; do
+  #     template="${template/\{\}/\{$index\}}"
+  #     ((index++))
+  #   done
+
+  #   # 执行参数替换
+  #   for ((i = 0; i < arg_count; i++)); do
+  #     # shell 参数替换，对应 {i}
+  #     template="${template//\{$i\}/${indexed_args[$i]}}"
+  #   done
+
+  #   echo -e "$template"
+  # }
 
   # ==============================================================================
   # 功能：

@@ -86,11 +86,14 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     local start_time=$(date +%s)
 
     # 定义本地退出清理函数
+    SMART_WGET_PID=$pid
     on_exit() {
-      if kill -0 "$pid" 2>/dev/null; then
-        echo -e "\n检测到中断，正在终止后台下载进程（PID=$pid）..."
-        kill "$pid" 2>/dev/null
-        wait "$pid" 2>/dev/null
+      local oid="$SMART_WGET_PID"
+      if kill -0 "$oid" 2>/dev/null; then
+        echo ""
+        warning "检测到中断，正在终止后台下载进程（PID=$oid...）"
+        kill "$oid" 2>/dev/null
+        wait "$oid" 2>/dev/null
       fi
     }
 
@@ -211,11 +214,11 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     local python_url=$(get_python_url "$system_type")
 
     # 下载文件（支持断点续传）
-    info "下载 Python $PY_VERSION standalone..."
+    info "下载 Python {} standalone..." $PY_VERSION
     smart_wget "$PY_GZ_FILE" "$python_url"
 
     # 解压到安装目录
-    info "安装 Python 到 $PY_INST_DIR..."
+    info "安装 Python 到 {}..." "$PY_INST_DIR"
     mkdir -p "$PY_INST_DIR" # 确保安装目录存在
     if ! tar -zxf "$PY_GZ_FILE" -C "$PY_INST_DIR" --strip-components=1; then
       exiterr "解压安装失败"
@@ -262,6 +265,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     # 检查是否需要重新安装 Python
     local def_bin="$(command -v python3 2>/dev/null || true)"
     local loc_bin="$PY_INST_DIR/bin/python3"
+    install_py_standalone "$loc_bin"
     if ! check_py_version "$def_bin" && ! check_py_version "$loc_bin"; then
       install_py_standalone "$loc_bin"
     fi
