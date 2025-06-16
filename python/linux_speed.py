@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
 
-"""
-Linux镜像速度测试工具
-从官方镜像列表获取所有镜像，并进行速度测试
-"""
+"""Linux Mirror Speed Tester (Base Class)"""
 
 import logging
 import os
@@ -24,7 +21,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from os_info import init_os_info, OSInfo
 from system import confirm_action, setup_logging
 from msg_handler import error, info, warning
-from file_util import file_backup_sj, write_array
+from file_util import write_array
 
 setup_logging()
 
@@ -67,7 +64,7 @@ class MirrorResult:
     error_msg: Optional[str] = None
 
 
-def get_country_name(self, country_code):
+def get_country_name(country_code):
     """
     根据国家代码获取国家名称，找不到则返回原国家代码
     例如：'CN' -> 'China', 'USA' -> 'United States of America'
@@ -94,7 +91,6 @@ class MirrorTester:
         self.netlocs = set()  # 用于去重的域名集合
 
     def fetch_mirror_list(self, limit: int = None) -> None:
-        """读取数据"""
         print(f"{self.os_info.ostype}镜像速度测试工具")
         print("=" * 50)
         try:
@@ -104,8 +100,8 @@ class MirrorTester:
             self.mirrors = []
             self.parse_mirror_list(lines)
             if limit:
-                self.mirrors = self.mirrors[:limit]  # 限制镜像数量(方便测试)
-            self.mirrors.append(self.globals)  # 添加全球镜像站点
+                self.mirrors = self.mirrors[:limit]  # mirrors limitation(for testing)
+            self.mirrors.append(self.globals)  # add global mirror
         except requests.RequestException as e:
             print(f"获取镜像列表失败: {e}")
 
@@ -367,7 +363,6 @@ class MirrorTester:
                     print(f"   下载速度: {selected_mirror.avg_speed:.1f}s")
 
                     # 更新配置文件
-                    file_backup_sj(str(self.path))  # 备份当前源文件
                     self.update_path(selected_mirror)
                     return
                 else:

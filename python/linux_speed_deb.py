@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
 
-"""
-Debian镜像速度测试工具
-从官方镜像列表获取所有镜像，并进行速度测试
-"""
+"""Debian Mirror Speed Tester"""
 
 import os
 from pathlib import Path
@@ -16,26 +13,27 @@ from typing import List
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from linux_speed import MirrorResult, MirrorTester, _is_url_accessible
+from file_util import write_source_file
 from msg_handler import info, error
 
 
 class DebianMirrorTester(MirrorTester):
     def __init__(self, system_country):
-        # 后备镜像列表：全球常用的 10 个镜像站点（debian镜像更新慢，目前继续采用http）
+        # Backup Mirror List: 10 Commonly Used Sites Worldwide
         self.mirrors = [
-            # 欧洲镜像
+            # European
             {"country": "Germany", "url": "http://ftp.de.debian.org/debian/"},
             {"country": "UK", "url": "http://mirrorservice.org/sites/ftp.debian.org/debian/"},
             {"country": "France", "url": "http://ftp.fr.debian.org/debian/"},
             {"country": "Netherlands", "url": "http://ftp.nl.debian.org/debian/"},
-            # 北美镜像
+            # North America
             {"country": "US", "url": "http://ftp.us.debian.org/debian/"},
-            # 亚太镜像
+            # Asia pacific
             {"country": "China", "url": "https://mirrors.tuna.tsinghua.edu.cn/debian/"},
             {"country": "Japan", "url": "http://ftp.jp.debian.org/debian/"},
             {"country": "Singapore", "url": "http://mirror.nus.edu.sg/debian/"},
             {"country": "Australia", "url": "http://ftp.au.debian.org/debian/"},
-            # 南美和其他地区
+            # Others
             {"country": "Brazil", "url": "http://ftp.br.debian.org/debian/"},
         ]
         self.globals = {"country": "Global", "url": "http://deb.debian.org/debian"}
@@ -43,10 +41,10 @@ class DebianMirrorTester(MirrorTester):
         self.mirror_list = "https://www.debian.org/mirror/mirrors_full"
 
     # ==============================================================================
-    # (1) 检查现有配置文件
+    # (1) Check PM Path
     # ==============================================================================
     def check_file(self, file_path):
-        """检测匹配到的文件名和urls"""
+        """filepath and urls"""
         urls = []
         with open(file_path, "r", encoding="utf-8") as f:
             for line in f:
@@ -65,7 +63,7 @@ class DebianMirrorTester(MirrorTester):
         return None, []
 
     def find_source(self):
-        """找到默认apt配置文件，写入path和urls"""
+        """find config file, get path and urls"""
 
         SOURCE_FILE = "/etc/apt/sources.list"
         SOURCE_LIST_D_DIR = "/etc/apt/sources.list.d/"
@@ -84,16 +82,16 @@ class DebianMirrorTester(MirrorTester):
         self.path = None
 
     # ==============================================================================
-    # (2) 查找最快 mirror
+    # (2) Search Fast mirrors
     # ==============================================================================
     def parse_mirror_list(self, lines: List[str]) -> List[dict]:
-        """解析镜像列表HTML内容"""
+        """Parse the HTML content"""
 
         i = 0
         while i < len(lines):
             line = lines[i].strip()
 
-            # 如果是国家开头行
+            # country name match
             name_match = re.search(r'<h3>\s*<a name="([A-Z]+)">([^<]+)</a>', line)
             if name_match:
                 country_code = name_match.group(1)
@@ -101,24 +99,24 @@ class DebianMirrorTester(MirrorTester):
                 i += 1
                 country_mirrors = []
 
-                # 内层循环处理该国家下的镜像
+                # mirrors of the country
                 while i < len(lines):
                     site_line = lines[i].strip()
 
-                    # 如果遇到下一个国家段落，则跳出
+                    # next country
                     if re.search(r'<h3>\s*<a name="([A-Z]+)">([^<]+)</a>', site_line):
                         break
 
-                    # 匹配 site 域名
+                    # match sites
                     site_match = re.search(r"<tt>([a-zA-Z0-9\.\-]+)</tt>", site_line)
                     if site_match:
-                        # 尝试在当前行或下一行匹配 href
+                        # match href line
                         href_match = re.search(r'href="(http[^"]+/debian/)"', site_line)
                         if not href_match and i + 1 < len(lines):
                             next_line = lines[i + 1].strip()
                             href_match = re.search(r'href="(http[^"]+/debian/)"', next_line)
                             if href_match:
-                                i += 1  # 消耗掉 href 行
+                                i += 1  # proceed
 
                         if href_match:
                             country_mirrors.append(
@@ -128,9 +126,9 @@ class DebianMirrorTester(MirrorTester):
                                 }
                             )
 
-                    i += 1  # 前进到下一行
+                    i += 1  # go to next line
 
-                # 合并进 self.mirrors
+                # merge to self.mirrors
                 if country_code == self.system_country:
                     self.mirrors = country_mirrors + self.mirrors
                 else:
@@ -140,58 +138,55 @@ class DebianMirrorTester(MirrorTester):
                 i += 1
 
     # ==============================================================================
-    # (3) 修改配置文件
+    # (3) Update PM File
     # ==============================================================================
     def update_path(self, mirror):
         def_url = "http://deb.debian.org/debian"
         def_url_sec = "http://security.debian.org/debian-security"
 
-        self.check_mirror(mirror)  # 判断镜像是否包含updates, security
+        # 1. check custom mirror
+        self.check_mirror_components(mirror)
         url, url_upd, url_sec = mirror.url, mirror.url_upd, mirror.url_sec
 
-        # 2. 生成镜像源内容
+        # 2. generate custom content
         lines = []
         if not def_url == url:
-            lines.extend(self.add_sources(url, url_upd, url_sec))
+            lines.extend(self.add_custom_sources(url, url_upd, url_sec))
 
-        # 3. 生成默认官方源内容
-        lines.extend(self.add_sources(def_url, def_url, def_url_sec))
+        # 3. generate default content
+        lines.extend(self.add_custom_sources(def_url, def_url, def_url_sec))
 
-        # 4. 写入源文件
-        try:
-            with open(self.path, "w", encoding="utf-8") as f:
-                f.write("\n".join(lines) + "\n")
-            info(f"已更新 source list: {self.path}")
-        except Exception as e:
-            error(f"写入失败: {e}")
+        # 4. update source file
+        write_source_file(self.path, lines)
 
-    def check_mirror(self, selected_mirror: MirrorResult) -> int:
+    def check_mirror_components(self, selected_mirror: MirrorResult) -> int:
         """
-        检查镜像站的 bookworm, updates, security 可用性
+        check bookworm, updates, security
 
         Args:
-            selected_mirror: MirrorResult 对象，包含 url 属性
+            selected_mirror: MirrorResult with "url"
 
         Returns:
-            如果updates存在，改写 selected_mirror.url_upd
-            如果security存在，改写 selected_mirror.url_sec
+            if "updates" exists, add to selected_mirror.url_upd
+            if "security" exists, add to selected_mirror.url_sec
         """
 
-        # 检查 bookworm-updates
+        # Check bookworm-updates
         base_url = selected_mirror.url.rstrip("/")
         updates_url = f"{base_url}/dists/bookworm-updates/Release"
         if _is_url_accessible(updates_url):
             selected_mirror.url_upd = selected_mirror.url
 
-        # 检查 bookworm-security
+        # Check bookworm-security
         if base_url.endswith("/debian"):
-            # 将 /debian 替换为 /debian-security/
+            #  /debian => /debian-security/
             security_url = base_url + "-security/"
             if _is_url_accessible(security_url):
                 selected_mirror.url_sec = security_url
 
-    def add_sources(self, url, url_upd, url_sec):
-        """生成默认官方源内容"""
+    def add_custom_sources(self, url, url_upd, url_sec):
+        """add sources for custom mirrors"""
+
         codename = self.os_info.codename
         sources = [
             f"deb {url} {codename} main contrib non-free non-free-firmware",

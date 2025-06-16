@@ -1,47 +1,36 @@
 #!/usr/bin/env python3
 
-"""
-openSUSE镜像速度测试工具
-从官方镜像列表获取所有镜像，并进行速度测试
-"""
+"""openSUSE Mirror Speed Tester"""
 
-import logging
 import os
 import re
 import sys
 import time
-import threading
-from iso3166 import countries
-import requests
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from urllib.parse import urljoin, urlparse
-import statistics
-from dataclasses import dataclass
-from typing import Dict, List, Optional
-import json
+from typing import List
+
 
 # default python sys.path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from linux_speed import MirrorTester, get_country_name
+from file_util import write_source_file
 
 
 class OpenSUSEMirrorTester(MirrorTester):
     def __init__(self, system_country):
-        # 后备镜像列表：全球常用的 10 个镜像站点
-
+        # Backup Mirror List: 10 Commonly Used Sites Worldwide
         self.mirrors = [
-            # 北美镜像
-            {"country": "US", "url": "https://mirrors.kernel.org/opensuse/"},
-            {"country": "US", "url": "https://mirror.math.princeton.edu/pub/opensuse/"},
-            # 欧洲镜像
+            # European
             {"country": "Germany", "url": "https://ftp.fau.de/opensuse/"},
             {"country": "Germany", "url": "https://ftp.halifax.rwth-aachen.de/opensuse/"},
             {"country": "UK", "url": "https://www.mirrorservice.org/sites/download.opensuse.org/"},
             {"country": "Netherlands", "url": "https://ftp.nluug.nl/pub/os/Linux/distr/opensuse/"},
             {"country": "Italy", "url": "https://opensuse.mirror.garr.it/opensuse/"},
             {"country": "Sweden", "url": "https://ftp.lysator.liu.se/pub/opensuse/"},
-            # 亚太镜像
+            # North America
+            {"country": "US", "url": "https://mirrors.kernel.org/opensuse/"},
+            {"country": "US", "url": "https://mirror.math.princeton.edu/pub/opensuse/"},
+            # Asia pacific
             {"country": "China", "url": "https://mirrors.aliyun.com/opensuse/"},
             {"country": "China", "url": "https://mirrors.tuna.tsinghua.edu.cn/opensuse/"},
             {"country": "China", "url": "https://mirrors.ustc.edu.cn/opensuse/"},
@@ -55,7 +44,7 @@ class OpenSUSEMirrorTester(MirrorTester):
             {"country": "Australia", "url": "https://mirror.aarnet.edu.au/pub/opensuse/"},
             {"country": "Australia", "url": "https://ftp.iinet.net.au/pub/opensuse/"},
             {"country": "India", "url": "https://mirror.niser.ac.in/opensuse/"},
-            # 南美和其他地区
+            # Others
             {"country": "Brazil", "url": "https://opensuse.c3sl.ufpr.br/"},
             {"country": "Brazil", "url": "https://mirror.ufscar.br/opensuse/"},
             {"country": "Argentina", "url": "https://mirror.fcaglp.unlp.edu.ar/opensuse/"},
@@ -67,14 +56,55 @@ class OpenSUSEMirrorTester(MirrorTester):
         self.globals = {"country": "Global", "url": "https://download.opensuse.org/"}
         super().__init__(system_country)
         self.mirror_list = "https://mirrors.opensuse.org/"
+        # 测试代码！！！
+        self.os_info.ostype = "opensuse"
+        self.os_info.codename = "15.6"
+        self.os_info.pretty_name = "openSUSE Leap 15.6"
+        self.os_info.version_id = "15.6"
 
+    # ==============================================================================
+    # (1) Check PM Path
+    # ==============================================================================
+    def check_file(self, file_path):
+        """filepath and urls"""
+        baseurl = None
+        urls = []
+
+        with open(file_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith("baseurl="):
+                    baseurl = line[len("baseurl=") :]
+                    break
+
+            if baseurl:
+                urls.append(re.split(r"/(distribution|update)/", baseurl)[0] + "/")
+
+        if urls:
+            return file_path, urls
+        return None, []
+
+    def find_source(self):
+        """check repo-oss.repo, get path and urls"""
+
+        SOURCE_FILE = "/etc/zypp/repos.d/repo-oss.repo"
+
+        self.path, self.urls = self.check_file(SOURCE_FILE)
+        if self.path:
+            return
+
+        self.path = None
+
+    # ==============================================================================
+    # (2) Search Fast mirrors
+    # ==============================================================================
     def parse_mirror_list(self, lines: List[str]):
-        """解析镜像列表HTML内容"""
+        """Parse the HTML content"""
 
         i = 0
         while i < len(lines):
             line = lines[i].strip()
-            if "<tr>" in line and not "</tr>" in line:  # 只处理<tr>开始的多行文本
+            if "<tr>" in line and not "</tr>" in line:  # <tr>/n.../n.../n</tr>
                 i = self._process_tr_section(lines, i)
             else:
                 i += 1
@@ -96,64 +126,79 @@ class OpenSUSEMirrorTester(MirrorTester):
                 country_code = country_match.group(1).strip()
                 break
 
-        # 2) 搜索包含distribution/leap/15.5/repo的链接
+        # 2) 搜索包含distribution/leap/15.6/repo的链接
         while i < len(lines):
             line = lines[i].strip()
-            i += 1  # 当前行处理完毕，指针跳到下一行
+            i += 1  # to next line
             if "</tr>" in line:
-                return i  # 返回下一行索引
+                return i  # return next line
 
-            href_match = re.search(r'href="([^"]+)distribution/leap/15\.5/repo"', line)
+            href_match = re.search(r'href="([^"]+)distribution/leap/15\.6/repo"', line)
             if href_match:
+                url = href_match.group(1).strip()
+                if url.endswith("/source/"):
+                    url = url[:-7]  # 去掉source/后缀
                 mirror_item = {
                     "country": get_country_name(country_code),
-                    "url": href_match.group(1).strip(),
+                    "url": url,
                 }
                 # 根据是否为本地国家来决定插入位置
                 if country_code.lower() == self.system_country.lower():
                     self.mirrors.insert(0, mirror_item)
                 else:
                     self.mirrors.append(mirror_item)
-                return i  # 返回下一行索引
+                return i  # return next line
 
-    def run(self):
-        """运行完整的测试流程"""
-        # 1. 获取镜像列表
-        self.fetch_mirror_list()
+    # ==============================================================================
+    # (3) Update PM File
+    # ==============================================================================
+    def update_path(self, mirror):
+        url = mirror.url
 
-        # 2. 测试所有镜像
-        start_time = time.time()
-        results = self.test_all_mirrors()
-        end_time = time.time()
-        # 3. 筛选和排序
-        top_10 = self.filter_and_rank_mirrors(results)
-        if not top_10:
-            print("没有找到可用的镜像")
-            return
+        # generate custom content
+        results = self.add_custom_sources(url)
 
-        # 4. 显示结果
-        self.print_results(top_10, f"前{len(results)}个最快的openSUSE镜像+全球站 (共耗时{end_time - start_time:.2f}秒)")
+        # update source file
+        for path, lines in results:
+            write_source_file(path, lines)
 
-        # 5. 保存结果
-        self.save_results(top_10)
+    def add_custom_sources(self, url: str) -> str:
+        repo_map = {
+            "repo-oss": {"name": "main repository", "path": "distribution/leap/$releasever/repo/oss/"},
+            "repo-non-oss": {
+                "name": "main repository (non-OSS)",
+                "path": "distribution/leap/$releasever/repo/non-oss/",
+            },
+            "repo-update": {"name": "main update repository", "path": "update/leap/$releasever/oss/"},
+            "repo-update-non-oss": {"name": "update repository (non-OSS)", "path": "update/leap/$releasever/non-oss/"},
+            "repo-backports-update": {
+                "name": "Backports Update Repository",
+                "path": "update/leap/$releasever/backports/",
+            },
+            "repo-sle-update": {"name": "SLE Update Repository", "path": "update/leap/$releasever/sle/"},
+        }
 
-        print(f"\n测试完成! 共测试了 {len(results)} 个镜像")
-        print(f"找到 {len([r for r in results if r.success_rate > 0])} 个可用镜像")
+        results = []
+        for repo_type, info in repo_map.items():
+            full_url = url + info["path"]
+            gpgkey_url = full_url + "/repodata/repomd.xml.key"
 
+            lines = []
+            lines.extend(
+                [
+                    f"[{repo_type}]",
+                    f"name={info['name']}",
+                    "enabled=1",
+                    "autorefresh=1",
+                    f"baseurl={full_url}",
+                    "path=/",
+                    "type=rpm-md",
+                    "keeppackages=0",
+                    "gpgcheck=1",
+                    f"gpgkey={gpgkey_url}",
+                ]
+            )
+            repo_file = f"/etc/zypp/repos.d/{repo_type}.repo"
+            results.append((repo_file, lines))
 
-def update_source_suse(system_country: str) -> None:
-    """主函数"""
-    tester = OpenSUSEMirrorTester(system_country)
-    try:
-        tester.run()
-    except KeyboardInterrupt:
-        print("\n\n用户中断了测试")
-    except Exception as e:
-        print(f"\n程序运行出错: {e}")
-        import traceback
-
-        traceback.print_exc()
-
-
-if __name__ == "__main__":
-    update_source_suse()
+        return results

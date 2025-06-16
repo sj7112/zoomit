@@ -14,8 +14,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from linux_speed_deb import DebianMirrorTester
 from linux_speed_ubt import UbuntuMirrorTester
 from linux_speed_cos import CentosMirrorTester
+from linux_speed_suse import OpenSUSEMirrorTester
 from linux_speed_arch import update_source_arch
-from linux_speed_suse import update_source_suse
 
 
 def update_source(distro_ostype: str, system_country: str) -> None:
@@ -29,12 +29,8 @@ def update_source(distro_ostype: str, system_country: str) -> None:
     elif distro_ostype == "centos":
         CentosMirrorTester(system_country).run()
 
+    elif distro_ostype == "opensuse":
+        OpenSUSEMirrorTester(system_country).run()
+
     elif distro_ostype == "arch":
         update_source_arch(system_country)
-
-    elif distro_ostype == "opensuse":
-        update_source_suse(system_country)
-
-
-if __name__ == "__main__":
-    update_source()

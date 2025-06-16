@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
 
-"""
-Arch镜像速度测试工具
-从官方镜像列表获取所有镜像，并进行速度测试
-"""
+"""Arch Mirror Speed Tester"""
 
 import os
 import re
@@ -19,20 +16,21 @@ from iso3166 import countries
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from linux_speed import MirrorTester, get_country_name
+from file_util import write_source_file
 
 
 class ArchMirrorTester(MirrorTester):
     def __init__(self, system_country):
-        # 后备镜像列表：全球常用的 10 个镜像站点
+        # Backup Mirror List: 10 Commonly Used Sites Worldwide
         self.mirrors = [
-            # 欧洲镜像
+            # European
             {"country": "Germany", "url": "https://ftp.fau.de/archlinux/"},
             {"country": "UK", "url": "https://www.mirrorservice.org/sites/ftp.archlinux.org/"},
             {"country": "France", "url": "https://mirrors.ircam.fr/pub/archlinux/"},
-            # 北美镜像
+            # North America
             {"country": "USA", "url": "https://mirrors.mit.edu/archlinux/"},
             {"country": "Canada", "url": "https://mirror.csclub.uwaterloo.ca/archlinux/"},
-            # 亚太镜像
+            # Asia pacific
             {"country": "China", "url": "https://mirrors.tuna.tsinghua.edu.cn/archlinux/"},
             {"country": "China", "url": "https://mirrors.aliyun.com/archlinux/"},
             {"country": "China", "url": "https://mirrors.163.com/archlinux/"},
@@ -44,7 +42,7 @@ class ArchMirrorTester(MirrorTester):
         self.mirror_list = "https://archlinux.org/mirrorlist/?country=all"
 
     def parse_mirror_list(self, lines: List[str]) -> List[Dict]:
-        """解析镜像列表内容"""
+        """Parse the HTML content"""
 
         system_country_name = get_country_name(self.system_country)
         i = 0

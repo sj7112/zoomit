@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
 
-"""
-Centos镜像速度测试工具
-从官方镜像列表获取所有镜像，并进行速度测试
-"""
+"""Centos Mirror Speed Tester"""
 
 import glob
 import os
@@ -16,12 +13,12 @@ import sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from linux_speed import MirrorTester, _is_url_accessible
-from file_util import file_backup_sj
+from file_util import write_source_file
 from msg_handler import info, error
 
 
 def get_centos_codename():
-    # 检查 /etc/os-release 是否存在，提取 VERSION_ID
+    """package management - centos version codename"""
     if os.path.isfile("/etc/os-release"):
         with open("/etc/os-release") as f:
             os_release = f.read()
@@ -33,20 +30,18 @@ def get_centos_codename():
                 break
 
         if version_id:
-            # 处理 CentOS 6/7 特殊情况
             if version_id in ["6", "7"]:
-                # 获取 /etc/centos-release 中的版本号
                 if os.path.isfile("/etc/centos-release"):
                     with open("/etc/centos-release") as f:
                         centos_release = f.read().strip()
-                    return centos_release.split()[2]  # 获取类似 '7.9.2009' 的版本号
+                    return centos_release.split()[2]  # eg. '7.9.2009'
             else:
                 return version_id
     return "unknown"
 
 
 def auto_detect_gpg_key():
-    """自动检测GPG密钥文件"""
+    """GPG key file - auto detect path"""
     possible_keys = [
         "/etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7",
         "/etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-6",
@@ -58,7 +53,7 @@ def auto_detect_gpg_key():
         if os.path.exists(key_path):
             return f"file://{key_path}"
 
-    # 如果都不存在，使用通配符搜索
+    # if not exist, search by "*"
     centos_keys = glob.glob("/etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS*")
     if centos_keys:
         return f"file://{centos_keys[0]}"
@@ -68,14 +63,14 @@ def auto_detect_gpg_key():
 
 class CentosMirrorTester(MirrorTester):
     def __init__(self, system_country):
-        # 镜像列表：全球常用的 13 个镜像站点
+        # Mirror List: 13 Commonly Used Sites Worldwide
         self.mirrors = [
-            # 欧洲镜像
+            # European
             {"country": "Germany", "url": "https://ftp.plusline.net/centos-vault/"},
             {"country": "Germany", "url": "https://mirror.rackspeed.de/centos/"},
-            # 北美镜像
+            # North America
             {"country": "US", "url": "https://mirror.math.princeton.edu/pub/centos-vault/"},
-            # 亚太镜像
+            # Asia pacific
             {"country": "China", "url": "https://mirrors.aliyun.com/centos-vault/"},
             {"country": "China", "url": "https://mirrors.tuna.tsinghua.edu.cn/centos-vault/"},
             {"country": "China", "url": "https://mirrors.ustc.edu.cn/centos-vault/"},
@@ -84,24 +79,24 @@ class CentosMirrorTester(MirrorTester):
             {"country": "Japan", "url": "https://ftp.riken.jp/Linux/centos-vault/"},
             {"country": "Korea", "url": "https://mirror.kakao.com/centos/"},
             {"country": "Australia", "url": "https://mirror.aarnet.edu.au/pub/centos/"},
-            # 南美和其他地区
+            # Others
             {"country": "Colombia", "url": "http://mirror.unimagdalena.edu.co/centos/"},
             {"country": "Brazil", "url": "http://ftp.unicamp.br/pub/centos/"},
         ]
         self.globals = {"country": "Global", "url": "https://vault.centos.org/"}
         super().__init__(system_country)
-        self.os_info.codename = get_centos_codename()  # 确保获取版本代号，如7.9.2009
-        # 测试代码！！！
-        self.os_info.ostype = "centos"
-        self.os_info.codename = "7.9.2009"  # 确保获取版本代号，如7.9.2009
-        self.os_info.pretty_name = "CentOS Linux 7 (Core)"
-        self.os_info.version_id = "7"
+        self.os_info.codename = get_centos_codename()  # version code, such as 7.9.2009
+        # # 测试代码！！！
+        # self.os_info.ostype = "centos"
+        # self.os_info.codename = "7.9.2009"  # 确保获取版本代号，如7.9.2009
+        # self.os_info.pretty_name = "CentOS Linux 7 (Core)"
+        # self.os_info.version_id = "7"
 
     # ==============================================================================
-    # (1) 检查现有配置文件
+    # (1) Check PM Path
     # ==============================================================================
     def check_file(self, file_path):
-        """检查 CentOS-Base.repo 文件并提取 baseurl 列表"""
+        """filepath and urls"""
         urls = []
         current_section = None
         valid_sections = ["Base", "Updates", "Extras"]
@@ -112,74 +107,67 @@ class CentosMirrorTester(MirrorTester):
                 if not line or line.startswith("#"):
                     continue
 
-                # 匹配 name=
+                # match name=
                 if line.startswith("name="):
-                    # 提取末尾关键字，如 Base、Updates 等
                     for section in valid_sections:
                         if line.endswith(section):
                             current_section = section
                             break
                     else:
-                        current_section = None  # 不在我们关注的部分
+                        current_section = None  # not related
 
-                # 匹配 baseurl=
+                # match baseurl=
                 elif line.startswith("baseurl=") and current_section:
                     url = line.partition("=")[2].strip()
                     if url.startswith(("http://", "https://")):
-                        # 保留前缀包含 /centos/ 或 /centos-vault/
+                        # /centos/ or /centos-vault/
                         match = re.match(r"(https?://[^/]+/(centos|centos-vault)/)", url)
                         if match:
-                            urls.append(match.group(1))  # 提取干净的 base URL
-                    current_section = None  # 处理完一个 section，重置
+                            urls.append(match.group(1))  # base URL
+                    current_section = None  # reset section
         if urls:
             return file_path, urls
         return None, []
 
     def find_source(self):
-        """找到默认yum配置文件，写入path和urls"""
+        """check CentOS-Base.repo, get path and urls"""
+
         SOURCE_FILE = "/etc/yum.repos.d/CentOS-Base.repo"
 
-        # 1. 检查配置
         self.path, self.urls = self.check_file(SOURCE_FILE)
         if self.path:
             return
 
-        # 2. 若无配置
         self.path = None
 
     # ==============================================================================
-    # (2) 查找最快 mirror
+    # (2) Search Fast mirrors
     # ==============================================================================
     def fetch_mirror_list(self, limit: int = None) -> None:
-        """centos镜像列表通过手工维护来获取"""
+        """centos mirror list is manually maintained"""
 
         if limit:
-            self.mirrors = self.mirrors[:limit]  # 限制镜像数量(方便测试)
+            self.mirrors = self.mirrors[:limit]  # mirrors limitation(for testing)
 
         print("Centos镜像速度测试工具")
         print("=" * 50)
 
     # ==============================================================================
-    # (3) 修改配置文件
+    # (3) Update PM File
     # ==============================================================================
     def update_path(self, mirror):
         url = mirror.url
 
-        # 2. 生成镜像源内容
-        lines = self.add_sources(url)
+        # generate custom content
+        lines = self.add_custom_sources(url)
 
-        # 3. 写入源文件
-        try:
-            with open(self.path, "w", encoding="utf-8") as f:
-                f.write("\n".join(lines) + "\n")
-            info(f"已更新 source list: {self.path}")
-        except Exception as e:
-            error(f"写入失败: {e}")
+        # update source file
+        write_source_file(self.path, lines)
 
-    def add_sources(self, url: str) -> list[str]:
+    def add_custom_sources(self, url: str) -> list[str]:
         """
-        为自定义镜像源（Base | Updates | Extras）生成多块 sources 块。
-        每个 suite 一块，以空行分隔。
+        add sources block (Base | Updates | Extras) for custom mirrors
+        one block for each suite, separated by empty lines.
         """
         codename = self.os_info.codename
         arch = platform.machine()

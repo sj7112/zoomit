@@ -197,6 +197,18 @@ def read_file(fn):
         return f.read().splitlines()  # 去掉换行符（兼容windows、macos）
 
 
+def write_source_file(path, lines):
+    """写入配置文件内容"""
+    file_backup_sj(str(path))  # backup file before writing
+
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            f.write("\n".join(lines) + "\n")
+        info(f"已更新 source list: {path}")
+    except Exception as e:
+        error(f"写入失败: {e}")
+
+
 def read_lang_prop(lang_code):
     """读取配置文件为数组"""
     fn = PROP_PATH + lang_code + ".properties"

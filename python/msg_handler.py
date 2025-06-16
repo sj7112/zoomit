@@ -19,6 +19,7 @@ from json_handler import json_getopt
 RED = "\033[0;31m"
 YELLOW = "\033[0;33m"
 GREEN = "\033[0;32m"
+LIGHT_BLUE = "\033[1;34m"  # 亮蓝色
 DARK_BLUE = "\033[0;34m"  # 暗蓝色
 CYAN = "\033[0;36m"  # 青色 (Cyan)
 RED_BG = "\033[41m"  # 红色背景
@@ -367,7 +368,7 @@ def msg_parse_param(options, *args):
     if caller_name == "warning":
         print(f"{YELLOW}⚠️ {MSG_WARNING}: {template}{NC}")
     elif caller_name == "info":
-        print(f"{DARK_BLUE}🔷 {MSG_INFO}: {template}{NC}")
+        print(f"{LIGHT_BLUE}🔷 {MSG_INFO}: {template}{NC}")
 
     if json_getopt(options, "error"):
         return 1  # 如有需要，返回错误，供调用者使用
