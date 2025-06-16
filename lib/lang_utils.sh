@@ -323,7 +323,6 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
 
     # 检查键是否存在
     if [[ -n "${LANGUAGE_MSGS[$key]+x}" ]]; then
-      echo "key=====$key" >&2
       result="${LANGUAGE_MSGS[$key]}"
     fi
 

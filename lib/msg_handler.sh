@@ -13,10 +13,11 @@ if [[ -z "${LOADED_MSG_HANDLER:-}" ]]; then
   RED='\033[0;31m'
   YELLOW='\033[0;33m'
   GREEN='\033[0;32m'
-  DARK_BLUE='\033[0;34m' # 暗蓝色
-  CYAN='\033[0;36m'      # 青色 (Cyan)
-  RED_BG='\033[41m'      # 红色背景
-  NC='\033[0m'           # No Color
+  LIGHT_BLUE='\033[1;34m' # 亮蓝色
+  DARK_BLUE='\033[0;34m'  # 暗蓝色
+  CYAN='\033[0;36m'       # 青色 (Cyan)
+  RED_BG='\033[41m'       # 红色背景
+  NC='\033[0m'            # No Color
 
   # 获取当前系统语言
   ENVIRONMENT="TEST"    # TEST 测试环境 | PROD 生产环境
@@ -459,7 +460,7 @@ EOF
     elif [[ "${FUNCNAME[1]}" == "warning" ]]; then
       echo -e "${YELLOW}⚠️ ${MSG_WARNING}: $template${NC}"
     elif [[ "${FUNCNAME[1]}" == "info" ]]; then
-      echo -e "${DARK_BLUE}🔷 ${MSG_INFO}: $template${NC}"
+      echo -e "${LIGHT_BLUE}🔷 ${MSG_INFO}: $template${NC}"
     elif [[ "${FUNCNAME[1]}" == "string" ]]; then
       echo -e "$template" # normal text (no color)
     fi

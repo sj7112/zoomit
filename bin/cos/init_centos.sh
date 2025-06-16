@@ -29,6 +29,7 @@ else
   set -o pipefail # 确保管道中的命令失败会导致脚本退出
 fi
 
+# 引入消息处理脚本
 BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd .. && pwd)" # bin directory
 source "$BIN_DIR/init_main.sh"                                   # main script
 
