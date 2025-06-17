@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 确保只被加载一次
+# Load once only
 if [[ -z "${LOADED_INIT_BASE_FUNC:-}" ]]; then
   LOADED_INIT_BASE_FUNC=1
 

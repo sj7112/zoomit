@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 确保只被加载一次
+# Load once only
 if [[ -z "${LOADED_UPDATE_ENV:-}" ]]; then
   LOADED_UPDATE_ENV=1
 

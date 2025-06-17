@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 确保只被加载一次
+# Load once only
 if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
   LOADED_BASH_UTILS=1
 

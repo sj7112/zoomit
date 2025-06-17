@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 确保只被加载一次
+# Load once only
 if [[ -z "${LOADED_SYSTEM:-}" ]]; then
   LOADED_SYSTEM=1
 

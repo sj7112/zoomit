@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# 确保只被加载一次
+# Load once only
 if [[ -z "${LOADED_PYTHON_BRIDGE:-}" ]]; then
   LOADED_PYTHON_BRIDGE=1
 
-  # 声明全局变量
+  # Declare global
   : "${LIB_DIR:=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}" # bin direcotry
   : "${PYTHON_DIR:=$(dirname "$BIN_DIR")/python}"               # python directory
 

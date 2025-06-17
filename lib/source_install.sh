@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# 确保只被加载一次
+# Load once only
 if [[ -z "${LOADED_SOURCE_INSTALL:-}" ]]; then
   LOADED_SOURCE_INSTALL=1
 
-  # 声明全局变量
+  # Declare global
   : "${LIB_DIR:=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}" # bin direcotry
   source "$LIB_DIR/msg_handler.sh"
   source "$LIB_DIR/bash_utils.sh"

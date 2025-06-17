@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# 确保只被加载一次
+# Load once only
 if [[ -z "${LOADED_MSG_HANDLER:-}" ]]; then
   LOADED_MSG_HANDLER=1
 
-  # 声明全局变量
+  # Declare global
   : "${LIB_DIR:=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}" # lib direcotry
   : "${LANG_DIR:=$(dirname "$LIB_DIR")/config/lang}"            # lang directory
   source "$LIB_DIR/json_handler.sh"

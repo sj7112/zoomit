@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# 确保只被加载一次
+# Load once only
 if [[ -z "${LOADED_I18N:-}" ]]; then
   LOADED_I18N=1
 
-  # 声明全局变量
+  # Declare global
   : "${BIN_DIR:=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}" # bin direcotry
   : "${LIB_DIR:=$(dirname "$BIN_DIR")/lib}"                     # lib directory
   : "${CONF_DIR:=$(dirname "$BIN_DIR")/config}"                 # config directory

@@ -34,7 +34,7 @@ def get_centos_codename():
                 if os.path.isfile("/etc/centos-release"):
                     with open("/etc/centos-release") as f:
                         centos_release = f.read().strip()
-                    return centos_release.split()[2]  # eg. '7.9.2009'
+                    return centos_release.split()[2]  # e.g. '7.9.2009'
             else:
                 return version_id
     return "unknown"

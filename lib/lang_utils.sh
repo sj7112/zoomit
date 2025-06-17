@@ -1,22 +1,22 @@
 #!/bin/bash
 
-# 确保只被加载一次
+# Ensure it is loaded only once
 if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
   LOADED_LANG_UTILS=1
 
-  # 声明全局变量
+  # Declare global
   : "${LIB_DIR:=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}" # lib direcotry
 
-  declare -A LANGUAGE_MSGS # 二维语言关联数组
+  declare -A LANGUAGE_MSGS # key=file:hash, value=translated message
 
-  # 测试终端是否支持UTF-8字符 0 表示支持，1 表示不支持
+  # Test if terminal supports UTF-8 (0=supported, 1=unsupported)
   test_terminal_display() {
     case "$TERM" in
-      # 明确不支持UTF-8的终端
+      # Terminals without UTF-8 support
       vt100 | vt102 | vt220 | vt320 | ansi | dumb)
         return 1
         ;;
-      # 其他情况
+      # Others
       *)
         return 0
         ;;
@@ -24,25 +24,20 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
   }
 
   # ==============================================================================
-  # 初始化语言相关函数
+  # Language Initialize functions
   # ==============================================================================
-  # 格式化语言代码
+  # Normalize locale format
   normalize_locale() {
     input="$1"
 
-    # 提取语言部分和编码部分
-    lang_part=$(echo "$input" | cut -d. -f1)
-    charset_part=$(echo "$input" | cut -s -d. -f2)
-
-    # 分别处理语言国家部分（如 zh_CN）
-    # 小写语言码 + 大写国家码
+    # Reassemble language-country part (e.g., zh_CN)
+    lang_part=$(echo "$input" | cut -d. -f1) # e.g., en_US
     lang_prefix=$(echo "$lang_part" | cut -d_ -f1 | tr '[:upper:]' '[:lower:]')
     lang_suffix=$(echo "$lang_part" | cut -d_ -f2 | tr '[:lower:]' '[:upper:]')
-
-    # 重组语言部分
     norm_lang="${lang_prefix}_${lang_suffix}"
 
-    # 编码部分统一成小写，如 utf8 / iso8859-1
+    # Convert charset to lowercase (e.g., utf8 / iso8859-1)
+    charset_part=$(echo "$input" | cut -s -d. -f2)
     if [ -n "$charset_part" ]; then
       norm_charset=$(echo "$charset_part" | tr '[:upper:]' '[:lower:]')
       echo "${norm_lang}.${norm_charset}"
@@ -51,7 +46,7 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
     fi
   }
 
-  # 获取默认语言(不允许使用 C 或 POSIX)
+  # get default language(C or POSIX is not allowed)
   get_default_lang() {
     default_lang=""
     for file in /etc/locale.conf /etc/default/locale /etc/sysconfig/i18n; do
@@ -59,11 +54,11 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
         default_lang=$(grep "^LANG=" "$file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '"')
         if [ -n "$default_lang" ]; then
           if [[ "$LANG" == "C" || "$LANG" == "POSIX" ]]; then
-            break # 必须重新选择语言
+            break # Must not be C or POSIX
           fi
-          local base="${default_lang%.*}"    # 移除 .utf8 / .UTF-8
-          local short="${base%_*}"           # 语言代码
-          export LANGUAGE="${base}:${short}" # 获取语言代码（如 en_US.UTF-8 -> en_US:en）
+          local base="${default_lang%.*}"    # remove .utf8 / .UTF-8
+          local short="${base%_*}"           # language code
+          export LANGUAGE="${base}:${short}" # e.g. en_US.UTF-8 -> en_US:en
           echo "$default_lang"
           return
         fi
@@ -94,7 +89,7 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
     echo "$default_lang"
   }
 
-  # 检查当前语言设置是否支持UTF-8
+  # Check UTF-8 support
   check_locale() {
     lang=$1
     need_change=0
@@ -116,34 +111,34 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
         new_lang=$(echo "$lang" | sed 's/\.[^.]*$/.UTF-8/')
         ;;
       *)
-        new_lang="$lang" # 其他语言或UTF-8，无需修改
+        new_lang="$lang" # already support UTF-8
         need_change=1
         ;;
     esac
 
-    echo "$new_lang"    # 返回新的语言设置
-    return $need_change # 返回是否需要修改
+    echo "$new_lang"    # return new language
+    return $need_change # return 1 if change needed
   }
 
-  # 更新或添加 LANG 设置到 ~/.profile
+  # Update or add LANG setting to ~/.profile
   set_user_lang_profile() {
-    local lang="$1" # 目标语言（如 zh_CN.UTF-8）
+    local lang="$1"
 
-    local profile_file="$HOME/.profile" # 优先修改 ~/.profile
+    local profile_file="$HOME/.profile" # prefer ~/.profile
     if [ ! -f "$profile_file" ]; then
       touch "$profile_file"
     fi
 
-    # 更新或添加 LANG 设置
+    # Update or add LANG setting
     if grep -q "^LANG=" "$profile_file"; then
       sed -i "s|^LANG=.*|LANG=\"$lang\"|" "$profile_file"
     else
       echo "LANG=\"$lang\"" | tee -a "$profile_file" >/dev/null
     fi
 
-    # 从 lang 生成 LANGUAGE 值，例如 en_US.UTF-8 -> en_US:en
+    # Generate LANGUAGE, e.g. en_US.UTF-8 -> en_US:en
     local language_value="$LANGUAGE"
-    # 更新或添加 LANGUAGE 设置
+    # Update or add LANGUAGE setting
     if grep -q "^LANGUAGE=" "$profile_file"; then
       sed -i "s|^LANGUAGE=.*|LANGUAGE=\"$language_value\"|" "$profile_file"
     else
@@ -151,7 +146,7 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
     fi
   }
 
-  # 更新或添加 LANG 设置
+  # Update or add LANG setting
   set_user_lang_sh() {
     local config_file="$1"
     local lang="$2" # 目标语言（如 en_US.UTF-8）
@@ -160,7 +155,7 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
       touch "$config_file"
     fi
 
-    # 更新或添加 LANG 设置
+    # LANG setup
     export_line="export LANG=\"$lang\""
     if grep -q "^export LANG=" "$config_file"; then
       sed -i "s|^export LANG=.*|$export_line|" "$config_file"
@@ -168,7 +163,7 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
       echo "$export_line" | tee -a "$config_file" >/dev/null
     fi
 
-    # 从 lang 生成 LANGUAGE 值，例如 en_US.UTF-8 -> en_US:en
+    # LANGUAGE setup, e.g. en_US.UTF-8 -> en_US:en
     local base="${lang%.*}"  # 移除 .utf8 / .UTF-8
     local short="${base%_*}" # 语言代码
     local language_value="${base}:${short}"
@@ -195,113 +190,108 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
     fi
   }
 
-  # 如果当前语言设置不支持UTF-8，尝试修复
+  # Attempts to fix the locale settings to ensure UTF-8 compatibility
   fix_shell_locale() {
-    local lang=$(get_default_lang)         # 返回 LANG 系统默认值
-    local new_lang=$(check_locale "$lang") # UTF-8修复
+    local lang=$(get_default_lang)         # system default LANG value
+    local new_lang=$(check_locale "$lang") # UTF-8 fix
     if [ $? -ne 0 ]; then
       echo "Need UTF-8, try to fix LANG: $lang..."
     fi
 
     if ! test_terminal_display; then
-      new_lang="en_US.UTF-8" # 终端不支持UTF-8，强制设置为 en_US.UTF-8
+      new_lang="en_US.UTF-8" # Terminal does not support UTF-8, use default value
       echo "Terminal does not support UTF-8, set LANG to $new_lang"
     else
       echo "set LANG to $new_lang"
-      local curr_lang=${LC_ALL:-${LANG:-C}} # 读取用户语言设置
+      local curr_lang=${LC_ALL:-${LANG:-C}} # Read user language settings
       if [ "${curr_lang,,}" != "${new_lang,,}" ]; then
         if confirm_action "Change $USER language from [$curr_lang] to [$new_lang]?"; then
-          update_user_locale "$new_lang" # 永久改变 LANG 和 LANGUAGE
+          update_user_locale "$new_lang" # Permanently change LANG and LANGUAGE
         fi
       fi
     fi
 
-    export LANG="$new_lang"            # 设置 LANG
-    local base="${new_lang%.*}"        # 移除 .utf8 / .UTF-8
-    local short="${base%_*}"           # 语言代码
-    export LANGUAGE="${base}:${short}" # 设置 LANGUAGE
+    export LANG="$new_lang" # Set LANG
+    local base="${new_lang%.*}"
+    local short="${base%_*}"
+    export LANGUAGE="${base}:${short}" # Set LANGUAGE
   }
 
   # ==============================================================================
-  # 翻译语言相关函数
+  # Language translation functions
   # ==============================================================================
-  # 获取语言配置文件路径
+  # Get the path to the language configuration file
   get_language_prop() {
-    local lang_format="${1:-$LANGUAGE}"
-    # 解析语言格式 zh_CN:zh -> zh_CN 和 zh
+    local lang_format="${1:-$LANGUAGE}"      # e.g. zh_CN:zh
     local primary_lang="${lang_format%%:*}"  # zh_CN
     local fallback_lang="${lang_format##*:}" # zh
 
-    # 优先查找完整语言文件
+    # First, look for the complete language file
     if [[ -f "$LANG_DIR/${primary_lang}.properties" ]]; then
       echo "$LANG_DIR/${primary_lang}.properties"
       return 0
     fi
 
-    # 其次查找简化语言文件
+    # Next, look for the simplified language file
     if [[ -f "$LANG_DIR/${fallback_lang}.properties" ]]; then
       echo "$LANG_DIR/${fallback_lang}.properties"
       return 0
     fi
 
-    # 都没找到返回错误
+    # If neither is found, return an error
     echo "Error: No language file found for '$lang_format'" >&2
     return 1
   }
 
-  # 加载语言消息(手动 key 拼接模拟子 map)
+  # Load message translations
   load_trans_msgs() {
-    # 设置 shell 语言
+    # fix shell language to ensure UTF-8 support
     fix_shell_locale
 
-    # 判断是否已经加载过
+    # Skip if already loaded
     if [[ -n "${LANGUAGE_MSGS+x}" ]] && [[ ${#LANGUAGE_MSGS[@]} -ne 0 ]]; then
-      return 0 # 已加载，直接返回
+      return 0
     fi
 
     local properties_file=$(get_language_prop)
     if [[ $? -ne 0 ]]; then
-      echo "Use default language 'en_US:en'" >&2
+      echo "Using default language 'en_US:en'" >&2
       properties_file=$(get_language_prop 'en_US:en')
     fi
 
     local current_file=""
     while IFS= read -r line; do
-      # 跳过空行
+      # Skip empty lines
       [[ -z "$line" ]] && continue
 
-      # 跳过普通注释行，但保留文件标记
+      # Skip comments, but handle file markers
       if [[ "$line" =~ ^[[:space:]]*# ]]; then
-        # 匹配文件标记 ■=filename
         if [[ "$line" =~ ^#[[:space:]]*■=(.+)$ ]]; then
           current_file="${BASH_REMATCH[1]}"
         fi
         continue
       fi
 
-      # 跳过分隔行
+      # Skip separator lines
       [[ "$line" =~ ^[[:space:]]*--- ]] && continue
 
-      # 匹配键值对 KEY=VALUE
+      # Match key-value pairs KEY=VALUE
       if [[ "$line" =~ ^([A-Za-z0-9_-]+)=(.*)$ ]]; then
         local key="${BASH_REMATCH[1]}"
         local value="${BASH_REMATCH[2]}"
 
-        # 处理多行值（以 \ 结尾的行）
+        # Handle multi-line values ending with "\"
         while [[ "$value" =~ \\[[:space:]]*$ ]]; do
-          # 移除末尾的反斜杠和空白
-          value="${value%\\*}"
-          # 读取下一行并追加
+          value="${value%\\*}" # Remove trailing \ and spaces
           if IFS= read -r next_line; then
-            # 移除前导空白
-            next_line="${next_line#"${next_line%%[![:space:]]*}"}"
+            next_line="${next_line#"${next_line%%[![:space:]]*}"}" # Trim leading spaces
             value="${value}${next_line}"
           else
             break
           fi
         done
 
-        # 存储到数组中，使用文件名作为key前缀
+        # Store in array with file prefix
         if [[ -n "$current_file" ]]; then
           LANGUAGE_MSGS["${current_file}:${key}"]="$value"
         fi
@@ -311,23 +301,24 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
     echo "Loaded ${#LANGUAGE_MSGS[@]} messages from $properties_file"
   }
 
-  # 加载语言消息(手动 key 拼接模拟子 map)
+  # Translate message
   get_trans_msg() {
-    msg="$1" # 原始消息
+    # Retrieve the translated message for the given input
+    msg="$1" # Original message
 
-    local current_hash=$(djb2_with_salt_20 "$msg")               # 使用DJB2哈希算法生成消息ID
-    current_hash=$(padded_number_to_base64 "$current_hash"_6)    # 转换为6位base64编码
-    local source_file="${BASH_SOURCE[3]#$(dirname "$LIB_DIR")/}" # 去掉根目录
+    local current_hash=$(djb2_with_salt_20 "$msg")               # DJB2 hash algorithm
+    current_hash=$(padded_number_to_base64 "$current_hash"_6)    # 6-character base64 encoding
+    local source_file="${BASH_SOURCE[3]#$(dirname "$LIB_DIR")/}" # Remove root directory
     local key="${source_file}:$current_hash"
     local result=""
 
-    # 检查键是否存在
+    # Check if the key exists
     if [[ -n "${LANGUAGE_MSGS[$key]+x}" ]]; then
       result="${LANGUAGE_MSGS[$key]}"
     fi
 
     if [[ -z "$result" ]]; then
-      # 如果没有找到翻译，使用MD5再试一次
+      # If translation is not found, try again using MD5
       current_hash=$(md5 "$msg")
       key="${source_file}:$current_hash"
       if [[ -n "${LANGUAGE_MSGS[$key]+x}" ]]; then
@@ -336,10 +327,10 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
     fi
 
     if [[ -z "$result" ]]; then
-      # 如果还是没有找到翻译，使用原始消息
+      # If still not found, use the original message
       result="$msg"
     fi
-    echo "$result" # 返回翻译结果
+    echo "$result" # Return the translation result
   }
 
 fi

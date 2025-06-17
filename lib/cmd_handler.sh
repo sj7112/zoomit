@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 确保只被加载一次
+# Load once only
 if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
   LOADED_CMD_HANDLER=1
 
