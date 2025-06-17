@@ -87,7 +87,6 @@ class MirrorTester:
         self.os_info = init_os_info()
         self.system_country = system_country
         self.mirror_list = ""
-        self.mirrors.append(self.globals)  # 添加全球镜像站点
         self.netlocs = set()  # 用于去重的域名集合
 
     def fetch_mirror_list(self, limit: int = None) -> None:
@@ -101,7 +100,6 @@ class MirrorTester:
             self.parse_mirror_list(lines)
             if limit:
                 self.mirrors = self.mirrors[:limit]  # mirrors limitation(for testing)
-            self.mirrors.append(self.globals)  # add global mirror
         except requests.RequestException as e:
             print(f"获取镜像列表失败: {e}")
 
@@ -129,7 +127,6 @@ class MirrorTester:
     def test_mirror_speed(self, mirror: dict, limit_cap: float = None, test_count: int = 3) -> MirrorResult:
         """测试单个镜像的速度"""
         url = mirror.get("url")
-        is_global = mirror.get("country") == "Global"
 
         # 测试文件列表（从小到大）
         test_files = files_map.get(self.os_info.ostype)  # 通常几MB  # 几KB  # 很小
@@ -171,7 +168,7 @@ class MirrorTester:
                             speed = downloaded / elapsed / 1024  # KB/s
 
                             # 检查是否超过速率限制 (设置阈值为 < limit_cap的1/3)
-                            if limit_cap and not is_global:
+                            if limit_cap:
                                 max_speed = max(max_speed, speed)
                                 if max_speed < limit_cap / test_count:
                                     return None  # 超过限制，退出
@@ -228,7 +225,6 @@ class MirrorTester:
 
         lock = threading.Lock()
         fastest_results: List[MirrorResult] = []
-        global_result: MirrorResult = None
         limit_cap = None
         completed = 0
         self.cancelled = threading.Event()
@@ -256,17 +252,14 @@ class MirrorTester:
             )
 
         def test_wrapper(mirror):
-            nonlocal limit_cap, global_result
+            nonlocal limit_cap
             try:
                 result = self.test_mirror_speed(mirror, limit_cap)
                 if result:
-                    if mirror.get("country") == "Global":
-                        global_result = result
-                    else:
-                        with lock:
-                            insert_sorted(fastest_results, result, top_n)
-                            if len(fastest_results) >= top_n:
-                                limit_cap = fastest_results[-1].avg_speed  # 更新速率限制
+                    with lock:
+                        insert_sorted(fastest_results, result, top_n)
+                        if len(fastest_results) >= top_n:
+                            limit_cap = fastest_results[-1].avg_speed  # 更新速率限制
             except Exception:
                 pass  # 静默跳过失败项
             finally:
@@ -286,10 +279,6 @@ class MirrorTester:
             executor.shutdown(wait=False)
             self.cancelled.set()
 
-        # 补充全球镜像Global mirror
-        if global_result:
-            insert_sorted(fastest_results, global_result, top_n + 1)
-
         print()  # 结束后换行
         end_time = time.time()
 
@@ -302,7 +291,7 @@ class MirrorTester:
         # 3 显示结果
         tot_time = end_time - start_time
         self.print_results(top_10)
-        print(f"\n找到前{len(top_10)-1}个最快的{self.os_info.ostype}镜像 + 全球站 (共耗时{tot_time:.2f}秒)")
+        print(f"\n找到前{len(top_10)}个最快的{self.os_info.ostype}镜像 (共耗时{tot_time:.2f}秒)")
 
         return top_10
 
@@ -325,10 +314,8 @@ class MirrorTester:
         for result in valid_results:
             result.score = calculate_score(result)
 
-        sorted_results = sorted(valid_results, key=lambda x: x.score, reverse=True)
-
-        # 选择前10个 + global站点
-        return sorted_results
+        # 选择前10个站点
+        return sorted(valid_results, key=lambda x: x.score, reverse=True)
 
     def choose_mirror(self) -> None:
         """选择最快镜像，并更新包管理器文件"""

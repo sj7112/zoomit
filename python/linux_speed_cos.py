@@ -82,8 +82,8 @@ class CentosMirrorTester(MirrorTester):
             # Others
             {"country": "Colombia", "url": "http://mirror.unimagdalena.edu.co/centos/"},
             {"country": "Brazil", "url": "http://ftp.unicamp.br/pub/centos/"},
+            {"country": "Global", "url": "https://vault.centos.org/"},  # global site
         ]
-        self.globals = {"country": "Global", "url": "https://vault.centos.org/"}
         super().__init__(system_country)
         self.os_info.codename = get_centos_codename()  # version code, such as 7.9.2009
         # # 测试代码！！！
@@ -158,7 +158,7 @@ class CentosMirrorTester(MirrorTester):
     def update_path(self, mirror):
         url = mirror.url
 
-        # generate custom content
+        # generate custom content (One mirror is enough for CentOS)
         lines = self.add_custom_sources(url)
 
         # update source file

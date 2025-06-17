@@ -36,7 +36,6 @@ class DebianMirrorTester(MirrorTester):
             # Others
             {"country": "Brazil", "url": "http://ftp.br.debian.org/debian/"},
         ]
-        self.globals = {"country": "Global", "url": "http://deb.debian.org/debian"}
         super().__init__(system_country)
         self.mirror_list = "https://www.debian.org/mirror/mirrors_full"
 
@@ -149,9 +148,7 @@ class DebianMirrorTester(MirrorTester):
         url, url_upd, url_sec = mirror.url, mirror.url_upd, mirror.url_sec
 
         # 2. generate custom content
-        lines = []
-        if not def_url == url:
-            lines.extend(self.add_custom_sources(url, url_upd, url_sec))
+        lines = self.add_custom_sources(url, url_upd, url_sec)
 
         # 3. generate default content
         lines.extend(self.add_custom_sources(def_url, def_url, def_url_sec))
@@ -195,4 +192,5 @@ class DebianMirrorTester(MirrorTester):
             sources.append(f"deb {url_upd} {codename}-updates main contrib non-free non-free-firmware")
         if url_sec:
             sources.append(f"deb {url_sec} {codename}-security main contrib non-free non-free-firmware")
+        sources.append("")
         return sources

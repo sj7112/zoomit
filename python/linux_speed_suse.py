@@ -52,8 +52,6 @@ class OpenSUSEMirrorTester(MirrorTester):
             {"country": "Russia", "url": "https://mirror.yandex.ru/opensuse/"},
             {"country": "Turkey", "url": "https://ftp.linux.org.tr/opensuse/"},
         ]
-
-        self.globals = {"country": "Global", "url": "https://download.opensuse.org/"}
         super().__init__(system_country)
         self.mirror_list = "https://mirrors.opensuse.org/"
         # 测试代码！！！
@@ -163,6 +161,8 @@ class OpenSUSEMirrorTester(MirrorTester):
             write_source_file(path, lines)
 
     def add_custom_sources(self, url: str) -> str:
+        def_url = "https://download.opensuse.org/"
+
         repo_map = {
             "repo-oss": {"name": "main repository", "path": "distribution/leap/$releasever/repo/oss/"},
             "repo-non-oss": {
@@ -183,11 +183,27 @@ class OpenSUSEMirrorTester(MirrorTester):
             full_url = url + info["path"]
             gpgkey_url = full_url + "/repodata/repomd.xml.key"
 
-            lines = []
+            lines = [
+                f"[{repo_type}]",
+                f"name={info['name']}",
+                "enabled=1",
+                "autorefresh=1",
+                f"baseurl={full_url}",
+                "path=/",
+                "type=rpm-md",
+                "keeppackages=0",
+                "gpgcheck=1",
+                f"gpgkey={gpgkey_url}",
+                "priority=90",
+                "",
+            ]
+            # extend official value
+            full_url = def_url + info["path"]
+            gpgkey_url = full_url + "/repodata/repomd.xml.key"
             lines.extend(
                 [
-                    f"[{repo_type}]",
-                    f"name={info['name']}",
+                    f"[{repo_type}-official]",
+                    f"name={info['name']} - official",
                     "enabled=1",
                     "autorefresh=1",
                     f"baseurl={full_url}",
@@ -196,6 +212,7 @@ class OpenSUSEMirrorTester(MirrorTester):
                     "keeppackages=0",
                     "gpgcheck=1",
                     f"gpgkey={gpgkey_url}",
+                    "priority=99",
                 ]
             )
             repo_file = f"/etc/zypp/repos.d/{repo_type}.repo"

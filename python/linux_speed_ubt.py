@@ -37,7 +37,6 @@ class UbuntuMirrorTester(MirrorTester):
             {"country": "Singapore", "url": "http://mirror.nus.edu.sg/ubuntu/"},
             {"country": "Australia", "url": "https://mirror.aarnet.edu.au/ubuntu/"},
         ]
-        self.globals = {"country": "Global", "url": "https://archive.ubuntu.com/ubuntu/"}
         super().__init__(system_country)
         # # 测试代码！！！
         # self.os_info.ostype = "ubuntu"
@@ -163,17 +162,15 @@ class UbuntuMirrorTester(MirrorTester):
     # (3) Update PM File
     # ==============================================================================
     def update_path(self, mirror):
-        def_url = "http://archive.ubuntu.com/ubuntu/"
-        def_url_sec = "http://security.ubuntu.com/ubuntu/"
+        def_url = "https://archive.ubuntu.com/ubuntu/"
+        def_url_sec = "https://security.ubuntu.com/ubuntu/"
 
         # 1. check custom mirror
         self.check_mirror_components(mirror)
         url, url_sec = mirror.url, mirror.url_sec
 
         # 2. generate custom content
-        lines = []
-        if not def_url == url:
-            lines.extend(self.add_custom_sources(url, url_sec))
+        lines = self.add_custom_sources(url, url_sec)
 
         # 3. generate default content
         lines.extend(self.add_default_sources(def_url, def_url_sec))
