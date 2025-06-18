@@ -15,7 +15,7 @@ from linux_speed_deb import DebianMirrorTester
 from linux_speed_ubt import UbuntuMirrorTester
 from linux_speed_cos import CentosMirrorTester
 from linux_speed_suse import OpenSUSEMirrorTester
-from linux_speed_arch import update_source_arch
+from linux_speed_arch import ArchMirrorTester
 
 
 def update_source(distro_ostype: str, system_country: str) -> None:
@@ -33,4 +33,4 @@ def update_source(distro_ostype: str, system_country: str) -> None:
         OpenSUSEMirrorTester(system_country).run()
 
     elif distro_ostype == "arch":
-        update_source_arch(system_country)
+        ArchMirrorTester(system_country).run()
