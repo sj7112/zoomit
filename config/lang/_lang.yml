@@ -86,14 +86,6 @@ file:
     stats:
       zh: {count: 2, start: 116, end: 120}
       en: {count: 2, start: 116, end: 120}
-  lib/init_base_func.sh:
-    type: shell
-    djb2_len: 20
-    created: '2025-06-12 18:10:50'
-    changed: '2025-06-15 17:00:05'
-    stats:
-      zh: {count: 6, start: 122, end: 129}
-      en: {count: 6, start: 122, end: 129}
   lib/json_handler.sh:
     type: shell
     djb2_len: 20

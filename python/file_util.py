@@ -203,7 +203,7 @@ def write_source_file(path, lines):
 
     try:
         with open(path, "w", encoding="utf-8") as f:
-            f.write("\n".join(lines) + "\n")
+            f.write("\n".join(lines))
         info(f"已更新 source list: {path}")
     except Exception as e:
         error(f"写入失败: {e}")

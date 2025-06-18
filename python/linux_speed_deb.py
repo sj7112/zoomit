@@ -57,9 +57,8 @@ class DebianMirrorTester(MirrorTester):
                     match = re.match(r"^\s*(?:deb|deb-src)\s+(http[s]?://[^\s]+)", line)
                     if match:
                         urls.append(match.group(1))
-        if urls:
-            return file_path, urls
-        return None, []
+
+        return (file_path, urls) if urls else (None, [])
 
     def find_source(self):
         """find config file, get path and urls"""

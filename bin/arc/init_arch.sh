@@ -15,48 +15,25 @@
 # 使用示例:
 # sudo ./init_main.sh
 
-set -euo pipefail                                                # strict mode
+# 检查 DEBUG 环境变量，设置相应的调试模式
+
+if [[ "$DEBUG" == "1" ]]; then
+  # set -x          # 启用命令追踪
+  set -e          # 启用脚本错误即退出
+  set -u          # 启用未定义变量报错
+  set -o pipefail # 启用管道失败时退出
+else
+  set +x          # 关闭命令追踪
+  set -e          # 确保遇到错误退出
+  set -u          # 确保未定义变量时报错
+  set -o pipefail # 确保管道中的命令失败会导致脚本退出
+fi
+
+# 引入消息处理脚本
 BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd .. && pwd)" # bin directory
 source "$BIN_DIR/init_main.sh"                                   # main script
-
-# Arch Linux (pacman)
-init_sources_list() {
-  # 检查是否使用了本地文件源
-  if grep -q "^Server = file://" /etc/pacman.d/mirrorlist; then
-    info "$1" $DISTRO_OSTYPE
-
-    # 备份原镜像列表
-    file_backup_sj "/etc/pacman.d/mirrorlist"
-
-    # 创建新的镜像列表文件，使用官方全球镜像
-    cat >/tmp/mirrorlist <<EOF
-# Arch Linux 官方全球镜像
-# 全球自动重定向
-Server = https://geo.mirror.pkgbuild.com/\$repo/os/\$arch
-
-# 主要镜像
-Server = https://mirrors.kernel.org/archlinux/\$repo/os/\$arch
-Server = https://mirror.rackspace.com/archlinux/\$repo/os/\$arch
-Server = https://mirror.leaseweb.net/archlinux/\$repo/os/\$arch
-Server = https://arch.mirror.constant.com/\$repo/os/\$arch
-
-# 官方主源
-Server = https://archlinux.org/\$repo/os/\$arch
-EOF
-    $SUDO_CMD mv /tmp/mirrorlist /etc/pacman.d/mirrorlist
-
-    # 更新软件包数据库
-    $SUDO_CMD pacman -Syy
-  fi
-}
 
 # --------------------------
 # 主执行流程
 # --------------------------
-echo "=== sj init debian system start ==="
-# initial_env
-config_sshd
-# configure_ip
-# install_software
-# system_config
-echo "=== sj init debian system end ==="
+init_main "$@"

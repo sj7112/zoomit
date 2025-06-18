@@ -12,10 +12,8 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   source "$LIB_DIR/json_handler.sh"
   source "$LIB_DIR/system.sh"
   source "$LIB_DIR/hash_util.sh"
-  source "$LIB_DIR/init_base_func.sh"
   source "$LIB_DIR/python_install.sh"
   source "$LIB_DIR/python_bridge.sh"
-  source "$LIB_DIR/source_install.sh"
   source "$LIB_DIR/update_env.sh"
   source "$LIB_DIR/network.sh"
   source "$LIB_DIR/docker.sh"
@@ -124,34 +122,6 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     install_py_venv
     # 3. 选择包管理器
     sh_update_source # 选择包管理器（内有交互）
-    exiterr "请手动修改软件源后再运行" "$DISTRO_OSTYPE" \
-      "如果需要，请手动修改软件源列表 /etc/apt/sources.list 或 /etc/yum.repos.d/*.repo"
-
-    # local sources_file=$(get_source_list)
-    local prompt
-    if check_cdrom; then
-      prompt=$(string "检测到 CD-ROM 作为软件源，是否重新选择软件源？")
-      if ! confirm_action "$prompt"; then exiterr "请手动修改软件源后再运行"; fi
-    else
-      prompt=$(string "是否重新选择软件源？")
-      if ! confirm_action "$prompt"; then return 1; fi
-    fi
-
-    # if [[ "$DISTRO_PM" == "apt" ]]; then
-    #   init_sources_list "$prompt"
-    # elif [[ "$DISTRO_PM" == "dnf" || "$DISTRO_PM" == "yum" ]]; then
-    #   init_sources_list "检测到 CD-ROM 作为软件源，修改为默认 {0} 官方源..." "$DISTRO_OSTYPE"
-    #   select_mirror # 选择速度快的镜像(内有交互)
-    # elif [[ "$DISTRO_PM" == "zypper" ]]; then
-    #   init_sources_list "检测到 CD-ROM 作为软件源，修改为默认 {0} 官方源..." "$DISTRO_OSTYPE"
-    #   select_mirror # 选择速度快的镜像(内有交互)
-    # elif [[ "$DISTRO_PM" == "pacman" ]]; then
-    #   init_sources_list "检测到 CD-ROM 作为软件源，修改为默认 {0} 官方源..." "$DISTRO_OSTYPE"
-    #   select_mirror # 选择速度快的镜像(内有交互)
-    # fi
-
-    init_sources_list "检测到 CD-ROM 作为软件源，修改为默认 {0} 官方源..."
-    select_mirror # 选择速度快的镜像(内有交互)
 
     info "[1/1] 系统升级开始..."
     clean_pkg_mgr   # 清理缓存

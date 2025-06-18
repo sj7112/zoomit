@@ -15,60 +15,23 @@
 # 使用示例:
 # sudo ./init_main.sh
 
-set -euo pipefail                                                # strict mode
+if [[ "$DEBUG" == "1" ]]; then
+  # set -x          # 启用命令追踪
+  set -e          # 启用脚本错误即退出
+  set -u          # 启用未定义变量报错
+  set -o pipefail # 启用管道失败时退出
+else
+  set +x          # 关闭命令追踪
+  set -e          # 确保遇到错误退出
+  set -u          # 确保未定义变量时报错
+  set -o pipefail # 确保管道中的命令失败会导致脚本退出
+fi
+
+# 引入消息处理脚本
 BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd .. && pwd)" # bin directory
 source "$BIN_DIR/init_main.sh"                                   # main script
-
-# openSUSE (zypper)
-init_sources_list() {
-  # 检查是否包含 cdrom 源
-  if grep -q "cdrom" /etc/zypp/repos.d/*.repo; then
-    info "$1" $DISTRO_OSTYPE
-
-    # 备份原来的 repo 文件
-    file_backup_sj "/etc/zypp/repos.d/*.repo"
-
-    # 修改 repo 配置文件，将 cdrom 源替换为官方源
-    for repo_file in /etc/zypp/repos.d/*.repo; do
-      if grep -q "cdrom" "$repo_file"; then
-        # 替换为默认的官方 openSUSE 源
-        cat >"$repo_file" <<EOF
-[openSUSE-oss]
-name=Main Repository
-enabled=1
-autorefresh=1
-baseurl=http://download.opensuse.org/distribution/leap/$DISTRO_CODENAME/repo/oss/
-path=/
-type=rpm-md
-
-[openSUSE-non-oss]
-name=Non-OSS Repository
-enabled=1
-autorefresh=1
-baseurl=http://download.opensuse.org/distribution/leap/$DISTRO_CODENAME/repo/non-oss/
-path=/
-type=rpm-md
-
-[openSUSE-update]
-name=Update Repository
-enabled=1
-autorefresh=1
-baseurl=http://download.opensuse.org/update/leap/$DISTRO_CODENAME/oss/
-path=/
-type=rpm-md
-EOF
-      fi
-    done
-  fi
-}
 
 # --------------------------
 # 主执行流程
 # --------------------------
-echo "=== sj init debian system start ==="
-# initial_env
-config_sshd
-# configure_ip
-# install_software
-# system_config
-echo "=== sj init debian system end ==="
+init_main "$@"

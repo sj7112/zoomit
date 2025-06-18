@@ -5,18 +5,15 @@
 import os
 import re
 import sys
-import time
-import requests
-from urllib.parse import urlparse
-from dataclasses import dataclass
-from typing import Dict, List, Optional
-from iso3166 import countries
+from typing import Dict, List
+
 
 # default python sys.path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from linux_speed import MirrorTester, get_country_name
+from linux_speed import MirrorResult, MirrorTester, get_country_name
 from file_util import write_source_file
+from system import confirm_action
 
 
 class ArchMirrorTester(MirrorTester):
@@ -37,10 +34,46 @@ class ArchMirrorTester(MirrorTester):
             {"country": "Korea", "url": "https://mirror.kaist.ac.kr/archlinux/"},
             {"country": "Australia", "url": "https://mirror.aarnet.edu.au/pub/archlinux/"},
         ]
-        self.globals = {"country": "Global", "url": "https://geo.mirror.pkgbuild.com/"}
         super().__init__(system_country)
         self.mirror_list = "https://archlinux.org/mirrorlist/?country=all"
+        # # 测试代码！！！
+        # self.os_info.ostype = "arch"
+        # self.os_info.pretty_name = "Arch Linux"
 
+    # ==============================================================================
+    # (1) Check PM Path
+    # ==============================================================================
+    def check_file(self, file_path):
+        """filepath and urls"""
+        urls = []
+
+        with open(file_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith("Server") and "=" in line:
+                    # remove section: $repo/os/$arch
+                    match = re.search(r"(https?://[^\s]+?/?)(?:\$repo/os/\$arch)?/?$", line)
+                    if match:
+                        url = match.group(1)
+                        if url not in urls:
+                            urls.append(url)
+
+        return (file_path, urls) if urls else (None, [])
+
+    def find_source(self):
+        """find config file, get path and urls"""
+
+        SOURCE_FILE = "/etc/pacman.d/mirrorlist"
+
+        self.path, self.urls = self.check_file(SOURCE_FILE)
+        if self.path:
+            return
+
+        self.path = None
+
+    # ==============================================================================
+    # (2) Search Fast mirrors
+    # ==============================================================================
     def parse_mirror_list(self, lines: List[str]) -> List[Dict]:
         """Parse the HTML content"""
 
@@ -90,44 +123,33 @@ class ArchMirrorTester(MirrorTester):
 
             i += 1
 
-    def run(self):
-        """运行完整的测试流程"""
-        # 1. 获取镜像列表
-        self.fetch_mirror_list()
+    # ==============================================================================
+    # (3) Update PM File
+    # ==============================================================================
+    def choose_mirror(self) -> None:
+        """选择最快镜像，并更新包管理器文件"""
 
-        # 2. 测试所有镜像
-        start_time = time.time()
-        results = self.test_all_mirrors()
-        end_time = time.time()
-        # 3. 筛选和排序
-        top_10 = self.filter_and_rank_mirrors(results)
-        if not top_10:
-            print("没有找到可用的镜像")
-            return
+        # 1 测试所有镜像
+        top_10 = self.test_all_mirrors()
 
-        # 4. 显示结果
-        self.print_results(top_10, f"前{len(results)}个最快的Arch镜像+全球站 (共耗时{end_time - start_time:.2f}秒)")
+        # 2 无限循环直到用户选中合法镜像
+        prompt = f"是否变更为新的镜像列表?"
+        confirm_action(prompt, self.update_path, top_10)
 
-        # 5. 保存结果
-        self.save_results(top_10)
+    def update_path(self, top_10):
+        # generate custom content (One mirror is enough for CentOS)
+        lines = self.add_custom_sources(top_10)
 
-        print(f"\n测试完成! 共测试了 {len(results)} 个镜像")
-        print(f"找到 {len([r for r in results if r.success_rate > 0])} 个可用镜像")
+        # update source file
+        write_source_file(self.path, lines)
 
+    def add_custom_sources(self, top_10: List[MirrorResult]) -> list[str]:
+        """add to mirror list"""
+        lines = []
+        for mr in top_10:
+            lines.append(f"Server = {mr.url}$repo/os/$arch")
 
-def update_source_arch(system_country: str) -> None:
-    """主函数"""
-    tester = ArchMirrorTester(system_country)
-    try:
-        tester.run()
-    except KeyboardInterrupt:
-        print("\n\n用户中断了测试")
-    except Exception as e:
-        print(f"\n程序运行出错: {e}")
-        import traceback
+        lines.append(f"Server = https://geo.mirror.pkgbuild.com/$repo/os/$arch")
+        lines.append("")
 
-        traceback.print_exc()
-
-
-if __name__ == "__main__":
-    update_source_arch()
+        return lines

@@ -54,11 +54,11 @@ class OpenSUSEMirrorTester(MirrorTester):
         ]
         super().__init__(system_country)
         self.mirror_list = "https://mirrors.opensuse.org/"
-        # 测试代码！！！
-        self.os_info.ostype = "opensuse"
-        self.os_info.codename = "15.6"
-        self.os_info.pretty_name = "openSUSE Leap 15.6"
-        self.os_info.version_id = "15.6"
+        # # 测试代码！！！
+        # self.os_info.ostype = "opensuse"
+        # self.os_info.codename = "15.6"
+        # self.os_info.pretty_name = "openSUSE Leap 15.6"
+        # self.os_info.version_id = "15.6"
 
     # ==============================================================================
     # (1) Check PM Path
@@ -78,9 +78,7 @@ class OpenSUSEMirrorTester(MirrorTester):
             if baseurl:
                 urls.append(re.split(r"/(distribution|update)/", baseurl)[0] + "/")
 
-        if urls:
-            return file_path, urls
-        return None, []
+        return (file_path, urls) if urls else (None, [])
 
     def find_source(self):
         """check repo-oss.repo, get path and urls"""
@@ -213,6 +211,7 @@ class OpenSUSEMirrorTester(MirrorTester):
                     "gpgcheck=1",
                     f"gpgkey={gpgkey_url}",
                     "priority=99",
+                    "",
                 ]
             )
             repo_file = f"/etc/zypp/repos.d/{repo_type}.repo"

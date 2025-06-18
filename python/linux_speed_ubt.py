@@ -62,9 +62,8 @@ class UbuntuMirrorTester(MirrorTester):
                     match = re.match(r"^\s*(?:deb|deb-src)\s+(http[s]?://[^\s]+)", line)
                     if match:
                         urls.append(match.group(1))
-        if urls:
-            return file_path, urls
-        return None, []
+
+        return (file_path, urls) if urls else (None, [])
 
     def check_file_new_format(self, file_path):
         """check new format (Deb822 .sources files)"""

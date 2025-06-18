@@ -179,8 +179,8 @@ set -x  # show all commands
 echo "=== Switch Network start - \$(date) ==="
 $SUDO_CMD systemctl stop networking
 $SUDO_CMD systemctl disable networking
-$SUDO_CMD systemctl enable systemd-networkd
-$SUDO_CMD systemctl start systemd-networkd
+$SUDO_CMD systemctl enable --now systemd-networkd
+$SUDO_CMD systemctl enable --now systemd-resolved
 echo "=== Switch Network end - \$(date) ==="
 
 # clean up

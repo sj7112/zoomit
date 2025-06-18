@@ -14,9 +14,8 @@ if [[ -z "${LOADED_HASH_UTIL:-}" ]]; then
   #  消息调用 - 按出现的顺序排列：（64^2 = 4096）
   # ==============================================================================
 
-  declare -A _LANG_PROPS  # prop definition: key=Hash Code; value = path/program func_name
-  declare -A LANG_PROPS   # prop definition: key=Hash Code + "_" + LineNo + "_" + order; value = translated words
-  declare -A LANG_PROPS_T # prop definition: key=Hash Code + "_" + position + "_" + order; value = translated words
+  declare -A _LANG_PROPS # prop definition: key=Hash Code; value = path/program func_name
+  declare -A LANG_PROPS  # prop definition: key=Hash Code + "_" + LineNo + "_" + order; value = translated words
 
   # Base64字符集 (URL安全)
   BASE64_CHARS="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"

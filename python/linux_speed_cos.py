@@ -125,9 +125,8 @@ class CentosMirrorTester(MirrorTester):
                         if match:
                             urls.append(match.group(1))  # base URL
                     current_section = None  # reset section
-        if urls:
-            return file_path, urls
-        return None, []
+
+        return (file_path, urls) if urls else (None, [])
 
     def find_source(self):
         """check CentOS-Base.repo, get path and urls"""

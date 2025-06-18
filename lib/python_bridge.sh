@@ -46,31 +46,4 @@ for item in parse_shell_files('$sh_file'):
 "
   }
 
-  # ===== 支持复杂参数的函数示例 =====
-  complex_function() {
-    local input_file="$1"
-    local output_file="$2"
-    local json_config="$3" # 复杂的JSON配置
-
-    # 使用临时文件传递复杂参数
-    local temp_config_file
-    temp_config_file=$(mktemp)
-    echo "$json_config" >"$temp_config_file"
-
-    # 调用Python函数
-    python3 -c "
-import sys, json
-sys.path.append('$PYTHON_DIR')
-from complex_processor import process_with_config
-
-with open('$temp_config_file', 'r') as f:
-    config = json.load(f)
-
-process_with_config('$input_file', '$output_file', config)
-"
-
-    # 清理临时文件
-    rm -f "$temp_config_file"
-  }
-
 fi
