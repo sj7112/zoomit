@@ -1,9 +1,9 @@
 # zoomit
 A quick/rapid deployment toolkit for newly installed Linux systems
 
-bash 4.2+
-python 3.10+
-UTF-8
+- bash 4.2+
+- python 3.10+
+- UTF-8
 
 ---
 ~/zoomit-main/
@@ -28,34 +28,35 @@ UTF-8
 (1) Precondition:
 
 new installation of linux server
-debian
-ubuntu
-centos
-rhel
-opensuse
-arch
+- debian
+- ubuntu
+- centos
+- rhel
+- opensuse
+- arch
 
 
 (2) Users requirement:
 
 root
+
 user with sudo authority
 
 
 (3) Deployment:
 
-cd ~
-wget -O main.tar.gz https://github.com/sj7112/zoomit/archive/refs/heads/main.tar.gz
+- cd ~
+- wget -O main.tar.gz https://github.com/sj7112/zoomit/archive/refs/heads/main.tar.gz
    (or manully copy to home directory!)
-tar -zxf main.tar.gz
-zoomit-main/bin/init_main.sh
+- tar -zxf main.tar.gz
+- zoomit-main/bin/init_main.sh
 
 
 (4) Features:
-  fix_shell_locale - reset language if needed
-  install_py_venv  - create venv (if there's no python env. auto install standalone version)
-  install_pip      - choose the fastest mirror, configure pip
-  update_source    - choose the fastest mirror, configure package management
+- fix_shell_locale - reset language if needed
+- install_py_venv  - create venv (if there's no python env. auto install standalone version)
+- install_pip      - choose the fastest mirror, configure pip
+- update_source    - choose the fastest mirror, configure package management
 
 
 
