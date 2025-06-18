@@ -173,8 +173,8 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
       fi
 
       # 每0.5秒更新显示（只更新spinner和当前时间）
-      display_content=$(string "[$spinner] $(date '+%H:%M:%S') | 运行时间: $elapsed_formatted | $cached_stats")
-      printf "\r$display_content                    "
+      display_content=$(string "$(date '+%H:%M:%S') | 运行时间: $elapsed_formatted | $cached_stats")
+      printf "\r\033[K[%s] %s" "${spinner}" "${display_content}"
       sleep 0.5
     done
 
