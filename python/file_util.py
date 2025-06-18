@@ -92,9 +92,9 @@ def copy_file(filepath1, filepath2):
         return None
 
 
-def file_backup_sj(*patterns: str, postfix: str = "sjbk") -> None:
+def file_backup_sj(*patterns: str, postfix: str = "bak") -> None:
     """
-    生成 .sjbk 后缀的备份文件（智能防重复备份）
+    生成 .bak 后缀的备份文件（智能防重复备份）
 
     特性：
       1. 支持通配符匹配和多文件备份（如 *.conf）
@@ -161,9 +161,9 @@ def file_backup_sj(*patterns: str, postfix: str = "sjbk") -> None:
         info(f"备份完成：成功 {backup_count} 个，跳过 {skip_count} 个，失败 {error_count} 个")
 
 
-def file_restore_sj(src_file: str, postfix: str = "sjbk") -> None:
+def file_restore_sj(src_file: str, postfix: str = "bak") -> None:
     """
-    .sjbk 后缀的备份文件还原
+    .bak 后缀的备份文件还原
 
     特性：
       1. 自动检查源文件是否存在

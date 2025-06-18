@@ -266,7 +266,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     # 检查是否需要重新安装 Python
     local def_bin="$(command -v python3 2>/dev/null || true)"
     local loc_bin="$PY_INST_DIR/bin/python3"
-    install_py_standalone "$loc_bin"
+
     if ! check_py_version "$def_bin" && ! check_py_version "$loc_bin"; then
       install_py_standalone "$loc_bin"
     fi

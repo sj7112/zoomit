@@ -20,7 +20,7 @@ if [[ -z "${LOADED_PYTHON_BRIDGE:-}" ]]; then
 
   # ===== 调用 myshell.py 中的命令 =====
   sh_check_ip() {
-    py_exec "$PYTHON_DIR/myshell.py" sh_check_ip "$SUDO_CMD" </dev/tty
+    py_exec "$PYTHON_DIR/myshell.py" sh_check_ip </dev/tty
   }
 
   sh_install_pip() {

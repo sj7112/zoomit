@@ -59,5 +59,4 @@ echo "=== sj init debian system start ==="
 config_sshd
 # configure_ip
 # install_software
-# system_config
 echo "=== sj init debian system end ==="

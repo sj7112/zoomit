@@ -120,25 +120,16 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     check_user_sudo
     # 2. 检查并安装 Python3 虚拟环境
     install_py_venv
-    # 3. 选择包管理器
-    sh_update_source # 选择包管理器（内有交互）
-
-    info "[1/1] 系统升级开始..."
-    clean_pkg_mgr   # 清理缓存
-    update_pkg_mgr  # 更新镜像源列表
-    upgrade_pkg_mgr # 升级已安装的软件包
-    remove_pkg_mgr  # 删除不再需要的依赖包
-    success "[1/2] 系统升级完成..."
-
-    # 5. 安装各类基础包
-    info "[1/3] 检查系统环境..."
+    # 3. 选择包管理器，并执行初始化
+    sh_update_source
+    # 4. 安装各类基础包
+    info "安装所需软件包..."
     install_base_pkg "sudo"
     install_base_pkg "curl"
     install_base_pkg "jq"
     install_base_pkg "make"
-
-    # 6. 加载json环境变量；初始化语言和国家代码变量
-    META_Command=$(json_load_data "cmd_meta") # 命令解析json
+    # 5. 加载json环境变量；初始化语言和国家代码变量
+    # META_Command=$(json_load_data "cmd_meta") # 命令解析json
 
   }
 
@@ -155,7 +146,11 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     # 检查是否安装 sshd
     if ! command -v sshd &>/dev/null; then
       info "sshd 未安装，正在安装..."
-      $SUDO_CMD apt-get update && $SUDO_CMD apt-get install -y openssh-server || exiterr "安装 sshd 失败"
+      if [[ "$DISTRO_PM" = "zypper" || "$DISTRO_PM" = "pacman" ]]; then
+        install_base_pkg "openssh"
+      else
+        install_base_pkg "openssh-server"
+      fi
     fi
 
     # 询问 SSH 端口
@@ -259,11 +254,10 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     initial_global  # 设置环境变量
     load_trans_msgs # 加载翻译文件
     echo "=== init system start - $PRETTY_NAME ==="
-    initial_env # 基础值初始化
-    # config_sshd # SSH配置
-    configure_ip   # 静态IP配置
-    docker_compose # 安装软件
-    # system_config
+    initial_env  # 基础值初始化
+    config_sshd  # SSH配置
+    configure_ip # 静态IP配置
+    # docker_compose # 安装软件
     echo "=== init system end - $PRETTY_NAME ==="
   }
 fi

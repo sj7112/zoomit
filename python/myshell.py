@@ -22,14 +22,13 @@ def main():
 
     # 检查服务器是否使用静态IP并提供交互式选项
     if command == "sh_check_ip":
-        sudo_cmd = sys.argv[2]
-        print(json.dumps(check_ip(sudo_cmd)))
+        print(json.dumps(check_ip()))
 
     # 选择python镜像
     elif command == "sh_install_pip":
         install_pip()
 
-    # 选择包管理器
+    # 选择包管理器，并执行初始化
     elif command == "sh_update_source":
         distro_ostype = sys.argv[2]
         update_source(distro_ostype)

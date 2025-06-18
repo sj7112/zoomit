@@ -163,7 +163,7 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
 
   # ==============================================================================
   # 函数: file_backup_sj
-  # 作用: 生成 .sjbk 后缀的备份文件（智能防重复备份）
+  # 作用: 生成 .bak 后缀的备份文件（智能防重复备份）
   #
   # 特性：
   #   1. 支持通配符匹配和多文件备份（如 *.conf）
@@ -204,7 +204,7 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
       for src_file in $pattern; do
         [ ! -f "$src_file" ] && continue # 确保是普通文件
 
-        local backup_file="${src_file}.sjbk"
+        local backup_file="${src_file}.bak"
 
         # 检查备份文件是否已存在
         if check_root_path "$backup_file"; then

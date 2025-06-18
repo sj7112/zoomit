@@ -42,59 +42,59 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
   # ==============================================================================
   # 函数: clean_pkg_mgr 清理缓存
   # ==============================================================================
-  clean_pkg_mgr() {
-    info "清理 {0} 缓存..." "$DISTRO_PM"
-    local result=0 # 默认成功
-    case "$DISTRO_PM" in
-      apt) cmd="apt-get clean" ;;
-      yum | dnf) cmd="$DISTRO_PM clean all" ;;
-      zypper) cmd="zypper clean -a" ;;
-      pacman) cmd="pacman -Sc --noconfirm" ;;
-    esac
-    cmd_exec "$cmd" || exiterr "清理缓存失败"
-  }
+  # clean_pkg_mgr() {
+  #   info "清理 {0} 缓存..." "$DISTRO_PM"
+  #   local result=0 # 默认成功
+  #   case "$DISTRO_PM" in
+  #     apt) cmd="apt-get clean" ;;
+  #     yum | dnf) cmd="$DISTRO_PM clean all" ;;
+  #     zypper) cmd="zypper clean -a" ;;
+  #     pacman) cmd="pacman -Sc --noconfirm" ;;
+  #   esac
+  #   cmd_exec "$cmd" || exiterr "清理缓存失败"
+  # }
 
   # ==============================================================================
   # 函数: update_pkg_mgr 更新镜像源列表
   # ==============================================================================
-  update_pkg_mgr() {
-    info "更新镜像源列表..."
-    case "$DISTRO_PM" in
-      apt) cmd="apt-get update -q" ;;
-      yum | dnf) cmd="$DISTRO_PM update -q -y" ;;
-      zypper) cmd="zypper refresh" ;;
-      pacman) cmd="pacman -Syy" ;;
-    esac
-    cmd_exec "$cmd" || exiterr "更新失败，镜像可能不可用"
-  }
+  # update_pkg_mgr() {
+  #   info "更新镜像源列表..."
+  #   case "$DISTRO_PM" in
+  #     apt) cmd="apt-get update -q" ;;
+  #     yum | dnf) cmd="$DISTRO_PM update -q -y" ;;
+  #     zypper) cmd="zypper refresh" ;;
+  #     pacman) cmd="pacman -Syy" ;;
+  #   esac
+  #   cmd_exec "$cmd" || exiterr "更新失败，镜像可能不可用"
+  # }
 
   # ==============================================================================
   # 函数: upgrade_pkg_mgr 升级已安装的软件包
   # ==============================================================================
-  upgrade_pkg_mgr() {
-    info "升级已安装的软件包..."
-    case "$DISTRO_PM" in
-      apt) cmd="apt-get upgrade -y" ;;
-      yum | dnf) cmd="$DISTRO_PM upgrade -y" ;;
-      zypper) cmd="zypper update -y" ;;
-      pacman) cmd="pacman -Syu --noconfirm" ;;
-    esac
-    cmd_exec "$cmd" || exiterr "升级软件包失败"
-  }
+  # upgrade_pkg_mgr() {
+  #   info "升级已安装的软件包..."
+  #   case "$DISTRO_PM" in
+  #     apt) cmd="apt-get upgrade -y" ;;
+  #     yum | dnf) cmd="$DISTRO_PM upgrade -y" ;;
+  #     zypper) cmd="zypper update -y" ;;
+  #     pacman) cmd="pacman -Syu --noconfirm" ;;
+  #   esac
+  #   cmd_exec "$cmd" || exiterr "升级软件包失败"
+  # }
 
   # ==============================================================================
   # 函数: remove_pkg_mgr 删除不再需要的依赖包
   # ==============================================================================
-  remove_pkg_mgr() {
-    info "删除不再需要的依赖包..."
-    case "$DISTRO_PM" in
-      apt) cmd="apt-get autoremove -y" ;;
-      yum | dnf) cmd="$DISTRO_PM autoremove -y" ;;
-      zypper) cmd="zypper remove -u" ;;
-      pacman) cmd="pacman -Rns $(pacman -Qdtq) --noconfirm" ;;
-    esac
-    cmd_exec "$cmd" || exiterr "删除依赖包失败"
-  }
+  # remove_pkg_mgr() {
+  #   info "删除不再需要的依赖包..."
+  #   case "$DISTRO_PM" in
+  #     apt) cmd="apt-get autoremove -y" ;;
+  #     yum | dnf) cmd="$DISTRO_PM autoremove -y" ;;
+  #     zypper) cmd="zypper remove -u" ;;
+  #     pacman) cmd="pacman -Rns $(pacman -Qdtq) --noconfirm" ;;
+  #   esac
+  #   cmd_exec "$cmd" || exiterr "删除依赖包失败"
+  # }
 
   # ==============================================================================
   # cmd_exec - 执行命令并支持日志记录、静默模式、同行输出等功能

@@ -82,48 +82,52 @@ def confirm_action(prompt: str, callback: Callable[..., Any] = None, *args: Any,
                 print(err_msg)  # 继续循环，不返回
 
 
-def run_cmd(sudo_cmd, cmd, pattern=""):
+def run_cmd(cmd, pattern="", **kwargs):
     """
-    执行系统命令并返回结果，支持正则匹配提取。
+    Execute a system command and return the result, with optional regex matching.
 
-    参数:
-        cmd (str 或 list): 要执行的命令，可以是字符串（如 "ls -l"）或列表（如 ["ls", "-l"]）。
-        pattern (str): 可选，正则表达式模式，用于从命令输出中提取特定内容。
+    Args:
+        cmd (str or list): The command to execute, either as a string (e.g., "ls -l")
+                           or a list (e.g., ["ls", "-l"]).
+        pattern (str): Optional regex pattern to extract specific content from the command output.
 
-    返回:
+    Returns:
         str:
-            - 如果提供了 pattern，则返回匹配的第一个分组内容；
-            - 如果未提供 pattern，则返回完整的命令输出；
-            - 如果命令执行失败或未匹配到 pattern，则返回空字符串 ""。
+            - If a pattern is provided, returns the first matched group;
+            - If no pattern is provided, returns the full command output;
+            - If the command fails or no pattern match is found, returns an empty string "".
 
-    示例:
-        # 获取当前用户
-        user = run_cmd(sudo_cmd, "whoami")
+    Examples:
+        # Get the current user
+        user = run_cmd("whoami")
 
-        # 提取 IP 地址
-        ip = run_cmd(sudo_cmd, "ip -o route get 1", r"src (\d+\.\d+\.\d+\.\d+)")
+        # Extract IP address
+        ip = run_cmd("ip -o route get 1", r"src (\d+\.\d+\.\d+\.\d+)")
     """
-    # 如果 cmd 是字符串，则用 split() 转换为列表
+    # If cmd is a string, convert it to a list using split()
     if isinstance(cmd, str):
         cmd = cmd.split()
 
-    # 如果需要 sudo，则在命令前添加 sudo
-    if sudo_cmd:
-        cmd.insert(0, sudo_cmd)
+    # Provide default values, allow overriding via kwargs
+    run_args = {
+        "stdout": subprocess.PIPE,
+        "stderr": subprocess.DEVNULL,
+        "text": True,
+    }
+    run_args.update(kwargs)  # Allow user to override defaults
 
-    # 执行命令并捕获输出
-    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+    result = subprocess.run(cmd, **run_args)
     if result.returncode != 0:
-        return ""  # 命令失败，返回空字符串
-    # 如果提供了正则模式，尝试匹配
+        return ""  # Command failed, return an empty string
+    # If a regex pattern is provided, attempt to match
     if pattern:
         match = re.search(pattern, result.stdout)
         if match:
-            return match.group(1)  # 返回匹配的第一个分组
+            return match.group(1)  # Return the first matched group
         else:
-            return ""  # 未匹配到内容，返回空字符串
+            return ""  # No match found, return an empty string
     else:
-        return result.stdout  # 未提供正则模式，返回完整输出
+        return result.stdout  # No regex pattern provided, return full output
 
 
 # ==============================================================================
@@ -138,7 +142,7 @@ def run_cmd(sudo_cmd, cmd, pattern=""):
 #    dhclient            dhclient.service（Debian/Ubuntu）
 #    dhcpcd              dhcpcd.service（Arch Linux、部分 Debian 派生版）
 # ==============================================================================
-def check_network_service(sudo_cmd, service_name):
+def check_network_service(service_name):
     """
     检查指定的服务是否处于活动状态，例如 "systemd-networkd"、"NetworkManager"、"networking"
 
@@ -147,22 +151,18 @@ def check_network_service(sudo_cmd, service_name):
     """
     cmd = ["systemctl", "is-active", "--quiet", service_name]
 
-    # 如果需要 sudo，则在命令前添加 sudo
-    if sudo_cmd:
-        cmd.insert(0, sudo_cmd)
-
     try:
         # 使用 systemctl 检查服务状态
         result = subprocess.run(cmd, check=False)
         if result.returncode == 0:
             return service_name
     except Exception as e:
-        logging.error(f"check_network_service({sudo_cmd}， {service_name}) failed: {e}")
+        logging.error(f"check_network_service， {service_name}) failed: {e}")
 
     return None
 
 
-def get_network_service(sudo_cmd):
+def get_network_service():
     """
     获取当前活动的网络服务
 
@@ -172,7 +172,7 @@ def get_network_service(sudo_cmd):
     # 定义可能的网络服务名称
     services = ["systemd-networkd", "NetworkManager", "networking", "wicked", "network"]
     for service in services:
-        if check_network_service(sudo_cmd, service):
+        if check_network_service(service):
             return service
 
     return None
