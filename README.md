@@ -6,23 +6,23 @@ A quick/rapid deployment toolkit for newly installed Linux systems
 - UTF-8
 
 ---
-~/zoomit-main/
-│── bin/ # Executable scripts (main program)
-│ ├── init.sh # Entry script (main program)
-│ ├── backup.sh # Backup script
-│ ├── deploy.sh # Deployment script
-│── lib/ # Functional modules (library files)
-│ ├── err_handler.sh # Error handling module
-│ ├── utils.sh # General utility functions
-│ ├── network.sh # Network-related operations
-│── config/ # Configuration files
-│ ├── app.conf # Main application configuration
-│ ├── db.conf # Database configuration
-│── logs/ # Log directory
-│ ├── error.log # Error log
-│ ├── access.log # Access log
-│── tmp/ # Temporary files
-│── README.md # Documentation
+~/zoomit-main/  
+│── bin/ # Executable scripts (main program)  
+│ ├── init.sh # Entry script (main program)  
+│ ├── backup.sh # Backup script  
+│ ├── deploy.sh # Deployment script  
+│── lib/ # Functional modules (library files)  
+│ ├── err_handler.sh # Error handling module  
+│ ├── utils.sh # General utility functions  
+│ ├── network.sh # Network-related operations  
+│── config/ # Configuration files  
+│ ├── app.conf # Main application configuration  
+│ ├── db.conf # Database configuration  
+│── logs/ # Log directory  
+│ ├── error.log # Error log  
+│ ├── access.log # Access log  
+│── tmp/ # Temporary files  
+│── README.md # Documentation  
 
 
 (1) Precondition:
