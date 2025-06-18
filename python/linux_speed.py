@@ -75,7 +75,7 @@ def get_country_name(country_code):
 
 
 class MirrorTester:
-    def __init__(self, system_country):
+    def __init__(self):
         self.session = requests.Session()
         self.session.headers.update(
             {
@@ -83,7 +83,7 @@ class MirrorTester:
             }
         )
         self.os_info = init_os_info()
-        self.system_country = system_country
+        self.system_country = os.environ.get("LANGUAGE").split("_")[1].split(":")[0]
         self.mirror_list = ""
         self.netlocs = set()  # 用于去重的域名集合
         self.is_debug = os.environ.get("DEBUG") == "1"  # 测试标志

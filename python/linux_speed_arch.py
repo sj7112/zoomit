@@ -17,7 +17,7 @@ from system import confirm_action
 
 
 class ArchMirrorTester(MirrorTester):
-    def __init__(self, system_country):
+    def __init__(self):
         # Backup Mirror List: 10 Commonly Used Sites Worldwide
         self.mirrors = [
             # European
@@ -34,7 +34,7 @@ class ArchMirrorTester(MirrorTester):
             {"country": "Korea", "url": "https://mirror.kaist.ac.kr/archlinux/"},
             {"country": "Australia", "url": "https://mirror.aarnet.edu.au/pub/archlinux/"},
         ]
-        super().__init__(system_country)
+        super().__init__()
         self.mirror_list = "https://archlinux.org/mirrorlist/?country=all"
         if self.is_debug:
             # 测试代码！！！

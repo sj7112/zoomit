@@ -62,7 +62,7 @@ def auto_detect_gpg_key():
 
 
 class CentosMirrorTester(MirrorTester):
-    def __init__(self, system_country):
+    def __init__(self):
         # Mirror List: 13 Commonly Used Sites Worldwide
         self.mirrors = [
             # European
@@ -84,7 +84,7 @@ class CentosMirrorTester(MirrorTester):
             {"country": "Brazil", "url": "http://ftp.unicamp.br/pub/centos/"},
             {"country": "Global", "url": "https://vault.centos.org/"},  # global site
         ]
-        super().__init__(system_country)
+        super().__init__()
         self.os_info.codename = get_centos_codename()  # version code, such as 7.9.2009
         if self.is_debug:
             # 测试代码！！！

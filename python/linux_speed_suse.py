@@ -17,7 +17,7 @@ from file_util import write_source_file
 
 
 class OpenSUSEMirrorTester(MirrorTester):
-    def __init__(self, system_country):
+    def __init__(self):
         # Backup Mirror List: 10 Commonly Used Sites Worldwide
         self.mirrors = [
             # European
@@ -52,7 +52,7 @@ class OpenSUSEMirrorTester(MirrorTester):
             {"country": "Russia", "url": "https://mirror.yandex.ru/opensuse/"},
             {"country": "Turkey", "url": "https://ftp.linux.org.tr/opensuse/"},
         ]
-        super().__init__(system_country)
+        super().__init__()
         self.mirror_list = "https://mirrors.opensuse.org/"
         if self.is_debug:
             # 测试代码！！！

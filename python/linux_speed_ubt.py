@@ -20,7 +20,7 @@ from msg_handler import info, error
 
 
 class UbuntuMirrorTester(MirrorTester):
-    def __init__(self, system_country):
+    def __init__(self):
         # Backup Mirror List: 10 Commonly Used Sites Worldwide
         self.mirrors = [
             # European
@@ -37,7 +37,7 @@ class UbuntuMirrorTester(MirrorTester):
             {"country": "Singapore", "url": "http://mirror.nus.edu.sg/ubuntu/"},
             {"country": "Australia", "url": "https://mirror.aarnet.edu.au/ubuntu/"},
         ]
-        super().__init__(system_country)
+        super().__init__()
         if self.is_debug:
             # 测试代码！！！
             self.os_info.ostype = "ubuntu"

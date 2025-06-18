@@ -19,19 +19,18 @@ from linux_speed_arch import ArchMirrorTester
 
 
 def update_source(distro_ostype: str) -> None:
-    system_country = os.environ.get("LANGUAGE").split("_")[1].split(":")[0]
     """主函数"""
     if distro_ostype == "debian":
-        DebianMirrorTester(system_country).run()
+        DebianMirrorTester().run()
 
     elif distro_ostype == "ubuntu":
-        UbuntuMirrorTester(system_country).run()
+        UbuntuMirrorTester().run()
 
     elif distro_ostype == "centos":
-        CentosMirrorTester(system_country).run()
+        CentosMirrorTester().run()
 
     elif distro_ostype == "opensuse":
-        OpenSUSEMirrorTester(system_country).run()
+        OpenSUSEMirrorTester().run()
 
     elif distro_ostype == "arch":
-        ArchMirrorTester(system_country).run()
+        ArchMirrorTester().run()
