@@ -36,9 +36,11 @@ class ArchMirrorTester(MirrorTester):
         ]
         super().__init__(system_country)
         self.mirror_list = "https://archlinux.org/mirrorlist/?country=all"
-        # # 测试代码！！！
-        # self.os_info.ostype = "arch"
-        # self.os_info.pretty_name = "Arch Linux"
+        if self.is_debug:
+            # 测试代码！！！
+            self.os_info.ostype = "arch"
+            self.os_info.pretty_name = "Arch Linux"
+            self.os_info.package_mgr = "pacman"
 
     # ==============================================================================
     # (1) Check PM Path
@@ -60,7 +62,7 @@ class ArchMirrorTester(MirrorTester):
 
         return (file_path, urls) if urls else (None, [])
 
-    def find_source(self):
+    def find_mirror_source(self):
         """find config file, get path and urls"""
 
         SOURCE_FILE = "/etc/pacman.d/mirrorlist"
@@ -82,40 +84,38 @@ class ArchMirrorTester(MirrorTester):
         while i < len(lines):
             line = lines[i].strip()
 
-            # 匹配国家名称 (## Country Name)
+            # Match country name (## Country Name)
             country_match = re.match(r"^##\s+(.+)$", line)
             if country_match:
                 country_name = country_match.group(1).strip()
 
-                # 获取该国家的所有URL
                 mirrors_country = []
                 i += 1
 
-                # 读取该国家下的所有镜像URL
+                # Read all mirror URLs under the country
                 while i < len(lines):
                     next_line = lines[i].strip()
 
-                    # 如果遇到下一个国家标记，退出当前国家处理
+                    # Exit current country processing if encountering the next country marker
                     if re.match(r"^##\s+", next_line):
-                        i -= 1  # 回退一行，让外层循环处理
+                        i -= 1  # Step back one line for outer loop processing
                         break
 
-                    # 匹配服务器URL
+                    # Match server URL (part before $repo/os/$arch)
                     server_match = re.match(r"^#Server\s*=\s*(.+)$", next_line)
                     if server_match:
                         url = server_match.group(1).strip()
-                        # 保留$repo/os/$arch前的部分
                         url = re.sub(r"/\$repo.*$", "/", url)
 
-                        # 检查URL是否有效且不重复
+                        # Check if URL is valid and not duplicated
                         if not self.url_exists(mirrors_country, url):
                             mirrors_country.append({"country": country_name, "url": url})
 
                     i += 1
 
-                # 将mirrors_country添加到mirrors中
+                # Add country to mirrors
                 if mirrors_country:
-                    # 如果国家匹配输入参数，添加到前面；否则从尾部添加
+                    # Prefer system default country (add to the front)
                     if country_name and country_name.lower() in system_country_name.lower():
                         self.mirrors = mirrors_country + self.mirrors
                     else:
@@ -127,17 +127,15 @@ class ArchMirrorTester(MirrorTester):
     # (3) Update PM File
     # ==============================================================================
     def choose_mirror(self) -> None:
-        """选择最快镜像，并更新包管理器文件"""
+        """Select the fastest mirror and update the package manager file"""
 
-        # 1 测试所有镜像
         top_10 = self.test_all_mirrors()
 
-        # 2 无限循环直到用户选中合法镜像
         prompt = f"是否变更为新的镜像列表?"
-        confirm_action(prompt, self.update_path, top_10)
+        confirm_action(prompt, self.update_pm_file, top_10)
 
-    def update_path(self, top_10):
-        # generate custom content (One mirror is enough for CentOS)
+    def update_pm_file(self, top_10):
+        # generate custom content
         lines = self.add_custom_sources(top_10)
 
         # update source file

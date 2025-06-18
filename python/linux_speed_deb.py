@@ -38,6 +38,13 @@ class DebianMirrorTester(MirrorTester):
         ]
         super().__init__(system_country)
         self.mirror_list = "https://www.debian.org/mirror/mirrors_full"
+        if self.is_debug:
+            # 测试代码！！！
+            self.os_info.ostype = "debian"
+            self.os_info.codename = "bookworm"
+            self.os_info.pretty_name = "Debian GNU/Linux 12 (bookworm)"
+            self.os_info.version_id = "12"
+            self.os_info.package_mgr = "apt"
 
     # ==============================================================================
     # (1) Check PM Path
@@ -60,7 +67,7 @@ class DebianMirrorTester(MirrorTester):
 
         return (file_path, urls) if urls else (None, [])
 
-    def find_source(self):
+    def find_mirror_source(self):
         """find config file, get path and urls"""
 
         SOURCE_FILE = "/etc/apt/sources.list"
@@ -138,7 +145,7 @@ class DebianMirrorTester(MirrorTester):
     # ==============================================================================
     # (3) Update PM File
     # ==============================================================================
-    def update_path(self, mirror):
+    def update_pm_file(self, mirror):
         def_url = "http://deb.debian.org/debian"
         def_url_sec = "http://security.debian.org/debian-security"
 

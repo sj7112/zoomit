@@ -22,7 +22,8 @@
             "name": "Bash-Debug (init_debian)",
             "terminalKind": "integrated",
             "cwd": "${workspaceFolder}",
-            "program": "${workspaceFolder}/bin/deb/init_debian.sh",
+            // "program": "${workspaceFolder}/bin/deb/init_debian.sh",
+            "program": "${workspaceFolder}/bin/cos/init_centos.sh",
             "args": [],
             "env": {
                 "DEBUG": "1"
@@ -144,11 +145,14 @@
                 "sh_update_source",
                 // "debian",
                 // "ubuntu",
-                "centos",
+                // "centos",
+                "opensuse",
                 // "arch",
-                // "opensuse",
                 "CN"
             ],
+            "env": {
+                "DEBUG": "1"
+            },
             "console": "integratedTerminal"
         }
     ]

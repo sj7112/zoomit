@@ -54,11 +54,13 @@ class OpenSUSEMirrorTester(MirrorTester):
         ]
         super().__init__(system_country)
         self.mirror_list = "https://mirrors.opensuse.org/"
-        # # 测试代码！！！
-        # self.os_info.ostype = "opensuse"
-        # self.os_info.codename = "15.6"
-        # self.os_info.pretty_name = "openSUSE Leap 15.6"
-        # self.os_info.version_id = "15.6"
+        if self.is_debug:
+            # 测试代码！！！
+            self.os_info.ostype = "opensuse"
+            self.os_info.codename = "15.6"
+            self.os_info.pretty_name = "openSUSE Leap 15.6"
+            self.os_info.version_id = "15.6"
+            self.os_info.package_mgr = "zypper"
 
     # ==============================================================================
     # (1) Check PM Path
@@ -80,7 +82,7 @@ class OpenSUSEMirrorTester(MirrorTester):
 
         return (file_path, urls) if urls else (None, [])
 
-    def find_source(self):
+    def find_mirror_source(self):
         """check repo-oss.repo, get path and urls"""
 
         SOURCE_FILE = "/etc/zypp/repos.d/repo-oss.repo"
@@ -148,7 +150,7 @@ class OpenSUSEMirrorTester(MirrorTester):
     # ==============================================================================
     # (3) Update PM File
     # ==============================================================================
-    def update_path(self, mirror):
+    def update_pm_file(self, mirror):
         url = mirror.url
 
         # generate custom content

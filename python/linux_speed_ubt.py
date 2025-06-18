@@ -38,11 +38,13 @@ class UbuntuMirrorTester(MirrorTester):
             {"country": "Australia", "url": "https://mirror.aarnet.edu.au/ubuntu/"},
         ]
         super().__init__(system_country)
-        # # 测试代码！！！
-        # self.os_info.ostype = "ubuntu"
-        # self.os_info.codename = "noble"
-        # self.os_info.pretty_name = "Ubuntu 24.04.2 LTS"
-        # self.os_info.version_id = "24.04"
+        if self.is_debug:
+            # 测试代码！！！
+            self.os_info.ostype = "ubuntu"
+            self.os_info.codename = "noble"
+            self.os_info.pretty_name = "Ubuntu 24.04.2 LTS"
+            self.os_info.version_id = "24.04"
+            self.os_info.package_mgr = "apt"
 
     # ==============================================================================
     # (1) Check PM Path
@@ -80,7 +82,7 @@ class UbuntuMirrorTester(MirrorTester):
             return file_path, urls
         return None, urls
 
-    def find_source(self):
+    def find_mirror_source(self):
         """find config file, get path and urls"""
 
         SOURCE_FILE = "/etc/apt/sources.list"
@@ -160,7 +162,7 @@ class UbuntuMirrorTester(MirrorTester):
     # ==============================================================================
     # (3) Update PM File
     # ==============================================================================
-    def update_path(self, mirror):
+    def update_pm_file(self, mirror):
         def_url = "https://archive.ubuntu.com/ubuntu/"
         def_url_sec = "https://security.ubuntu.com/ubuntu/"
 

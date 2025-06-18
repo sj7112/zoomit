@@ -39,7 +39,6 @@ files_map = {
 
 
 def _is_url_accessible(url: str) -> bool:
-    """检查URL是否可访问"""
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
     }
@@ -52,7 +51,6 @@ def _is_url_accessible(url: str) -> bool:
 
 @dataclass
 class MirrorResult:
-    """镜像测试结果"""
 
     url: str
     url_upd: str  # debin | ubuntu
@@ -66,8 +64,8 @@ class MirrorResult:
 
 def get_country_name(country_code):
     """
-    根据国家代码获取国家名称，找不到则返回原国家代码
-    例如：'CN' -> 'China', 'USA' -> 'United States of America'
+    Get the country name; if not found, return the country code.
+    e.g. 'CN' -> 'China', 'USA' -> 'United States of America'
     """
     try:
         country = countries.get(country_code.upper())
@@ -88,6 +86,7 @@ class MirrorTester:
         self.system_country = system_country
         self.mirror_list = ""
         self.netlocs = set()  # 用于去重的域名集合
+        self.is_debug = os.environ.get("DEBUG") == "1"  # 测试标志
 
     def fetch_mirror_list(self, limit: int = None) -> None:
         print(f"{self.os_info.ostype}镜像速度测试工具")
@@ -125,11 +124,10 @@ class MirrorTester:
         return False
 
     def test_mirror_speed(self, mirror: dict, limit_cap: float = None, test_count: int = 3) -> MirrorResult:
-        """测试单个镜像的速度"""
+
         url = mirror.get("url")
 
-        # 测试文件列表（从小到大）
-        test_files = files_map.get(self.os_info.ostype)  # 通常几MB  # 几KB  # 很小
+        test_files = files_map.get(self.os_info.ostype)  # medium size files, usually 100k ~ 10m
 
         speeds = []
         max_speed = 0
@@ -206,7 +204,7 @@ class MirrorTester:
             return None  # 没有成功的测试
 
     def current_mirror(self):
-        """检查当前选中的镜像是否有效"""
+        """Check if the currently selected mirror is valid"""
         curr_url = None
         if len(self.urls) > 0:
             for mirror in self.mirrors:
@@ -215,9 +213,8 @@ class MirrorTester:
                     break
         return curr_url
 
-    # 测试所有镜像，仅保留前10个最快的镜像
     def test_all_mirrors(self, max_workers: int = 20, top_n: int = 10) -> List[MirrorResult]:
-        """并发测试所有镜像，仅保留前 top_n 个最快镜像，进度单行输出"""
+        """Test speed for all mirrors, only keep top_10"""
 
         print(f"开始测试 {len(self.mirrors)} 个镜像，筛选前 {top_n} 个最快镜像，请稍候...")
 
@@ -230,19 +227,19 @@ class MirrorTester:
         self.cancelled = threading.Event()
 
         def insert_sorted(results, new_result, top_n):
-            """手动插入排序"""
+            """Manual insertion sort"""
             for i, result in enumerate(results):
                 if new_result.avg_speed > result.avg_speed:
                     results.insert(i, new_result)
                     break
             else:
-                results.append(new_result)  # 如果新结果是最慢的，添加到末尾
+                results.append(new_result)  # If the new one is the slowest, add to the end
 
-            if len(results) > top_n:  # 保持列表长度不超过 top_n
-                results.pop(-1)  # 删除最慢的镜像
+            if len(results) > top_n:  # The list length <= top_n
+                results.pop(-1)  # Remove the slowest mirror
 
         def update_progress():
-            """更新进度条"""
+            """Update progress bar"""
             nonlocal completed
             completed += 1
             print(
@@ -259,9 +256,9 @@ class MirrorTester:
                     with lock:
                         insert_sorted(fastest_results, result, top_n)
                         if len(fastest_results) >= top_n:
-                            limit_cap = fastest_results[-1].avg_speed  # 更新速率限制
+                            limit_cap = fastest_results[-1].avg_speed  # update speed limit cap
             except Exception:
-                pass  # 静默跳过失败项
+                pass
             finally:
                 if not self.cancelled.is_set():
                     update_progress()
@@ -271,15 +268,15 @@ class MirrorTester:
             futures = [executor.submit(test_wrapper, mirror) for mirror in self.mirrors]
             for future in as_completed(futures):
                 if not self.cancelled.is_set():
-                    future.result(timeout=1)  # 设置超时避免长时间等待
+                    future.result(timeout=1)  # Set timeout to avoid long waits
 
         except KeyboardInterrupt:
             print("\n检测到 Ctrl+C，停止剩余任务...")
-            # 立即关闭线程池，不等待未完成的任务
+            # Immediately shut down the thread pool without waiting for unfinished tasks
             executor.shutdown(wait=False)
             self.cancelled.set()
 
-        print()  # 结束后换行
+        print()  # return line
         end_time = time.time()
 
         # 2 筛选和排序
@@ -288,7 +285,7 @@ class MirrorTester:
             print("没有找到可用的镜像")
             return
 
-        # 3 显示结果
+        # 3 print the result
         tot_time = end_time - start_time
         self.print_results(top_10)
         print(f"\n找到前{len(top_10)}个最快的{self.os_info.ostype}镜像 (共耗时{tot_time:.2f}秒)")
@@ -296,77 +293,72 @@ class MirrorTester:
         return top_10
 
     def filter_and_rank_mirrors(self, results: List[MirrorResult]) -> tuple:
-        """筛选和排序镜像"""
-        # 过滤掉完全无法访问的镜像
+        """Filter and rank mirrors"""
+        # Remove mirrors that are completely inaccessible
         valid_results = [r for r in results if r.success_rate > 0 and r.avg_speed > 0]
 
         if not valid_results:
             print("警告: 没有找到可用的镜像!")
             return []
 
-        # 按照综合分数排序（速度 * 成功率 / 响应时间）
+        # Sort by composite score (speed * success rate / response time)
         def calculate_score(result: MirrorResult) -> float:
             if result.response_time == 0 or result.response_time == float("inf"):
                 return 0
             return (result.avg_speed * result.success_rate) / result.response_time
 
-        # 计算分数并排序
+        # Calculate scores and sort
         for result in valid_results:
             result.score = calculate_score(result)
 
-        # 选择前10个站点
+        # Select the top 10 sites
         return sorted(valid_results, key=lambda x: x.score, reverse=True)
 
     def choose_mirror(self) -> None:
-        """选择最快镜像，并更新包管理器文件"""
+        """Select the fastest mirror and update the package manager file"""
 
-        # 1 测试所有镜像
         top_10 = self.test_all_mirrors()
         tot_len = len(top_10)
 
-        # 4 无限循环直到用户选中合法镜像
         while True:
             print(f"\n请选择要使用的镜像 (1-{tot_len})，输入 0 表示不更改:")
 
             try:
-                # 获取用户输入并去除首尾空格
+                # Get user input
                 choice = input(f"请输入选择 (0-{tot_len}): ").strip()
 
-                # 处理输入为 0 的情况（不更改配置）
+                # Special case: input is 0
                 if choice == "0":
                     print("\n已取消配置，保持当前设置")
                     return
 
-                # 将输入转换为整数
+                # Convert input to an integer
                 choice_num = int(choice)
 
-                # 检查输入是否在有效范围内
                 if 1 <= choice_num <= tot_len:
-                    # 获取用户选择的镜像（注意索引从0开始，所以要减1）
+                    # Get the user-selected mirror
                     selected_mirror = top_10[choice_num - 1]
 
-                    # 显示用户选择的镜像信息
                     print(f"\n✨ 您选择了: {selected_mirror.url}")
                     print(f"   下载速度: {selected_mirror.avg_speed:.1f}s")
 
-                    # 更新配置文件
-                    self.update_path(selected_mirror)
+                    # Update the packagement configuration file
+                    self.update_pm_file(selected_mirror)
                     return
                 else:
-                    # 输入的数字超出范围
-                    error(f"输入错误！请输入 0-{tot_len} 之间的数字")
+                    # Input number is out of range
+                    error(f"Invalid input! Please enter a number between 0-{tot_len}")
 
             except ValueError:
-                # 输入的不是数字
-                error("输入错误！请输入数字")
+                # Input is not a number
+                error("Invalid input! Please enter a number")
 
             except KeyboardInterrupt:
-                # 用户按 Ctrl+C 中断
-                print("\n\n已取消操作")
+                # User interrupted with Ctrl+C
+                print("\n\nOperation canceled")
                 return
 
     def print_results(self, results: List[MirrorResult]):
-        """打印测试结果"""
         print()
         print("-" * 80)
         print(f"{'排名':<3} {'速度(KB/s)':<9} {'响应时间(s)':<8} {'成功率':<4} {'国家/地区':<10} {'镜像URL'}")
@@ -381,16 +373,16 @@ class MirrorTester:
     def run(self):
         """主函数：运行完整的测试流程"""
         try:
-            # 1. 获取镜像列表
-            self.find_source()
+            # 1. get source file with mirror list
+            self.find_mirror_source()
             if not self.path:
                 print(f"没有找到{self.os_info.package_mgr}源配置文件")
                 return
 
-            # 2. 获取所有镜像
-            self.fetch_mirror_list(12)
+            # 2. fetch all active mirrors
+            self.fetch_mirror_list(12 if self.is_debug else None)
 
-            # 3. 修改镜像
+            # 3. update mirrors
             curr_url = self.current_mirror()
             prompt = f"{'已选镜像: ' + curr_url + ' ' if curr_url else ''}是否重新选择镜像?"
             confirm_action(prompt, self.choose_mirror)

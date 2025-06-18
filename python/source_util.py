@@ -18,7 +18,8 @@ from linux_speed_suse import OpenSUSEMirrorTester
 from linux_speed_arch import ArchMirrorTester
 
 
-def update_source(distro_ostype: str, system_country: str) -> None:
+def update_source(distro_ostype: str) -> None:
+    system_country = os.environ.get("LANGUAGE").split("_")[1].split(":")[0]
     """主函数"""
     if distro_ostype == "debian":
         DebianMirrorTester(system_country).run()
