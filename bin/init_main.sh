@@ -4,7 +4,10 @@
 if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   LOADED_INIT_MAIN=1
 
-  LIB_DIR="$(dirname "$BIN_DIR")/lib" # lib direcotry
+  set -euo pipefail # Exit on error, undefined vars, and failed pipes
+
+  : "${BIN_DIR:="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"}" # bin directory
+  : "${LIB_DIR:="$(dirname "$BIN_DIR")/lib"}"                     # lib direcotry
   source "$LIB_DIR/msg_handler.sh"
   source "$LIB_DIR/lang_utils.sh"
   source "$LIB_DIR/bash_utils.sh"
@@ -260,4 +263,9 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     # docker_compose # 安装软件
     echo "=== init system end - $PRETTY_NAME ==="
   }
+
+  if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    init_main "$@"
+  fi
+
 fi

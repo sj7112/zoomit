@@ -4,6 +4,10 @@
 if [[ -z "${LOADED_DEBUGTOOL:-}" ]]; then
   LOADED_DEBUGTOOL=1
 
+  : "${LIB_DIR:=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}" # lib direcotry
+  : "${TEST_DIR:=$(dirname "$LIB_DIR")/tests}"                  # tests directory
+  TEST_DATA_FILE="$TEST_DIR/data.tmp"                           # file for test data
+
   # 判断字符串是否包含在数组中
   string_array_contain() {
     declare -n array=$1 # 引用传递
@@ -143,11 +147,11 @@ if [[ -z "${LOADED_DEBUGTOOL:-}" ]]; then
   }
 
   # write_array() {
-  #   local array_name="$1" # 数组名
+  #   local arr_name="$1" # 数组名
   #   local filename="$2"   # 文件名
 
   #   # 使用 nameref 方式引用传入的数组名（需要 Bash 4.3+）
-  #   local -n arr="$array_name"
+  #   local -n arr="$arr_name"
 
   #   # 创建或清空目标文件
   #   : >"$filename" || return 1
@@ -159,16 +163,19 @@ if [[ -z "${LOADED_DEBUGTOOL:-}" ]]; then
   # }
   # 打印数组到文件（兼容 Bash 4.2）
   write_array() {
-    local array_name="$1"
-    local filename="$2"
+    local arr_name="$1"
+    local filename="${2:-${TEST_DATA_FILE}}"
 
     : >"$filename" || return 1
 
+    local -a keys
     local -a values
-    eval "values=(\"\${${array_name}[@]}\")" # 先复制数组到本地变量
 
-    for item in "${values[@]}"; do
-      printf '%s\n' "$item" >>"$filename"
+    eval "keys=(\"\${!${arr_name}[@]}\")"  # 获取所有键
+    eval "values=(\"\${${arr_name}[@]}\")" # 先复制数组到本地变量
+
+    for i in "${!keys[@]}"; do
+      printf '%s\n' "${keys[$i]}: ${values[$i]}" >>"$filename"
     done
   }
 
