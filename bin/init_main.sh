@@ -128,6 +128,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     # 4. 安装各类基础包
     info "安装所需软件包..."
     install_base_pkg "sudo"
+    install_base_pkg "wget"
     install_base_pkg "curl"
     install_base_pkg "jq"
     install_base_pkg "make"

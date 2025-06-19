@@ -68,20 +68,31 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
   }
 
   # 增强版智能 wget 函数
-  smart_wget() {
+  smart_geturl() {
     local output="$1"
     local url="$2"
 
     # 检查参数
     if [ -z "$output" ] || [ -z "$url" ]; then
-      echo "错误: 用法 smart_wget <输出文件> <URL>"
+      echo "错误: 用法 smart_geturl <输出文件> <URL>"
       return 1
     fi
 
-    # 启动wget后台下载
-    echo "开始下载: wget -c -q -O $output $url"
+    # 自动判断是否存在 wget 或 curl
+    local downloader=""
+    if command -v wget >/dev/null 2>&1; then
+      downloader="wget -c -q -O \"$output\" \"$url\""
+    elif command -v curl >/dev/null 2>&1; then
+      downloader="curl -L -C - -s -o \"$output\" \"$url\""
+    else
+      echo "错误: 系统未安装 wget 或 curl，无法下载。"
+      return 2
+    fi
+
+    # 启动后台下载
+    echo "开始下载: $downloader"
     echo "开始时间: $(date)"
-    wget -c -q -O "$output" "$url" &
+    eval "$downloader &"
     local pid=$!
     local start_time=$(date +%s)
 
@@ -216,7 +227,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     # 下载文件（支持断点续传）
     info "下载 Python {} standalone..." $PY_VERSION
 
-    smart_wget "$PY_GZ_FILE" "$python_url"
+    smart_geturl "$PY_GZ_FILE" "$python_url"
 
     # 解压到安装目录
     info "安装 Python 到 {}..." "$PY_INST_DIR"
