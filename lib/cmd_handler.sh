@@ -118,11 +118,8 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
     for cmd in "${@}"; do
       combined_cmd="${combined_cmd:+$combined_cmd && }$cmd"
     done
-    combined_cmd=$(echo "$combined_cmd" | xargs)                      # 去除多余空格
-    [[ "$combined_cmd" == *"&&"* ]] && combined_cmd="($combined_cmd)" # 命令组加上括号
+    combined_cmd=$(echo "$combined_cmd" | xargs) # 去除多余空格
 
-    # 执行命令（非安静模式）
-    echo "▶️: $combined_cmd" >&2
     # 执行命令 & 监控进度
     monitor_progress "$combined_cmd" "$LOG_FILE" # 调用监控函数
     return $?                                    # 返回命令执行结果
@@ -134,8 +131,16 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
     local cmd="$1"
     local log_file="${2:-$LOG_FILE}"
 
+    # 执行命令（非安静模式）
+    if [[ "$cmd" == *"&&"* ]]; then
+      $SUDO_CMD bash -c "($cmd) >> \"$log_file\" 2>&1" & # 命令组加上括号
+      echo "▶️: $SUDO_CMD bash -c ($cmd)" >&2
+    else
+      $SUDO_CMD "${cmd[@]}" >>"$log_file" 2>&1 & # 单个命令直接执行
+      echo "▶️: $SUDO_CMD $cmd" >&2
+    fi
+
     # 启动命令并获取 PID
-    $SUDO_CMD bash -c "$cmd >> \"$log_file\" 2>&1" &
     # eval "$cmd >> \"$log_file\" 2>&1 &"
     local pid=$!
 
