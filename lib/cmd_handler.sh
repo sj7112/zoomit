@@ -117,11 +117,12 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
     local result=0        # 返回成功=0 | 失败=1
 
     # 合并命令，用 && 连接
-    for cmd in "${@}"; do
-      combined_cmd="${combined_cmd:+$combined_cmd && }$SUDO_CMD $cmd"
+    for cmd in "$@"; do
+      combined_cmd="${combined_cmd:+$combined_cmd && }$cmd" # 合并命令，用 && 连接
     done
     combined_cmd=$(echo "$combined_cmd" | xargs)                      # 去除多余空格
     [[ "$combined_cmd" == *"&&"* ]] && combined_cmd="($combined_cmd)" # 命令组需要加上括号
+    [[ -n "$SUDO_CMD" ]] && combined_cmd="$SUDO_CMD $combined_cmd"    # 添加 SUDO
 
     # 执行命令（非安静模式）
     echo "执行: $combined_cmd ... " >&2
