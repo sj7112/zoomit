@@ -48,7 +48,10 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
       cancel_msg=$(string "operation is cancelled")
     fi
 
+    trap 'echo ""; exiterr "User interrupted the operation, exiting the program"' INT # Exit directly on Ctrl+C
     read -p "$prompt [Y/n] " response
+    trap - INT # Remove SIGINT signal handler
+
     if [[ -z "$response" || "$response" =~ ^[Yy]$ ]]; then
       # 执行回调函数
       "$@" # 👈 callback=$1, args=剩余参数

@@ -1,10 +1,11 @@
 import glob
 import logging
 import os
+import signal
 import subprocess
 import re
 from typing import Callable, Any
-from msg_handler import error
+from msg_handler import error, exiterr
 
 # 全局日志配置（放在文件开头）
 LOG_FILE = "/var/log/sj_pkg_error.log"
@@ -44,42 +45,53 @@ def confirm_action(prompt: str, callback: Callable[..., Any] = None, *args: Any,
         1: 用户取消操作
         2: 输入错误
     """
-    # 优先级：nomsg > msg > 默认值
-    no_msg = kwargs.pop("nomsg", kwargs.pop("msg", "操作已取消"))
-    # 优先级：errmsg > msg > 默认值
-    err_msg = kwargs.pop("errmsg", kwargs.pop("msg", "输入错误，请输入 Y 或 N"))
 
-    # 获取 default 和 exit 参数
-    default = kwargs.pop("default", "Y")
-    exit = kwargs.pop("exit", True)
+    # my handle for Ctrl+C
+    def handle_sigint(signum, frame):
+        print("")
+        exiterr("User interrupted the operation, exiting the program")
 
-    # 根据默认值设置提示符
-    if default.upper() == "Y":
-        prompt_suffix = "[Y/n]"
-        default_choice = "y"
-    else:
-        prompt_suffix = "[y/N]"
-        default_choice = "n"
+    original_handler = signal.signal(signal.SIGINT, handle_sigint)  # save original handler
 
-    while True:
-        response = input(f"{prompt} {prompt_suffix} ").strip().lower()
-        # 如果输入为空，使用默认值
-        if response == "":
-            response = default_choice
+    try:
+        # 优先级：nomsg > msg > 默认值
+        no_msg = kwargs.pop("nomsg", kwargs.pop("msg", "操作已取消"))
+        # 优先级：errmsg > msg > 默认值
+        err_msg = kwargs.pop("errmsg", kwargs.pop("msg", "输入错误，请输入 Y 或 N"))
 
-        if response in ("y", "yes"):
-            if callback:
-                callback(*args)  # 执行回调函数
-            return 0
-        elif response in ("n", "no"):
-            print(no_msg)  # 输出选择为no的提示消息
-            return 1
+        # 获取 default 和 exit 参数
+        default = kwargs.pop("default", "Y")
+        exit = kwargs.pop("exit", True)
+
+        # 根据默认值设置提示符
+        if default.upper() == "Y":
+            prompt_suffix = "[Y/n]"
+            default_choice = "y"
         else:
-            if exit:
-                error(err_msg)
-                return 2
+            prompt_suffix = "[y/N]"
+            default_choice = "n"
+
+        while True:
+            response = input(f"{prompt} {prompt_suffix} ").strip().lower()
+            # 如果输入为空，使用默认值
+            if response == "":
+                response = default_choice
+
+            if response in ("y", "yes"):
+                if callback:
+                    callback(*args)  # 执行回调函数
+                return 0
+            elif response in ("n", "no"):
+                print(no_msg)  # 输出选择为no的提示消息
+                return 1
             else:
-                print(err_msg)  # 继续循环，不返回
+                if exit:
+                    error(err_msg)
+                    return 2
+                else:
+                    print(err_msg)  # 继续循环，不返回
+    finally:
+        signal.signal(signal.SIGINT, original_handler)  # restore original handler
 
 
 def run_cmd(cmd, pattern="", **kwargs):
