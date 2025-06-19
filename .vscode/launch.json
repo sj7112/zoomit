@@ -44,24 +44,6 @@
         {
             "type": "bashdb",
             "request": "launch",
-            "name": "Bash-Debug (i18n update)",
-            "cwd": "${workspaceFolder}",
-            "program": "${workspaceFolder}/bin/i18n.sh",
-            "args": [
-                "--lang=zh",
-                "bin/init_main.sh"
-            ],
-            "env": {
-                "DEBUG": "1"
-            }
-            // ,
-            // "pathBash": "/bin/bash", // 确保指向正确的bash路径
-            // "showDebugOutput": true, // 增加这一行来查看更多调试信息
-            // "trace": true
-        },
-        {
-            "type": "bashdb",
-            "request": "launch",
             "name": "Bash-Debug (hash_util)",
             "cwd": "${workspaceFolder}",
             "program": "${workspaceFolder}/lib/hash_util.sh",
@@ -69,6 +51,17 @@
             "env": {
                 "DEBUG": "1"
             }
+        },
+        {
+            "type": "debugpy",
+            "name": "Python: 启动 cmd_handler.py",
+            "request": "launch",
+            "program": "${workspaceFolder}/python/cmd_handler.py",
+            "args": [],
+            "env": {
+                "DEBUG": "1"
+            },
+            "console": "integratedTerminal"
         },
         {
             "type": "debugpy",
