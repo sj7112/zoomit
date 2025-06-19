@@ -23,7 +23,7 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
       if [ "$DISTRO_PM" = "pacman" ]; then # arch Linux
         cmd=("pacman -Sy --noconfirm $lnx_cmd")
       elif [ "$DISTRO_PM" = "apt" ]; then # debian | ubuntu
-        cmd=("apt-get update" "apt-get install -y $lnx_cmd")
+        cmd=("apt-get install -y $lnx_cmd")
       else # centos | rhel | openSUSE
         cmd=("$DISTRO_PM install -y $lnx_cmd")
       fi

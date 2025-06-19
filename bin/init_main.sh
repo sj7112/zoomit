@@ -154,6 +154,11 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
       else
         install_base_pkg "openssh-server"
       fi
+      if [[ "$DISTRO_OSTYPE" = "ubuntu" ]]; then
+        $SUDO_CMD systemctl enable --now ssh
+      else
+        $SUDO_CMD systemctl enable --now sshd
+      fi
     fi
 
     # 询问 SSH 端口
