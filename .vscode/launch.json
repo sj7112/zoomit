@@ -139,7 +139,6 @@
             "request": "launch",
             "program": "${workspaceFolder}/python/myshell.py",
             "args": [
-                // "sh_install_pip",
                 // "sh_check_ip",
                 // ""
                 "sh_update_source",

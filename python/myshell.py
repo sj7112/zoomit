@@ -9,7 +9,6 @@ import sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from network_util import check_ip
-from python.mypip import install_pip
 from source_util import update_source
 
 
