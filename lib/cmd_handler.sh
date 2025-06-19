@@ -116,13 +116,18 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
 
     # 合并命令，用 && 连接
     for cmd in "${@}"; do
-      combined_cmd="${combined_cmd:+$combined_cmd && }$SUDO_CMD $cmd"
+      combined_cmd="${combined_cmd:+$combined_cmd && }$cmd"
     done
-    combined_cmd=$(echo "$combined_cmd" | xargs)                      # 去除多余空格
-    [[ "$combined_cmd" == *"&&"* ]] && combined_cmd="($combined_cmd)" # 命令组需要加上括号
+    combined_cmd=$(echo "$combined_cmd" | xargs) # 去除多余空格
+    if [[ "$combined_cmd" == *"&&"* ]]; then
+      combined_cmd="bash -c \"($combined_cmd)\"" # 命令组加上括号
+    fi
+    if [[ -n $SUDO_CMD ]]; then
+      combined_cmd="$SUDO_CMD $combined_cmd" # 命令加上sudo
+    fi
 
     # 执行命令（非安静模式）
-    echo "执行: $combined_cmd ... " >&2
+    echo "▶️: $combined_cmd" >&2
     # 执行命令 & 监控进度
     monitor_progress "$combined_cmd" "$LOG_FILE" # 调用监控函数
     return $?                                    # 返回命令执行结果
