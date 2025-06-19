@@ -180,7 +180,14 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     esac
 
     # 重启 SSH 服务
-    $SUDO_CMD systemctl restart sshd && info "SSH 配置已应用"
+    if [[ "$DISTRO_OSTYPE" = "ubuntu" ]]; then
+      $SUDO_CMD systemctl restart ssh
+    else
+      $SUDO_CMD systemctl restart sshd
+    fi
+    if [[ $? -eq 0 ]]; then
+      info "SSH 配置已应用"
+    fi
   }
 
   # --------------------------
