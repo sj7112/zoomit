@@ -9,7 +9,7 @@ import sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from network_util import check_ip
-from network_speed import install_pip
+from python.mypip import install_pip
 from source_util import update_source
 
 
@@ -20,18 +20,14 @@ def main():
 
     command = sys.argv[1]
 
-    # 检查服务器是否使用静态IP并提供交互式选项
-    if command == "sh_check_ip":
-        print(json.dumps(check_ip()))
-
-    # 选择python镜像
-    elif command == "sh_install_pip":
-        install_pip()
-
     # 选择包管理器，并执行初始化
-    elif command == "sh_update_source":
+    if command == "sh_update_source":
         distro_ostype = sys.argv[2]
         update_source(distro_ostype)
+
+    # 检查服务器是否使用静态IP并提供交互式选项
+    elif command == "sh_check_ip":
+        print(json.dumps(check_ip()))
 
     else:
         print(f"Error: Unknown command '{command}'")

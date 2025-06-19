@@ -83,7 +83,7 @@ def test_mirror_speed(mirror_name, mirror_url, timeout=10):
         return {"name": mirror_name, "url": mirror_url, "time": float("inf"), "status": "error", "error": str(e)}
 
 
-def test_all_mirrors(max_workers=5):
+def test_pip_mirrors(max_workers=5):
     """test speed for all mirrors concurrently"""
     print("=" * 50)
     print("🌍 测试全球 pip 可用镜像速度...")
@@ -273,7 +273,7 @@ def install_pip():
     """主函数"""
 
     # 测试镜像速度，并选择镜像
-    result = choose_pip_mirror(test_all_mirrors())
+    result = choose_pip_mirror(test_pip_mirrors())
     if result:
         configure_pip(result["url"])  # 重新配置 pip
 
@@ -282,5 +282,15 @@ def install_pip():
     install_packages()
 
 
+def main():
+    """服务器管理工具库 - 提供多种配置和管理功能(对接shell脚本)"""
+
+    command = sys.argv[1]
+
+    # 选择 python pip 镜像
+    if command == "sh_install_pip":
+        install_pip()
+
+
 if __name__ == "__main__":
-    install_pip()
+    main()

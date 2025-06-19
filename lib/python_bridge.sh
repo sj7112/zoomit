@@ -19,16 +19,17 @@ if [[ -z "${LOADED_PYTHON_BRIDGE:-}" ]]; then
   }
 
   # ===== 调用 myshell.py 中的命令 =====
+  sh_update_source() {
+    py_exec "$PYTHON_DIR/myshell.py" sh_update_source "$DISTRO_OSTYPE"
+  }
+
   sh_check_ip() {
     py_exec "$PYTHON_DIR/myshell.py" sh_check_ip </dev/tty
   }
 
+  # ===== 调用 mypip.py 中的命令 =====
   sh_install_pip() {
-    py_exec "$PYTHON_DIR/myshell.py" sh_install_pip
-  }
-
-  sh_update_source() {
-    py_exec "$PYTHON_DIR/myshell.py" sh_update_source "$DISTRO_OSTYPE"
+    py_exec "$PYTHON_DIR/mypip.py" sh_install_pip
   }
 
   # ===== 从ast_parser.py导入的函数 =====
