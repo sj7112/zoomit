@@ -118,13 +118,8 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
     for cmd in "${@}"; do
       combined_cmd="${combined_cmd:+$combined_cmd && }$cmd"
     done
-    combined_cmd=$(echo "$combined_cmd" | xargs) # 去除多余空格
-    if [[ "$combined_cmd" == *"&&"* ]]; then
-      combined_cmd="bash -c \"($combined_cmd)\"" # 命令组加上括号
-    fi
-    if [[ -n $SUDO_CMD ]]; then
-      combined_cmd="$SUDO_CMD $combined_cmd" # 命令加上sudo
-    fi
+    combined_cmd=$(echo "$combined_cmd" | xargs)                      # 去除多余空格
+    [[ "$combined_cmd" == *"&&"* ]] && combined_cmd="($combined_cmd)" # 命令组加上括号
 
     # 执行命令（非安静模式）
     echo "▶️: $combined_cmd" >&2
@@ -140,7 +135,7 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
     local log_file="${2:-$LOG_FILE}"
 
     # 启动命令并获取 PID
-    bash -c "$cmd >> \"$log_file\" 2>&1" &
+    $SUDO_CMD bash -c "$cmd >> \"$log_file\" 2>&1" &
     # eval "$cmd >> \"$log_file\" 2>&1 &"
     local pid=$!
 
