@@ -147,7 +147,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     local sshd_config="/etc/ssh/sshd_config"
 
     # 检查是否安装 sshd
-    if ! command -v sshd &>/dev/null; then
+    if ! (systemctl is-active ssh &>/dev/null || systemctl is-active sshd &>/dev/null); then
       info "sshd 未安装，正在安装..."
       if [[ "$DISTRO_PM" = "zypper" || "$DISTRO_PM" = "pacman" ]]; then
         install_base_pkg "openssh"
