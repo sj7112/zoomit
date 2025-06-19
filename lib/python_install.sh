@@ -245,7 +245,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
           return 1
         fi
       else
-        rm -rf "$VENV_DIR"
+        $SUDO_CMD rm -rf "$VENV_DIR"
       fi
     else
       info "创建虚拟环境 $VENV_DIR..."
