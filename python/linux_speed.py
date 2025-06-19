@@ -355,7 +355,7 @@ class MirrorTester:
 
             except KeyboardInterrupt:
                 # User interrupted with Ctrl+C
-                print("\n\nOperation canceled")
+                print("\n\nOperation canceled\n")
                 return
 
     def refresh_pm(self):
@@ -433,7 +433,7 @@ class MirrorTester:
             # 3. update mirrors
             curr_url = self.current_mirror()
             prompt = f"{'已选镜像: ' + curr_url + ' ' if curr_url else ''}是否重新选择镜像?"
-            confirm_action(prompt, self.choose_mirror)
+            confirm_action(prompt, self.choose_mirror, no_sigint=True)
         # except KeyboardInterrupt:
         #     print("\n\n用户中断了测试")
         except Exception as e:

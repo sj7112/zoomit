@@ -32,38 +32,50 @@ def setup_logging():
 
 def confirm_action(prompt: str, callback: Callable[..., Any] = None, *args: Any, **kwargs: Any) -> int:
     """
-    确认操作函数（带回调）
+    Confirmation function with callback support
 
-    参数:
-        prompt: 提示消息
-        callback: 回调函数。为 None 直接返回 0
-        *args: 回调函数的位置参数
-        **kwargs: 可包含取消提示信息，以及回调函数的关键字参数
+    Args:
+        prompt: Prompt message
+        callback: Callback function. Returns 0 directly if None
+        *args: Positional arguments for callback function
+        **kwargs: Can contain cancellation messages and callback function keyword arguments
+                 no_sigint: Skip Ctrl+C signal handling when True
 
-    返回:
-        0: 用户确认执行
-        1: 用户取消操作
-        2: 输入错误
+    Returns:
+        0: User confirmed execution
+        1: User cancelled operation
+        2: Input error
     """
 
-    # my handle for Ctrl+C
-    def handle_sigint(signum, frame):
-        print("")
-        exiterr("User interrupted the operation, exiting the program")
+    # Handle Ctrl+C signal processing
+    no_sigint = kwargs.pop("no_sigint", False)
 
-    original_handler = signal.signal(signal.SIGINT, handle_sigint)  # save original handler
+    # Get current signal handler
+    original_handler = signal.signal(signal.SIGINT, signal.getsignal(signal.SIGINT))
+
+    # Decide which handler to use based on no_sigint parameter
+    if no_sigint:
+        handle_sigint = original_handler  # Use original handler, equivalent to no change
+    else:
+
+        def handle_sigint(signum, frame):
+            print("")
+            exiterr("User interrupted the operation, exiting the program!")
+
+    # Set signal handler
+    signal.signal(signal.SIGINT, handle_sigint)
 
     try:
-        # 优先级：nomsg > msg > 默认值
+        # Priority: nomsg > msg > default value
         no_msg = kwargs.pop("nomsg", kwargs.pop("msg", "操作已取消"))
-        # 优先级：errmsg > msg > 默认值
+        # Priority: errmsg > msg > default value
         err_msg = kwargs.pop("errmsg", kwargs.pop("msg", "输入错误，请输入 Y 或 N"))
 
-        # 获取 default 和 exit 参数
+        # Get default and exit parameters
         default = kwargs.pop("default", "Y")
         exit = kwargs.pop("exit", True)
 
-        # 根据默认值设置提示符
+        # Set prompt suffix based on default value
         if default.upper() == "Y":
             prompt_suffix = "[Y/n]"
             default_choice = "y"
@@ -73,25 +85,26 @@ def confirm_action(prompt: str, callback: Callable[..., Any] = None, *args: Any,
 
         while True:
             response = input(f"{prompt} {prompt_suffix} ").strip().lower()
-            # 如果输入为空，使用默认值
             if response == "":
                 response = default_choice
 
             if response in ("y", "yes"):
                 if callback:
-                    callback(*args)  # 执行回调函数
+                    callback(*args)  # Execute callback function
                 return 0
             elif response in ("n", "no"):
-                print(no_msg)  # 输出选择为no的提示消息
+                print(no_msg)  # Output message for 'no' choice
                 return 1
             else:
                 if exit:
                     error(err_msg)
                     return 2
                 else:
-                    print(err_msg)  # 继续循环，不返回
+                    print(err_msg)  # Continue loop without returning
+
     finally:
-        signal.signal(signal.SIGINT, original_handler)  # restore original handler
+        if not no_sigint:
+            signal.signal(signal.SIGINT, original_handler)  # restore original handler
 
 
 def run_cmd(cmd, pattern="", **kwargs):
