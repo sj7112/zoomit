@@ -21,13 +21,13 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
 
       # 根据不同 Linux 发行版安装命令
       if [ "$DISTRO_PM" = "pacman" ]; then # arch Linux
-        cmd="pacman -Sy --noconfirm $lnx_cmd"
+        cmd=("pacman -Sy --noconfirm $lnx_cmd")
       elif [ "$DISTRO_PM" = "apt" ]; then # debian | ubuntu
-        cmd="apt-get update && apt-get install -y $lnx_cmd"
+        cmd=("apt-get update" "apt-get install -y $lnx_cmd")
       else # centos | rhel | openSUSE
-        cmd="'$DISTRO_PM' install -y $lnx_cmd"
+        cmd=("$DISTRO_PM install -y $lnx_cmd")
       fi
-      local result=$(cmd_exec "$cmd")
+      local result=$(cmd_exec "${cmd[@]}")
 
       # 再次检查是否安装成功
       local date=$(date "+%Y-%m-%d %H:%M:%S")
@@ -107,22 +107,19 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
   #   0 表示成功，非 0 表示失败
   #
   # 示例:
-  #   cmd_exec "apt update"  # 记录日志，页面不输出结果
-  #   cmd_exec "apt update"  # 同上，分开参数
-  #   cmd_exec "apt update"  # 同上，使用长参数
-  #   cmd_exec "rm file"     # 静默执行（不输出任何结果）
+  #   cmd_exec "apt update"  # 单个命令
+  #   cmd_exec "apt update" "apt install curl"  # 多个命令
   # ==============================================================================
   cmd_exec() {
     local combined_cmd="" # 合并后的命令行参数
     local result=0        # 返回成功=0 | 失败=1
 
     # 合并命令，用 && 连接
-    for cmd in "$@"; do
-      combined_cmd="${combined_cmd:+$combined_cmd && }$cmd" # 合并命令，用 && 连接
+    for cmd in "${@}"; do
+      combined_cmd="${combined_cmd:+$combined_cmd && }$SUDO_CMD $cmd"
     done
     combined_cmd=$(echo "$combined_cmd" | xargs)                      # 去除多余空格
     [[ "$combined_cmd" == *"&&"* ]] && combined_cmd="($combined_cmd)" # 命令组需要加上括号
-    [[ -n "$SUDO_CMD" ]] && combined_cmd="$SUDO_CMD $combined_cmd"    # 添加 SUDO
 
     # 执行命令（非安静模式）
     echo "执行: $combined_cmd ... " >&2
