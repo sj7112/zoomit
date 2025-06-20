@@ -92,6 +92,12 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     fi
   }
 
+  # Initial language & translations
+  initial_language() {
+    fix_shell_locale # fix shell language to ensure UTF-8 support
+    load_msg_prop    # load message translations
+  }
+
   # ==============================================================================
   # 兼容：debian | ubuntu | centos | rhel | openSUSE | arch Linux
   # 功能1: 检查root权限并自动升级
@@ -268,7 +274,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   # ==============================================================================
   init_main() {
     initial_global   # 设置环境变量
-    initial_language # 加载翻译文件
+    initial_language # inital language & translation
     echo "=== init system start - $PRETTY_NAME ==="
     initial_env  # 基础值初始化
     config_sshd  # SSH配置
