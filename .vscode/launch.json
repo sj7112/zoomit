@@ -76,7 +76,7 @@
                 //"--file=bin/i18n.sh bin/init_main.sh",
                 "--lang=zh en",
                 // "--lang=en",
-                // "--debug"
+                "--test_run"
             ],
             "console": "integratedTerminal"
         },

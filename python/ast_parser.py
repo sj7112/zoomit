@@ -9,26 +9,10 @@ import sys
 # default python sys.path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from hash_util import (
-    set_file_msgs,
-    set_func_msgs,
-)
+from hash_util import set_file_msgs, set_func_msgs
+from file_util import get_shell_files, read_file, write_array
+from debug_tool import print_array
 
-from file_util import (
-    get_shell_files,
-    read_file,
-    write_array,
-)
-
-from debug_tool import (
-    print_array,
-)
-
-
-# 获取当前文件的绝对路径的父目录
-PARENT_DIR = Path(__file__).parent.parent.resolve()
-
-DUPL_HASH = "Z-HASH"  # hash池（一个文件中不允许有重复的hash）
 
 # ==============================================================================
 # parse_line_preprocess     预处理行：移除注释部分和前后空格
@@ -41,6 +25,12 @@ DUPL_HASH = "Z-HASH"  # hash池（一个文件中不允许有重复的hash）
 # parse_function            处理函数内容，递归解析函数体
 # parse_shell_files         主解析函数：解析shell文件，遇到函数，则进入解析
 # ==============================================================================
+
+
+# 获取当前文件的绝对路径的父目录
+PARENT_DIR = Path(__file__).parent.parent.resolve()
+
+DUPL_HASH = "Z-HASH"  # hash池（一个文件中不允许有重复的hash）
 
 
 def parse_line_preprocess(line_content):

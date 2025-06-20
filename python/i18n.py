@@ -204,7 +204,7 @@ def del_lang_files(langs: List[str], no_prompt: bool = False) -> None:
         confirm_action(prompt, do_del_lang_files, lang_code, lang_files, errmsg=string("操作已取消，文件未删除"))
 
 
-def upd_lang_files(langs: List[str], files: List[str], debug: bool) -> None:
+def upd_lang_files(langs: List[str], files: List[str], test_run: bool) -> None:
     """修改语言文件
 
     Args:
@@ -213,8 +213,8 @@ def upd_lang_files(langs: List[str], files: List[str], debug: bool) -> None:
     # 获取所有文件路径
     lang_codes = get_lang_files(langs)
     # 修改语言文件(yml和properties)
-    data = update_lang_files(lang_codes, files, debug)
-    if debug:
+    data = update_lang_files(lang_codes, files, test_run)
+    if test_run:
         debug_assertion(data, lang_codes)
 
 
@@ -251,14 +251,13 @@ def main():
     def update(
         lang: Optional[List[str]] = typer.Option(None, "-l", "--lang", help="指定语言包"),
         file: Optional[List[str]] = typer.Option(None, "-f", "--file", help="待处理文件路径"),
-        debug: bool = typer.Option(False, "--debug", help="调试模式"),
+        test_run: bool = typer.Option(False, "--test_run", help="调试模式"),
     ):
         """更新语言文件（默认操作）"""
         # 处理多值选项
         langs = parse_multi_val(lang) if lang else []
         files = parse_multi_val(file) if file else []
-
-        upd_lang_files(langs, files, debug)
+        upd_lang_files(langs, files, test_run)
 
     # 如果没有子命令，默认运行update
     commands = ["add", "del", "update"]

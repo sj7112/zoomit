@@ -13,11 +13,7 @@ from ruamel.yaml import YAML
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from ast_parser import parse_shell_files
-from file_util import (
-    read_lang_prop,
-    write_lang_prop,
-    write_array,
-)
+from file_util import read_lang_prop, write_lang_prop, write_array
 from debug_tool import test_assertion, print_array
 
 # 全局变量
