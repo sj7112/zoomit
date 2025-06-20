@@ -53,32 +53,54 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
       if [ -f "$file" ]; then
         default_lang=$(grep "^LANG=" "$file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '"')
         if [ -n "$default_lang" ]; then
-          if [[ "$LANG" == "C" || "$LANG" == "POSIX" ]]; then
-            break # Must not be C or POSIX
-          fi
-          local base="${default_lang%.*}"    # remove .utf8 / .UTF-8
-          local short="${base%_*}"           # language code
-          export LANGUAGE="${base}:${short}" # e.g. en_US.UTF-8 -> en_US:en
-          echo "$default_lang"
-          return
+          break
         fi
       fi
     done
+    echo "$default_lang"
+  }
 
-    # Check if the system default language was retrieved
-    echo "Please set shell language (e.g., en_US.UTF-8):"
+  # reset language(C or POSIX is not allowed)
+  reset_language() {
+    local lang
+    if ! test_terminal_display; then
+      lang="en_US.UTF-8" # Terminal does not support UTF-8, use default value
+      echo "Terminal does not support UTF-8, set LANG to $lang" >&2
+      echo "$lang"
+      return 0
+    fi
+
+    local curr_lang="$(get_default_lang)"
+
+    local input_lang
+    echo "Please set shell language (Enter = ${curr_lang}):"
     while true; do
       read -r input_lang
-      if [[ "$LANG" == "C" || "$LANG" == "POSIX" ]]; then
-        echo "Invalid language format. Please re-enter (e.g., en_US.UTF-8):"
+
+      # Enter = current language
+      if [[ -z "$input_lang" ]]; then
+        input_lang="$curr_lang"
       fi
+
+      # check C or POSIX
+      if [[ "${curr_lang^^}" == "C" || "${curr_lang^^}" == "POSIX" ]]; then
+        echo "($input_lang) is not allowed. Please enter a valid language (e.g., en_US.UTF-8):"
+        continue
+      fi
+
+      # format input and check UTF-8 support
+      local lang=$(check_locale "$(normalize_locale "$input_lang")")
+      if [ $? -eq 0 ]; then
+        echo "$input_lang does not support UTF-8, change to $lang"
+      fi
+
       # Validate the format (e.g., xx_YY.UTF-8)
-      normalized=$(normalize_locale "$input_lang")
-      if [[ "$normalized" =~ ^[a-z]{2}_[A-Z]{2}(\.[a-z0-9-]+)?$ ]]; then
+      if [[ "$lang" =~ ^[a-z]{2}_[A-Z]{2}(\.[a-z0-9-]+)?$ ]]; then
         # Check if it exists in the locale -a list
-        if locale -a | grep -Fxq "$normalized"; then
-          default_lang="$normalized"
-          break
+        if locale -a | grep -Fxq "$lang"; then
+          echo "set LANG to $new_lang" >&2
+          echo "$lang"
+          return 0
         else
           echo "Language not in the system locale list (locale -a). Please re-enter:"
         fi
@@ -86,7 +108,6 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
         echo "Invalid language format. Please re-enter (e.g., en_US.UTF-8):"
       fi
     done
-    echo "$default_lang"
   }
 
   # Check UTF-8 support
@@ -192,22 +213,12 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
 
   # Attempts to fix the locale settings to ensure UTF-8 compatibility
   fix_shell_locale() {
-    local lang=$(get_default_lang)         # system default LANG value
-    local new_lang=$(check_locale "$lang") # UTF-8 fix
-    if [ $? -ne 0 ]; then
-      echo "Need UTF-8, try to fix LANG: $lang..."
-    fi
+    local new_lang=$(reset_language) # system default LANG value
 
-    if ! test_terminal_display; then
-      new_lang="en_US.UTF-8" # Terminal does not support UTF-8, use default value
-      echo "Terminal does not support UTF-8, set LANG to $new_lang"
-    else
-      echo "set LANG to $new_lang"
-      local curr_lang=${LC_ALL:-${LANG:-C}} # Read user language settings
-      if [ "${curr_lang,,}" != "${new_lang,,}" ]; then
-        if confirm_action "Change $USER language from [$curr_lang] to [$new_lang]?"; then
-          update_user_locale "$new_lang" # Permanently change LANG and LANGUAGE
-        fi
+    local curr_lang=${LC_ALL:-${LANG:-C}} # Read user language settings
+    if [ "${curr_lang,,}" != "${new_lang,,}" ]; then
+      if confirm_action "Change $USER language from [$curr_lang] to [$new_lang]?"; then
+        update_user_locale "$new_lang" # Permanently change LANG and LANGUAGE
       fi
     fi
 
@@ -244,7 +255,7 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
   }
 
   # Load message translations
-  load_trans_msgs() {
+  initial_language() {
     # fix shell language to ensure UTF-8 support
     fix_shell_locale
 

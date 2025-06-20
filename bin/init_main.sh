@@ -148,7 +148,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     local sshd_config="/etc/ssh/sshd_config"
 
     # 检查是否安装 sshd
-    if ! (systemctl is-active ssh &>/dev/null || systemctl is-active sshd &>/dev/null); then
+    if ! ($SUDO_CMD systemctl is-active ssh &>/dev/null || $SUDO_CMD systemctl is-active sshd &>/dev/null); then
       info "sshd 未安装，正在安装..."
       if [[ "$DISTRO_PM" = "zypper" || "$DISTRO_PM" = "pacman" ]]; then
         install_base_pkg "openssh"
@@ -267,8 +267,8 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   # 公共初始化子函数（兼容：debian | ubuntu | centos | rhel | openSUSE | arch Linux）
   # ==============================================================================
   init_main() {
-    initial_global  # 设置环境变量
-    load_trans_msgs # 加载翻译文件
+    initial_global   # 设置环境变量
+    initial_language # 加载翻译文件
     echo "=== init system start - $PRETTY_NAME ==="
     initial_env  # 基础值初始化
     config_sshd  # SSH配置
