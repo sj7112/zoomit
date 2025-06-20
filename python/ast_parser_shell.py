@@ -27,7 +27,7 @@ from debug_tool import print_array
 # ==============================================================================
 
 
-class ASTParser:
+class ShellASTParser:
     """
     AST parser class
     """
@@ -349,7 +349,7 @@ class ASTParser:
 # ./python/ast_parser.py bin/i18n.sh bin/init_main.sh
 # =============================================================================
 def main():
-    parser = ASTParser()
+    parser = ShellASTParser()
     print_array(parser.parse_shell_files(sys.argv[1:]))
 
 
