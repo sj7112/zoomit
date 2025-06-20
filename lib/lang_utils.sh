@@ -13,7 +13,7 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
   test_terminal_display() {
     case "$TERM" in
       # Terminals without UTF-8 support
-      vt100 | vt102 | vt220 | vt320 | ansi | dumb)
+      vt100 | vt102 | vt220 | vt320 | ansi | dumb | linux)
         return 1
         ;;
       # Others
@@ -116,11 +116,11 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
 
     local input_lang
     while true; do
-      read -rp "Please set shell language (Enter = ${lang}): " input_lang
+      read -rp "Please set shell language (Default = ${lang}): " input_lang
 
       # get input language
       if [[ -z "$input_lang" ]]; then
-        input_lang="$lang" # Enter = use current language
+        input_lang="$lang" # Use current language
       fi
       input_lang="$(normalize_locale "$input_lang")" # format input
       if [[ $? -ne 0 ]]; then
