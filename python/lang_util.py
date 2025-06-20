@@ -12,7 +12,7 @@ from ruamel.yaml import YAML
 # default python sys.path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from ast_parser import parse_shell_files
+from ast_parser import ASTParser
 from file_util import read_lang_prop, write_lang_prop, write_array
 from debug_tool import test_assertion, print_array
 
@@ -526,7 +526,10 @@ def update_lang_files(lang_codes, files, test_run=False, file_yml=None):
     global FULL_OPERATE  # 是否完整操作(处理所有文件)
     FULL_OPERATE = not files
     # 语言消息
-    lang_data = parse_shell_files(files, TRIM_SPACE)
+    parser = ASTParser(TRIM_SPACE)
+    lang_data = parser.parse_shell_files(files)
+
+    # lang_data = parse_shell_files(files, TRIM_SPACE)
 
     for lang_code in (BASE_LANG, *lang_codes):
         update_lang_properties(lang_code, lang_data, file_yml, test_run)
