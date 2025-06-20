@@ -29,16 +29,16 @@ from debug_tool import print_array
 
 class ASTParser:
     """
-    AST解析器类
+    AST parser class
     """
 
-    # 类变量
+    # Class variables
     PARENT_DIR = Path(__file__).parent.parent.resolve()
-    DUPL_HASH = "Z-HASH"  # hash池（一个文件中不允许有重复的hash）
+    DUPL_HASH = "Z-HASH"  # Hash pool (duplicate hashes are not allowed in a file)
 
     def __init__(self, trim_space=False):
         """
-        初始化解析器
+        Initialize the parser
         """
         self.trim_space = trim_space
 
@@ -87,16 +87,16 @@ class ASTParser:
 
     def _check_heredoc_block(self, lines, line_number, total_lines):
         """
-        检查并处理heredoc块
+        Check and process heredoc block
 
-        参数:
-        - lines: 所有行的列表
-        - line_number: 当前行号的引用
-        - total_lines: 总行数
+        Parameters:
+        - lines: List of all lines
+        - line_number: Reference to current line number
+        - total_lines: Total number of lines
 
-        返回:
-        - True: 如果遇到heredoc块
-        - False: 如果没有遇到heredoc块
+        Returns:
+        - True: If heredoc block is encountered
+        - False: If no heredoc block is encountered
         """
         line = lines[line_number[0]]
 
@@ -125,7 +125,7 @@ class ASTParser:
 
     def _get_function_name(self, line):
         """
-        从函数定义行中提取函数名
+        Extract function name from function definition line
         """
         match = re.match(r"^\s*([a-zA-Z0-9_]+)\s*\(\)\s*\{?", line)
         if match:
@@ -134,17 +134,17 @@ class ASTParser:
 
     def _init_brace_count(self, line):
         """
-        初始化大括号计数器
+        Initialize brace counter
         """
         return 1 if re.search(r"\{$", line) else 0
 
     def _split_match_type(self, line):
         """
-            分割并匹配函数调用
+        Split and match function calls
 
-        将行分割成可能的函数调用段落
+        Split the line into possible function call segments
         """
-        # 添加前导空格以避免偏移计算错误
+        # Add leading space to avoid offset calculation errors
         line = " " + line
 
         # 要匹配的函数模式
@@ -184,10 +184,10 @@ class ASTParser:
         """
         提取字符串中第一个未转义双引号之间的内容
 
-        参数:
+        Parameters:
         - segment: 输入字符串段落
 
-        返回:
+        Returns:
         - 提取的内容，如果不满足条件则返回None
         """
         # 查找第一个双引号
@@ -218,17 +218,18 @@ class ASTParser:
         单行直接返回；多行，添加多行数据并返回
         以下一个有效的双引号为结束条件
         如果TRIM_SPACE = True，则去掉字符串右侧的空格！！
-        例如：
+
+        Example:
             exiterr "Usage: show_help_info [command]\n \
                 Available commands: find, ls"
 
-        参数:
-        - content: 输入字符串段落
-        - lines: 待处理多行数据
-        - line_number：如为多行，动态修改此变量
+        Parameters:
+        - content: Input string segment
+        - lines: Multi-line data to process
+        - line_number: For multi-line, dynamically modify this variable
 
-        返回:
-        - content：多行用\n拼接
+        Returns:
+        - content: Multi-line joined with \n
         """
         # 检查是否多行文本
         if content.endswith("\\"):
@@ -249,9 +250,9 @@ class ASTParser:
         """
         解析脚本行中的函数调用信息
 
-        参数:
-        - segment: 当前处理的脚本文本段
-        - line_number: 当前行号
+        Parameters:
+        - segment: Current script text segment
+        - line_number: Current line number
         """
         # 跳过：空行 | 含 -i 的行
         if not segment or "-i" in segment:
@@ -273,10 +274,10 @@ class ASTParser:
         """
         处理函数内容，递归解析函数体
 
-        参数:
-        - lines: 所有行的列表
-        - line_number: 当前行号的引用(列表形式，以便可以修改)
-        - total_lines: 总行数
+        Parameters:
+        - lines: List of all lines
+        - line_number: Reference to current line number (list form for modification)
+        - total_lines: Total number of lines
         """
         current_line = lines[line_number[0]]
         func_name = self._get_function_name(current_line)
@@ -304,7 +305,6 @@ class ASTParser:
                 case 9:
                     brace_count -= 1  # 出现右括号，计数器-1
                     if brace_count <= 0:
-                        # hash：转换"文件名@@函数名"；msgs：key=hash, value=msg # type@linNo@order
                         if result_lines:
                             set_func_msgs(file_rec, func_name, result_lines)
                         return  # 函数结束
@@ -314,61 +314,38 @@ class ASTParser:
             for matched in matches:
                 self._parse_match_type(matched, lines, line_number, result_lines)
 
-    def _find_duplicate_keys(self, data):
-        """查找file_name > func_name中是否有重复key"""
-        buckets = {}
-
-        # 遍历数据，填充桶
-        for file_name, functions in data.items():
-            for func_name, keys in functions.items():
-                for key in keys:
-                    full_key = f"{file_name}.{func_name}.{key}"
-                    # 初始化桶
-                    if key not in buckets:
-                        buckets[key] = []
-                    # 追加完整路径
-                    buckets[key].append(full_key)
-
-        # 过滤出有冲突的key（多个文件使用相同的key；用md5作为key值）
-        duplicates = {key: paths for key, paths in buckets.items() if len(paths) > 1 or len(key) == 32}
-        return duplicates
-
     def parse_shell_files(self, target):
         """
-        主解析函数：解析shell文件，遇到函数，则进入解析
+        主解析函数：解析shell文件
 
-        参数:
-        - sh_file: 要解析的shell文件路径
+        Parameters:
+        - sh_file: Path to shell file to parse
         """
-        sh_files = get_shell_files(target)  # 文件列表
-        results = {}  # 文件=>函数 | 消息
+        sh_files = get_shell_files(target)  # File list
+        results = {}  # File => Function | Messages
 
         for sh_file in sh_files:
-            # 读取文件内容
+            # Read file content
             lines = read_file(sh_file)
-            line_number = [0]  # 使用列表包装，以便函数可以修改
+            line_number = [0]  # Wrap in list so functions can modify
             total_lines = len(lines)
 
-            sh_file = str(Path(sh_file).relative_to(self.PARENT_DIR))  # 相对工程的根路径
+            sh_file = str(Path(sh_file).relative_to(self.PARENT_DIR))  # Relative path to project root
             results[sh_file] = {self.DUPL_HASH: {}}
 
             while line_number[0] < total_lines:
                 line, status = self._parse_line_preprocess(lines[line_number[0]])
-                if status == 2:  # 函数定义
+                if status == 2:  # Function definition
                     self._parse_function(lines, line_number, total_lines, results[sh_file])
                 line_number[0] += 1
 
             set_file_msgs(results, sh_file)
 
-        # duplicates = find_duplicate_keys(results)  # 查找重复键
-        # if duplicates:
-        #     print_array(duplicates)
-
         return results
 
 
 # =============================================================================
-# 调试测试函数
+# Debug test function
 # ./python/ast_parser.py bin/i18n.sh bin/init_main.sh
 # =============================================================================
 def main():
@@ -377,7 +354,7 @@ def main():
 
 
 # =============================================================================
-# 命令行入口
+# Command-line entry point
 # =============================================================================
 if __name__ == "__main__":
     main()
