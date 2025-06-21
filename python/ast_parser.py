@@ -12,7 +12,6 @@ from typing import List
 # default python sys.path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from ast_parser import ASTParser, FuncParser
 from hash_util import set_file_msgs, set_func_msgs
 from file_util import get_code_files, read_file, write_array
 from debug_tool import print_array
@@ -38,8 +37,13 @@ class FuncParser:
     func_indent: int  # function name indent (only for python)
     result_lines: str  # function parse result set
 
+    def __init__(self, func_name: str, func_indent: int = 0):
+        self.func_name: str = func_name
+        self.func_indent: int = func_indent
+        self.result_lines: List[str] = []
 
-class ShellASTParser(ASTParser):
+
+class ASTParser:
     """
     AST parser class
     """
@@ -91,7 +95,7 @@ class ShellASTParser(ASTParser):
                 return "", 0  # 单行函数：跳过
             else:
                 # add new function parser
-                self.parsers.append(FuncParser(func_name=func_match.group(1), result_lines=[]))
+                self.parsers.append(FuncParser(func_name=func_match.group(1)))
                 return line_content, 2  # 多行函数定义
 
         # heredoc 检查：包含 << 但不包含 <<<

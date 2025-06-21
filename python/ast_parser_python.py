@@ -81,7 +81,7 @@ class PythonASTParser(ASTParser):
             indent = func_match.group(1)  # 缩进字符串
             indent = indent.count(" ") + indent.count("\t") * 4  # 1 tab = 4 space
             func_name = func_match.group(2)  # 函数名
-            self.parsers.append(FuncParser(func_name=func_name, func_indent=indent, result_lines=[]))
+            self.parsers.append(FuncParser(func_name=func_name, func_indent=indent))
             return line_content, 2  # 多行函数定义
 
         # Multi-line string literals check

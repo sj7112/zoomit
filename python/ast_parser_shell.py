@@ -82,7 +82,7 @@ class ShellASTParser(ASTParser):
                 return "", 0  # 单行函数：跳过
             else:
                 # add new function parser
-                self.parsers.append(FuncParser(func_name=func_match.group(1), result_lines=[]))
+                self.parsers.append(FuncParser(func_name=func_match.group(1)))
                 return line_content, 2  # 多行函数定义
 
         # heredoc 检查：包含 << 但不包含 <<<
