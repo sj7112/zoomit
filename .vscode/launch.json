@@ -106,7 +106,8 @@
             "type": "debugpy",
             "name": "Python: 启动 ast_parser.py",
             "request": "launch",
-            "program": "${workspaceFolder}/python/ast_parser.py",
+            "program": "${workspaceFolder}/python/ast_parser_shell.py",
+            // "program": "${workspaceFolder}/python/ast_parser_python.py",
             "args": [
                 "bin/init_main.sh",
                 "bin/i18n.sh"

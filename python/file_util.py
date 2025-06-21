@@ -194,7 +194,7 @@ def file_restore_sj(src_file: str, postfix: str = "bak") -> None:
 def read_file(fn):
     """读取文件内容为数组"""
     with open(fn, "r", encoding="utf-8") as f:
-        return f.read().splitlines()  # 去掉换行符（兼容windows、macos）
+        return f.read().splitlines()  # Removes newline characters (compatible with Windows/macOS)
 
 
 def write_source_file(path, lines):
@@ -229,7 +229,7 @@ def get_filename(file_args):
     return file_args.split() if isinstance(file_args, str) else file_args
 
 
-def get_shell_files(file_args=None):
+def get_code_files(dir_args, file_ext, file_args=None):
     """
     获取shell文件列表
 
@@ -242,7 +242,7 @@ def get_shell_files(file_args=None):
     Returns:
         list: 有效的shell文件路径列表
     """
-    sh_files = []
+    ret_files = []
 
     # 处理指定的文件
     if file_args:
@@ -251,22 +251,23 @@ def get_shell_files(file_args=None):
             # 使用Path对象处理路径，保持一致性
             path = PARENT_DIR / file
             if path.is_file():
-                sh_files.append(str(path))
+                ret_files.append(str(path))
             else:
                 print(f"警告: 文件不存在: {file}", file=sys.stderr)
 
     # 如果没有指定文件，则搜索默认目录（结果按文件名字母排序）
     else:
-        for dir in ["bin", "lib"]:
+        pattern = f"**/*.{file_ext}"
+        for dir in dir_args:
             dir_path = PARENT_DIR / dir
             if dir_path.exists():
-                sh_files.extend(str(path.resolve()) for path in dir_path.glob("**/*.sh") if path.is_file())
+                ret_files.extend(str(path.resolve()) for path in dir_path.glob(pattern) if path.is_file())
 
-    if not sh_files:
+    if not ret_files:
         print("错误: 没有找到任何shell脚本文件", file=sys.stderr)
         sys.exit(1)
 
-    return sh_files
+    return ret_files
 
 
 def read_env_file(filename, section=None):

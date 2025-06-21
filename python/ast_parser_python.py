@@ -30,7 +30,7 @@ from debug_tool import print_array
 # ==============================================================================
 
 
-class ShellASTParser(ASTParser):
+class PythonASTParser(ASTParser):
     """
     AST parser class
     """
@@ -38,8 +38,8 @@ class ShellASTParser(ASTParser):
     # Class variables
     PARENT_DIR = Path(__file__).parent.parent.resolve()
     DUPL_HASH = "Z-HASH"  # Hash pool (duplicate hashes are not allowed in a file)
-    DIRS = ["bin", "lib"]
-    EXTS = "sh"
+    DIRS = ["python"]
+    EXTS = "py"
 
     def __init__(self, trim_space=False):
         """
@@ -58,12 +58,10 @@ class ShellASTParser(ASTParser):
         返回值:
         - processed_line: 处理后的行内容
         - status:
-            0: 注释、空行、单行函数
+            0: 注释或空行
             1: 普通非函数行（需进一步解析）
-            2: 是函数定义且不是单行函数
-            3: heredoc 标记
-            8: 单个左括号
-            9: 单个右括号
+            2: 是函数定义
+            3: Multi-line 标记
         """
         line_content = self.lines[self.line_number]
         if re.match(r"^\s*#", line_content):
@@ -76,18 +74,19 @@ class ShellASTParser(ASTParser):
             return "", 0  # 空行
 
         # 正则捕获组是函数名称
-        func_match = re.match(r"^\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\(\)\s*\{?", line_content)
+        func_match = re.match(r"^(\s*)def\s+(\w+)\s*\([^)]*\)\s*:", line_content)
+        # func_match = re.match(r"^\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\(\)\s*\{?", line_content)
         if func_match:
-            if re.search(r"\}\s*$", line_content):
-                return "", 0  # 单行函数：跳过
-            else:
-                # add new function parser
-                self.parsers.append(FuncParser(func_name=func_match.group(1), result_lines=[]))
-                return line_content, 2  # 多行函数定义
+            # add new function parser
+            indent = func_match.group(1)  # 缩进字符串
+            indent = indent.count(" ") + indent.count("\t") * 4  # 1 tab = 4 space
+            func_name = func_match.group(2)  # 函数名
+            self.parsers.append(FuncParser(func_name=func_name, func_indent=indent, result_lines=[]))
+            return line_content, 2  # 多行函数定义
 
-        # heredoc 检查：包含 << 但不包含 <<<
-        if "<<" in line_content and "<<<" not in line_content:
-            return line_content, 3  # heredoc 标记
+        # Multi-line string literals check
+        if "'''" in line_content or '"""' in line_content:
+            return line_content, 3  # Multi-line 标记
 
         # 检查单个括号
         if line_content == "{":
@@ -343,7 +342,7 @@ class ShellASTParser(ASTParser):
 # ./python/ast_parser.py bin/i18n.sh bin/init_main.sh
 # =============================================================================
 def main():
-    parser = ShellASTParser()
+    parser = PythonASTParser()
     print_array(parser.parse_code_files(sys.argv[1:]))
 
 

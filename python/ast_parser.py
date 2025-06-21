@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from collections import OrderedDict
+from dataclasses import dataclass
 import os
 from pathlib import Path
 import re
@@ -28,6 +29,14 @@ from debug_tool import print_array
 # parse_function            处理函数内容，递归解析函数体
 # parse_code_files         主解析函数：解析代码文件，遇到函数，则进入解析
 # ==============================================================================
+
+
+@dataclass
+class FuncParser:
+
+    func_name: str  # function name
+    func_indent: int  # function name indent (only for python)
+    result_lines: str  # function parse result set
 
 
 class ShellASTParser(ASTParser):
@@ -336,19 +345,3 @@ class ShellASTParser(ASTParser):
             set_file_msgs(results, code_file)
 
         return results
-
-
-# =============================================================================
-# Debug test function
-# ./python/ast_parser.py bin/i18n.sh bin/init_main.sh
-# =============================================================================
-def main():
-    parser = ShellASTParser()
-    print_array(parser.parse_code_files(sys.argv[1:]))
-
-
-# =============================================================================
-# Command-line entry point
-# =============================================================================
-if __name__ == "__main__":
-    main()

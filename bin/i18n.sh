@@ -246,7 +246,7 @@ if [[ -z "${LOADED_I18N:-}" ]]; then
     # 处理 shell 脚本文件
     get_shell_files "$@"
 
-    mapfile -t MSG_FUNC_CALLS < <(parse_shell_files)
+    mapfile -t MSG_FUNC_CALLS < <(parse_code_files)
 
     hash_init_msg MSG_FUNC_CALLS # 计算每个函数调用的hash值
 
@@ -255,7 +255,7 @@ if [[ -z "${LOADED_I18N:-}" ]]; then
     # for sh_file in "${sh_files[@]}"; do
     #   echo "处理脚本: $sh_file"
 
-    #   mapfile -t MSG_FUNC_CALLS < <(parse_shell_files "$sh_file")
+    #   mapfile -t MSG_FUNC_CALLS < <(parse_code_files "$sh_file")
     #   # print_array MSG_FUNC_CALLS2 # 检查解析结果
     #   # parse_shell_file "$sh_file" # 解析shell文件中的函数
     #   # print_array MSG_FUNC_CALLS  # 检查解析结果

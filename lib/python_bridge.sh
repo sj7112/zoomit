@@ -33,16 +33,16 @@ if [[ -z "${LOADED_PYTHON_BRIDGE:-}" ]]; then
   }
 
   # ===== 从ast_parser.py导入的函数 =====
-  parse_shell_files() {
+  parse_code_files() {
     local sh_file="$1"
 
     # 直接输出处理结果
     python3 -c "
 import sys
 sys.path.append('$PYTHON_DIR')
-from lang_util import parse_shell_files
+from lang_util import parse_code_files
 
-for item in parse_shell_files('$sh_file'):
+for item in parse_code_files('$sh_file'):
     print(item)
 "
   }
