@@ -65,13 +65,14 @@ class ShellASTParser(ASTParser):
             return "", 0  # 空行
 
         # 正则捕获组是函数名称
-        func_match = re.match(r"^\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\(\)\s*\{?", line_content)
+        func_match = re.match(r"^\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\(\)\s*(\{)?", line_content)
         if func_match:
             if re.search(r"\}\s*$", line_content):
                 return "", 0  # 单行函数：跳过
             else:
-                # add new function parser
-                self.parsers.append(FuncParser(func_name=func_match.group(1)))
+                # add new function parser (name, brace_counts)
+                brace_count = 1 if func_match.group(2) else None
+                self.parsers.append(FuncParser.sh(func_match.group(1), brace_count))
                 return line_content, 2  # 多行函数定义
 
         # heredoc 检查：包含 << 但不包含 <<<
@@ -119,12 +120,6 @@ class ShellASTParser(ASTParser):
                     return True
 
         return False
-
-    def _init_brace_count(self, line):
-        """
-        Initialize brace counter
-        """
-        return 1 if re.search(r"\{$", line) else 0
 
     def _split_match_type(self, line):
         """
@@ -258,8 +253,6 @@ class ShellASTParser(ASTParser):
         """
         处理函数内容，递归解析函数体
         """
-        current_line = self.lines[self.line_number]
-        brace_count = self._init_brace_count(current_line)
 
         # 处理函数体内容
         while True:
@@ -268,7 +261,7 @@ class ShellASTParser(ASTParser):
                 break
 
             line, status = self._parse_line_preprocess()
-
+            curr_parser = self.parsers[-1]
             match status:
                 case 0:
                     continue  # 注释、空行、单行函数：跳过
@@ -278,15 +271,15 @@ class ShellASTParser(ASTParser):
                     if self._check_heredoc_block():
                         continue
                 case 8:
-                    brace_count += 1  # 出现左括号，计数器+1
+                    curr_parser.brace_count += 1  # 出现左括号，计数器+1
                 case 9:
-                    brace_count -= 1  # 出现右括号，计数器-1
-                    if brace_count <= 0:
-                        curr_parser = self.parsers.pop()  # get current function parser
+                    curr_parser.brace_count -= 1  # 出现右括号，计数器-1
+                    if curr_parser.brace_count <= 0:
                         if curr_parser.result_lines:
                             set_func_msgs(file_rec, curr_parser.func_name, curr_parser.result_lines)
 
-                        return  # 函数结束
+                        self.parsers.pop()  # remove current function parser
+                        return  # end of function
 
             # 解析匹配项
             matches = self._split_match_type(line)

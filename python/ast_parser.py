@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from collections import OrderedDict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import os
 from pathlib import Path
 import re
@@ -34,13 +34,17 @@ from debug_tool import print_array
 class FuncParser:
 
     func_name: str  # function name
-    func_indent: int  # function name indent (only for python)
-    result_lines: str  # function parse result set
+    brace_count: int = 0  # function brace ounts (for shell)
+    indent: int = 0  # function indent (only for python)
+    result_lines: List[str] = field(default_factory=list)  # function parse result set
 
-    def __init__(self, func_name: str, func_indent: int = 0):
-        self.func_name: str = func_name
-        self.func_indent: int = func_indent
-        self.result_lines: List[str] = []
+    @classmethod
+    def sh(cls, func_name: str, brace_count: int = 0):
+        return cls(func_name=func_name, brace_count=brace_count)
+
+    @classmethod
+    def py(cls, func_name: str, indent: int = 0):
+        return cls(func_name=func_name, indent=indent)
 
 
 class ASTParser:
