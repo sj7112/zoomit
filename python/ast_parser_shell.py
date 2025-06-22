@@ -36,20 +36,9 @@ class ShellASTParser(ASTParser):
     """
 
     # Class variables
-    PARENT_DIR = Path(__file__).parent.parent.resolve()
-    DUPL_HASH = "Z-HASH"  # Hash pool (duplicate hashes are not allowed in a file)
     DIRS = ["bin", "lib"]
     EXTS = "sh"
-
-    def __init__(self, trim_space=False):
-        """
-        Initialize the parser
-        """
-        self.trim_space: bool = trim_space
-        self.code_file: str
-        self.lines: List[str]
-        self.line_number: int
-        self.parsers: List[FuncParser] = []
+    PATTERNS = r"(string|exiterr|error|success|warning|info)"
 
     def _parse_line_preprocess(self):
         """
@@ -146,11 +135,8 @@ class ShellASTParser(ASTParser):
         # Add leading space to avoid offset calculation errors
         line = " " + line
 
-        # 要匹配的函数模式
-        function_pattern = r"(string|exiterr|error|success|warning|info)"
-
         # 完整匹配模式
-        pattern = r"([\s;{\(\[]|&&|\|\|)" + function_pattern + r"([\s;}\)\]]|&&|\|\||$)"
+        pattern = r"([\s;{\(\[]|&&|\|\|)" + self.PATTERNS + r"([\s;}\)\]]|&&|\|\||$)"
 
         matches = []
         last_pos = 0
@@ -244,14 +230,13 @@ class ShellASTParser(ASTParser):
 
         return content.rstrip() if self.trim_space else content
 
-    def _parse_match_type(self, segment, results):
+    def _parse_match_type(self, segment):
         """
         解析脚本行中的函数调用信息
 
         Parameters:
         - segment: Current script text segment
         """
-        lines = self.lines
         # 跳过：空行 | 含 -i 的行
         if not segment or "-i" in segment:
             return
@@ -266,6 +251,7 @@ class ShellASTParser(ASTParser):
         else:
             content = self._extract_multi_lines(result)
         # 将结果添加到全局数组
+        results = self.parsers[-1].result_lines  # get last function parser
         results.append(f"{cmd} {ln_no} {content}")
 
     def _parse_function(self, file_rec):
@@ -305,37 +291,7 @@ class ShellASTParser(ASTParser):
             # 解析匹配项
             matches = self._split_match_type(line)
             for matched in matches:
-                result_lines = self.parsers[-1].result_lines  # get last function parser
-                self._parse_match_type(matched, result_lines)
-
-    def parse_code_files(self, target):
-        """
-        主解析函数：解析代码文件
-
-        Parameters:
-        - code_file: Path to shell file to parse
-        """
-        code_files = get_code_files(self.DIRS, self.EXTS, target)  # File list
-        results = {}  # File => Function | Messages
-
-        for code_file in code_files:
-            # Read file content
-            self.lines = read_file(code_file)
-            code_file = str(Path(code_file).relative_to(self.PARENT_DIR))  # Relative path to project root
-            self.code_file = code_file
-            self.line_number = 0
-
-            results[code_file] = {self.DUPL_HASH: {}}
-
-            while self.line_number < len(self.lines):
-                line, status = self._parse_line_preprocess()
-                if status == 2:  # Function definition
-                    self._parse_function(results[code_file])
-                self.line_number += 1
-
-            set_file_msgs(results, code_file)
-
-        return results
+                self._parse_match_type(matched)
 
 
 # =============================================================================
