@@ -55,16 +55,12 @@ class ShellASTParser(ASTParser):
             9: 单个右括号
         """
         line_content = self.lines[self.line_number]
-        if re.match(r"^\s*#", line_content):
-            return 0  # 整行注释
+        if re.match(r"^\s*(#|$)", line_content):
+            return 0  # 整行注释或整行空白
 
-        line_content = re.sub(r"\s+#.*", "", line_content)  # 移除右侧注释
-        line_content = line_content.strip()  # 去除前后空格
-
+        line_content = self.strip_comment_and_calc_indent(line_content)  # 移除右侧注释
         if not line_content:
             return 0  # 空行
-
-        self.line = line_content  # 保存简化后的行内容
 
         # 正则捕获组是函数名称
         func_match = re.match(r"^\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\(\)\s*(\{)?", line_content)

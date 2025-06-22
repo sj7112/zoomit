@@ -47,6 +47,19 @@ class FuncParser:
         return cls(name=name, indent=indent)
 
 
+def count_indent(line: str) -> int:
+    """count indent size for Python code line"""
+    count = 0
+    for ch in line:
+        if ch == "\t":
+            count += 4
+        elif ch == " ":
+            count += 1
+        else:
+            break
+    return count
+
+
 class ASTParser:
     """
     AST parser class
@@ -65,7 +78,51 @@ class ASTParser:
         self.lines: List[str]
         self.line_number: int
         self.line: str  # used by _split_match_type
+        self.indent: int  # calc the indent for Python code line
         self.parsers: List[FuncParser] = []
+
+    def strip_comment_and_calc_indent(self, line):
+        """calculate indents, remove comments, and trim result"""
+
+        self.indent = count_indent(line)  # Number of leading blanks (tab=4space)
+        line = line.strip()  # remove leading and trailing spaces
+        self.line = line
+
+        # 1. Check if the line is a continuation (ends with a backslash)
+        if line.endswith("\\"):
+            return line
+
+        in_single = False
+        in_double = False
+        escape = False
+
+        # 2. Check if the line has comments
+        for i, c in enumerate(line):
+            if escape:
+                escape = False
+                continue
+
+            if c == "\\":
+                escape = True
+                continue
+
+            if c == "'" and not in_double:
+                in_single = not in_single
+                continue
+
+            if c == '"' and not in_single:
+                in_double = not in_double
+                continue
+
+            if c == "#" and not in_single and not in_double:
+                if self.EXTS == "sh" and i > 0 and not line[i - 1].isspace():
+                    continue  # shell comments, must have one leading space, e.g. " #"
+
+                self.line = line[:i].rstrip()  # remove comments and blank spaces
+                return self.line
+
+        # 3. trim result and return
+        return line
 
     def parse_code_files(self, target):
         """
