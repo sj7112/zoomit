@@ -73,7 +73,8 @@
                 //"del",
                 // "-y",
                 // "--lang=ko fr",
-                //"--file=bin/i18n.sh bin/init_main.sh",
+                // "--file=bin/i18n.sh bin/init_main.sh",
+                // "--file=python/lang_test.py",
                 "--lang=zh en",
                 // "--lang=en",
                 "--test_run"

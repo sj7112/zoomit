@@ -38,7 +38,7 @@ class PythonASTParser(ASTParser):
     # Class variables
     DIRS = ["python"]
     EXTS = "py"
-    PATTERNS = r"(string|exiterr|error|success|warning|info)"
+    PATTERNS = "string|exiterr|error|success|warning|info"
 
     def _parse_line_preprocess(self):
         """
@@ -61,25 +61,17 @@ class PythonASTParser(ASTParser):
             return 0  # 空行
 
         # 正则捕获组是函数名称
-        func_match = re.match(r"^(\s*)def\s+(\w+)\s*\([^)]*\)\s*:", line_content)
-        # func_match = re.match(r"^\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\(\)\s*\{?", line_content)
+        func_match = re.match(r"^def\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\([^)]*\)\s*:", line_content)
         if func_match:
             # add new function parser
-            indent = func_match.group(1)  # 缩进字符串
-            indent = indent.count(" ") + indent.count("\t") * 4  # 1 tab = 4 space
-            func_name = func_match.group(2)  # 函数名
-            self.parsers.append(FuncParser.py(func_name, indent))
+            func_name = func_match.group(1)  # 函数名
+            self.parsers.append(FuncParser.py(func_name, self.indent))
             return 2  # 多行函数定义
 
         # Multi-line string literals check
         if "'''" in line_content or '"""' in line_content:
-            return 3  # Multi-line 标记
-
-        # 检查单个括号
-        if line_content == "{":
-            return 8  # 单个左括号
-        elif line_content == "}":
-            return 9  # 单个右括号
+            if self._check_heredoc_block():
+                return 0  # Multi-line 标记
 
         return 1  # 需进一步解析
 
@@ -91,31 +83,30 @@ class PythonASTParser(ASTParser):
         - True: If heredoc block is encountered
         - False: If no heredoc block is encountered
         """
-        lines = self.lines
-        line = lines[self.line_number]
+        line = self.lines[self.line_number]
 
-        # 去除单双引号里的内容
-        def remove_quotes(text):
-            # 移除双引号内容
-            text = re.sub(r'"([^"\\]|\\.)*"', "", text)
-            # 移除单引号内容
-            text = re.sub(r"'([^'\\]|\\.)*'", "", text)
-            return text
+        triple_match = re.search(r"(\"\"\"|''')", line)
+        quote = triple_match.group(1)
+        quote_start = triple_match.start()
+        quote_end = triple_match.end()
 
-        stripped_line = remove_quotes(line)
-        # 查找heredoc标记
-        match = re.search(r"<<-?\s*([A-Za-z0-9_]+)", stripped_line)
-        if match:
-            heredoc_end = match.group(1)
-            # 从下一行开始搜索 heredoc 结束
-            while True:
-                self.line_number += 1
-                if self.line_number >= len(self.lines):
-                    return True
-                if lines[self.line_number] == heredoc_end:
-                    return True
+        # 向前检查，排除这种可能性：前方是函数（函数调用内的参数）
+        prefix = line[:quote_start]
+        if re.search(rf"{self.PATTERNS}\s*\(", prefix.strip()):
+            return False
 
-        return False
+        # 向后检查，排除quote在同一行的情况：后面可能有函数（函数调用内的参数）
+        triple_match2 = re.search(f"{quote}", line[quote_end:])
+        if triple_match2:
+            return False
+
+        # 从下一行开始搜索 heredoc 结束
+        while True:
+            self.line_number += 1
+            if self.line_number >= len(self.lines):
+                return True
+            if re.search(f"{quote}", self.lines[self.line_number]):
+                return True
 
     def _split_match_type(self):
         """
@@ -127,38 +118,25 @@ class PythonASTParser(ASTParser):
         line = " " + self.line
 
         # 完整匹配模式
-        pattern = r"([\s;{\(\[]|&&|\|\|)" + self.PATTERNS + r"([\s;}\)\]]|&&|\|\||$)"
+        pattern = r"([\s,;={(\[])" + f"({self.PATTERNS})" + r"\s*\("
 
-        matches = []
         last_pos = 0
 
         for match in re.finditer(pattern, line):
             match_start = match.start(2)  # 函数关键字开始位置
             if last_pos > 0:
                 segment = line[last_pos:match_start]
-                # 移除前导符号
-                if segment.startswith("&&") or segment.startswith("||"):
-                    segment = segment[2:]
-                elif segment[0] in " ;{([":
-                    segment = segment[1:]
-                matches.append(segment)
+                self._parse_match_type(segment)
             last_pos = match_start  # 更新上一个函数关键字的开始位置
 
         # 处理最后一个匹配之后的部分
         if last_pos > 0:
             segment = line[last_pos:]
-            # 移除前导符号
-            if segment.startswith("&&") or segment.startswith("||"):
-                segment = segment[2:]
-            elif segment and segment[0] in " ;{([":
-                segment = segment[1:]
-            matches.append(segment)
-
-        return matches
+            self._parse_match_type(segment)
 
     def _extract_quoted_string(self, segment):
         """
-        提取字符串中第一个未转义双引号之间的内容
+        提取字符串中第一个未转义单引号 / 双引号之间的内容
 
         Parameters:
         - segment: 输入字符串段落
@@ -166,60 +144,106 @@ class PythonASTParser(ASTParser):
         Returns:
         - 提取的内容，如果不满足条件则返回None
         """
-        # 查找第一个双引号
-        match = re.search(r'"(.*)', segment)
-        if not match:
-            return None
+        # 查找左括号
+        while True:
+            match = re.search(r"\(\s*(.*)", segment)
+            if not match:
+                self.line_number += 1
+                if self.line_number >= len(self.lines):
+                    return None  # 异常处理，到达文件末尾
+                segment = self.lines[self.line_number]
+                continue
+            content = match.group(1)
+            break
 
-        content = match.group(1)
+        # 跳过空行
+        while True:
+            if not content.rstrip():
+                self.line_number += 1
+                if self.line_number >= len(self.lines):
+                    return None  # 异常处理，到达文件末尾
+                content = self.lines[self.line_number].lstrip()
+                continue
+            break
 
-        # 截断未转义的结束引号(前面不能有转义字符"\")
-        content_match = re.match(r'^(.*?)(?<!\\)"', content)
-        if content_match:
-            content = content_match.group(1)
+        # 处理可能的字符串前缀：r, f, b, u 及其组合（确保第一个字符为单引号或双引号）
+        match = re.match(r'^[rRfFbBuU]{1,2}(["\'].*)$', content)
+        if match:
+            content = match.group(1)
 
-        # 拒绝纯变量引用（如$abc; $abc123; $123）
-
-        if re.match(r"^\$([a-zA-Z][a-zA-Z0-9_]*|\d+)$", content):
-            return None
+        # 保留单引号或双引号开始的行内容
+        if content.startswith("'''") or content.startswith('"""'):
+            content = self._extract_multi_lines(content)  # 多行文本
+        elif content.startswith("'") or content.startswith('"'):
+            content = self._extract_single_line(content)  # 单行文本
+        else:
+            return None  # 异常处理（非单引号/双引号开头）
 
         # 空内容视为无效
         if not content:
+            return None
+
+        return content.rstrip() if self.trim_space else content
+
+    def _extract_single_line(self, content):
+        """
+        获取单行数据并返回（截断未转义的结束引号，跳过转义的引号）
+        """
+        if content[0] == '"':
+            content_match = re.match(r'^"(.*?)(?<!\\)"', content)  # 取双引号中内容
+        else:
+            content_match = re.match(r"^'(.*?)(?<!\\)'", content)  # 取单引号中内容
+
+        if not content_match:
+            return None
+
+        content = content_match.group(1)
+
+        # 拒绝纯变量引用（如{abc}; {abc123}; {1}）
+        if re.match(r"^\{([a-zA-Z][a-zA-Z0-9_]*|\d+)?\}$", content):
             return None
 
         return content
 
     def _extract_multi_lines(self, content):
         """
-        单行直接返回；多行，添加多行数据并返回
-        以下一个有效的双引号为结束条件
+        添加多行数据并返回
+        以下一个有效的单引号 / 双引号为结束条件
         如果TRIM_SPACE = True，则去掉字符串右侧的空格！！
 
         Example:
-            exiterr "Usage: show_help_info [command]\n \
-                Available commands: find, ls"
+        exiterr(
+            '''Usage: show_help_info [command]
+            Available commands: find, ls   '''
+        )
 
         Parameters:
         - content: Input string segment
 
         Returns:
-        - content: Multi-line joined with \n
+        - content: Multi-line joined with 3 single/double quote
         """
-        lines = self.lines
-        # 检查是否多行文本
-        if content.endswith("\\"):
-            while self.line_number < len(lines) - 1:
-                self.line_number += 1
-                content += "\n"  # 增加换行
-                line = lines[self.line_number]
-                content_match = re.match(r'^(.*?)(?<!\\)"', line)  # 采用双引号结束（读取代码文件）
-                if content_match:  # 最后一行
-                    content += content_match.group(1)
-                    return content.rstrip() if self.trim_space else content
-                else:  # 中间行
-                    content += line.rstrip()
+        pattern = content[:3]  # '''或"""
+        content = content[3:]  # 第一行内容
 
-        return content.rstrip() if self.trim_space else content
+        # 检查结束条件是否在同一行
+        content_match = re.match(r"^(.*?)(?<!\\)" + f"{pattern}", content)  # 采用单引号 / 双引号结束（读取代码文件）
+        if content_match:
+            return content_match.group(1)
+
+        # 检查是否多行文本
+        while True:
+            content += "\n"  # 增加换行
+            self.line_number += 1
+            if self.line_number >= len(self.lines):
+                return None  # 异常处理，到达文件末尾
+            line = self.lines[self.line_number]
+            content_match = re.match(r"^(.*?)(?<!\\)" + f"{pattern}", line)  # 采用单引号 / 双引号结束（读取代码文件）
+            if content_match:  # 最后一行
+                content += content_match.group(1)
+                return content
+            else:  # 中间行
+                content += line
 
     def _parse_match_type(self, segment):
         """
@@ -229,23 +253,23 @@ class PythonASTParser(ASTParser):
         - segment: Current script text segment
         """
         # 跳过：空行 | 含 -i 的行
-        if not segment or "-i" in segment:
+        if not segment or "ignore=True" in segment:
             return
 
         # 提取第一个字段（命令名）
-        cmd = segment.split()[0] if segment.split() else ""
+        match = re.match(rf"^({self.PATTERNS})", segment)
+        cmd = match.group(1)
         ln_no = self.line_number + 1
         # 提取双引号之间内容
-        result = self._extract_quoted_string(segment)
-        if not result:
+        content = self._extract_quoted_string(segment)
+        if not content:
             return
-        else:
-            content = self._extract_multi_lines(result)
+
         # 将结果添加到全局数组
         results = self.parsers[-1].results  # get last function parser
         results.append(f"{cmd} {ln_no} {content}")
 
-    def _parse_function(self, file_rec):
+    def _parse_function(self):
         """
         处理函数内容，递归解析函数体
         """
@@ -254,33 +278,21 @@ class PythonASTParser(ASTParser):
         while True:
             self.line_number += 1
             if self.line_number >= len(self.lines):
-                break
+                return
 
             status = self._parse_line_preprocess()
             match status:
                 case 0:
-                    continue  # 注释、空行、单行函数：跳过
+                    continue  # 注释、空行、Multi-line：跳过
+                case 1:
+                    self._split_match_type()  # 解析匹配项
                 case 2:
-                    self._parse_function(file_rec)
-                case 3:
-                    if self._check_heredoc_block():
-                        continue
-                case 8:
-                    self.parsers[-1].brace_count += 1  # 出现左括号，计数器+1
+                    self._parse_function()
                 case 9:
-                    parser = self.parsers[-1]
-                    parser.brace_count -= 1  # 出现右括号，计数器-1
-                    if parser.brace_count <= 0:
-                        if parser.results:
-                            set_func_msgs(file_rec, parser.name, parser.results)
+                    self.parse_function_end()
+                    return  # end of function
 
-                        self.parsers.pop()  # remove current function parser
-                        return  # end of function
-
-            # 解析匹配项
-            matches = self._split_match_type()
-            for matched in matches:
-                self._parse_match_type(matched)
+        # 终止条件
 
 
 # =============================================================================

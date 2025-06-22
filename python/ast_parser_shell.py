@@ -38,7 +38,7 @@ class ShellASTParser(ASTParser):
     # Class variables
     DIRS = ["bin", "lib"]
     EXTS = "sh"
-    PATTERNS = r"(string|exiterr|error|success|warning|info)"
+    PATTERNS = "string|exiterr|error|success|warning|info"
 
     def _parse_line_preprocess(self):
         """
@@ -63,25 +63,32 @@ class ShellASTParser(ASTParser):
             return 0  # 空行
 
         # 正则捕获组是函数名称
-        func_match = re.match(r"^\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\(\)\s*(\{)?", line_content)
+        func_match = re.match(r"^([a-zA-Z_][a-zA-Z0-9_]*)\s*\(\)\s*(\{)?", line_content)
         if func_match:
             if re.search(r"\}\s*$", line_content):
                 return 0  # 单行函数：跳过
             else:
                 # add new function parser (name, brace_counts)
+                func_name = func_match.group(1)  # 函数名
                 brace_count = 1 if func_match.group(2) else None
-                self.parsers.append(FuncParser.sh(func_match.group(1), brace_count))
+                self.parsers.append(FuncParser.sh(func_name, brace_count))
                 return 2  # 多行函数定义
 
         # heredoc 检查：包含 << 但不包含 <<<
         if "<<" in line_content and "<<<" not in line_content:
-            return 3  # heredoc 标记
+            if self._check_heredoc_block():
+                return 0  # heredoc 标记：跳过
 
         # 检查单个括号
-        if line_content == "{":
-            return 8  # 单个左括号
-        elif line_content == "}":
-            return 9  # 单个右括号
+        if self.parsers:
+            parser = self.parsers[-1]
+            if line_content == "{":
+                parser.brace_count += 1  # 出现左括号，计数器+1
+            elif line_content == "}":
+                parser.brace_count -= 1  # 出现右括号，计数器-1
+                if parser.brace_count <= 0:
+                    self.parse_function_end()
+                    return 9  # 结束条件：单个右括号
 
         return 1  # 需进一步解析
 
@@ -129,34 +136,31 @@ class ShellASTParser(ASTParser):
         line = " " + self.line
 
         # 完整匹配模式
-        pattern = r"([\s;{\(\[]|&&|\|\|)" + self.PATTERNS + r"([\s;}\)\]]|&&|\|\||$)"
+        pattern = r"([\s;{\(\[]|&&|\|\|)" + f"({self.PATTERNS})" + r"([\s;}\)\]]|&&|\|\||$)"
 
-        matches = []
         last_pos = 0
 
         for match in re.finditer(pattern, line):
             match_start = match.start(2)  # 函数关键字开始位置
             if last_pos > 0:
                 segment = line[last_pos:match_start]
-                # 移除前导符号
-                if segment.startswith("&&") or segment.startswith("||"):
-                    segment = segment[2:]
-                elif segment[0] in " ;{([":
-                    segment = segment[1:]
-                matches.append(segment)
+                # # 移除前导符号
+                # if segment.startswith("&&") or segment.startswith("||"):
+                #     segment = segment[2:]
+                # elif segment[0] in " ;{([":
+                #     segment = segment[1:]
+                self._parse_match_type(segment)
             last_pos = match_start  # 更新上一个函数关键字的开始位置
 
         # 处理最后一个匹配之后的部分
         if last_pos > 0:
             segment = line[last_pos:]
-            # 移除前导符号
-            if segment.startswith("&&") or segment.startswith("||"):
-                segment = segment[2:]
-            elif segment and segment[0] in " ;{([":
-                segment = segment[1:]
-            matches.append(segment)
-
-        return matches
+            # # 移除前导符号
+            # if segment.startswith("&&") or segment.startswith("||"):
+            #     segment = segment[2:]
+            # elif segment and segment[0] in " ;{([":
+            #     segment = segment[1:]
+            self._parse_match_type(segment)
 
     def _extract_quoted_string(self, segment):
         """
@@ -172,7 +176,6 @@ class ShellASTParser(ASTParser):
         match = re.search(r'"(.*)', segment)
         if not match:
             return None
-
         content = match.group(1)
 
         # 截断未转义的结束引号(前面不能有转义字符"\")
@@ -180,20 +183,23 @@ class ShellASTParser(ASTParser):
         if content_match:
             content = content_match.group(1)
 
-        # 拒绝纯变量引用（如$abc; $abc123; $123）
-
-        if re.match(r"^\$([a-zA-Z][a-zA-Z0-9_]*|\d+)$", content):
-            return None
-
         # 空内容视为无效
         if not content:
             return None
 
-        return content
+        # 拒绝纯变量引用（如$abc; $abc123; $123）
+        if re.match(r"^\$([a-zA-Z][a-zA-Z0-9_]*|\d+)$", content):
+            return None
+
+        # 判断是否多行文本
+        if content.endswith("\\"):
+            content = self._extract_multi_lines(content)
+
+        return content.rstrip() if self.trim_space else content
 
     def _extract_multi_lines(self, content):
         """
-        单行直接返回；多行，添加多行数据并返回
+        添加多行数据并返回
         以下一个有效的双引号为结束条件
         如果TRIM_SPACE = True，则去掉字符串右侧的空格！！
 
@@ -209,19 +215,18 @@ class ShellASTParser(ASTParser):
         """
         lines = self.lines
         # 检查是否多行文本
-        if content.endswith("\\"):
-            while self.line_number < len(lines) - 1:
-                self.line_number += 1
-                content += "\n"  # 增加换行
-                line = lines[self.line_number]
-                content_match = re.match(r'^(.*?)(?<!\\)"', line)  # 采用双引号结束（读取代码文件）
-                if content_match:  # 最后一行
-                    content += content_match.group(1)
-                    return content.rstrip() if self.trim_space else content
-                else:  # 中间行
-                    content += line.rstrip()
+        while self.line_number < len(lines) - 1:
+            self.line_number += 1
+            content += "\n"  # 增加换行
+            line = lines[self.line_number]
+            content_match = re.match(r'^(.*?)(?<!\\)"', line)  # 采用双引号结束（读取代码文件）
+            if content_match:  # 最后一行
+                content += content_match.group(1)
+                return content
+            else:  # 中间行
+                content += line
 
-        return content.rstrip() if self.trim_space else content
+        return content
 
     def _parse_match_type(self, segment):
         """
@@ -238,16 +243,15 @@ class ShellASTParser(ASTParser):
         cmd = segment.split()[0] if segment.split() else ""
         ln_no = self.line_number + 1
         # 提取双引号之间内容
-        result = self._extract_quoted_string(segment)
-        if not result:
+        content = self._extract_quoted_string(segment)
+        if not content:
             return
-        else:
-            content = self._extract_multi_lines(result)
+
         # 将结果添加到全局数组
         results = self.parsers[-1].results  # get last function parser
         results.append(f"{cmd} {ln_no} {content}")
 
-    def _parse_function(self, file_rec):
+    def _parse_function(self):
         """
         处理函数内容，递归解析函数体
         """
@@ -256,33 +260,18 @@ class ShellASTParser(ASTParser):
         while True:
             self.line_number += 1
             if self.line_number >= len(self.lines):
-                break
+                return  # end of file
 
             status = self._parse_line_preprocess()
             match status:
                 case 0:
-                    continue  # 注释、空行、单行函数：跳过
+                    continue  # 注释、空行、单行函数、heredoc：跳过
+                case 1:
+                    self._split_match_type()  # 解析匹配项
                 case 2:
-                    self._parse_function(file_rec)
-                case 3:
-                    if self._check_heredoc_block():
-                        continue
-                case 8:
-                    self.parsers[-1].brace_count += 1  # 出现左括号，计数器+1
+                    self._parse_function()
                 case 9:
-                    parser = self.parsers[-1]
-                    parser.brace_count -= 1  # 出现右括号，计数器-1
-                    if parser.brace_count <= 0:
-                        if parser.results:
-                            set_func_msgs(file_rec, parser.name, parser.results)
-
-                        self.parsers.pop()  # remove current function parser
-                        return  # end of function
-
-            # 解析匹配项
-            matches = self._split_match_type()
-            for matched in matches:
-                self._parse_match_type(matched)
+                    return  # end of function
 
 
 # =============================================================================

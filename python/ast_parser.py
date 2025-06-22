@@ -74,11 +74,14 @@ class ASTParser:
         Initialize the parser
         """
         self.trim_space: bool = trim_space
+        self.results: List = []
+
         self.code_file: str
         self.lines: List[str]
         self.line_number: int
         self.line: str  # used by _split_match_type
         self.indent: int  # calc the indent for Python code line
+        self.multiline: bool  # check if multiline starts
         self.parsers: List[FuncParser] = []
 
     def strip_comment_and_calc_indent(self, line):
@@ -124,6 +127,17 @@ class ASTParser:
         # 3. trim result and return
         return line
 
+    def parse_function_end(self):
+        """
+        Finish parse function
+        """
+        parser = self.parsers[-1]
+        if parser.results:
+            file_rec = self.results[self.code_file]
+            set_func_msgs(file_rec, parser.name, parser.results)
+
+        self.parsers.pop()  # remove current function parser
+
     def parse_code_files(self, target):
         """
         Main parsing function: Parse code files
@@ -132,7 +146,7 @@ class ASTParser:
         - target: Path of code files to parse
         """
         code_files = get_code_files(self.DIRS, self.EXTS, target)  # File list
-        results = {}  # File => Function | Messages
+        self.results = {}  # File => Function | Messages
 
         for code_file in code_files:
             # Read file content
@@ -140,15 +154,14 @@ class ASTParser:
             code_file = str(Path(code_file).relative_to(self.PARENT_DIR))  # Relative path to project root
             self.code_file = code_file
             self.line_number = 0
-
-            results[code_file] = {self.DUPL_HASH: {}}
+            self.results[code_file] = {self.DUPL_HASH: {}}
 
             while self.line_number < len(self.lines):
                 status = self._parse_line_preprocess()
                 if status == 2:  # Function definition
-                    self._parse_function(results[code_file])
+                    self._parse_function()
                 self.line_number += 1
 
-            set_file_msgs(results, code_file)
-
-        return results
+            set_file_msgs(self.results, code_file)
+        write_array(self.results)
+        return self.results
