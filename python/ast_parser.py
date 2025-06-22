@@ -33,18 +33,18 @@ from debug_tool import print_array
 @dataclass
 class FuncParser:
 
-    func_name: str  # function name
+    name: str  # function name
     brace_count: int = 0  # function brace ounts (for shell)
     indent: int = 0  # function indent (only for python)
-    result_lines: List[str] = field(default_factory=list)  # function parse result set
+    results: List[str] = field(default_factory=list)  # function parse result set
 
     @classmethod
-    def sh(cls, func_name: str, brace_count: int = 0):
-        return cls(func_name=func_name, brace_count=brace_count)
+    def sh(cls, name: str, brace_count: int = 0):
+        return cls(name=name, brace_count=brace_count)
 
     @classmethod
-    def py(cls, func_name: str, indent: int = 0):
-        return cls(func_name=func_name, indent=indent)
+    def py(cls, name: str, indent: int = 0):
+        return cls(name=name, indent=indent)
 
 
 class ASTParser:

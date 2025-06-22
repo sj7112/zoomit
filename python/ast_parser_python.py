@@ -54,14 +54,15 @@ class PythonASTParser(ASTParser):
         """
         line_content = self.lines[self.line_number]
         if re.match(r"^\s*#", line_content):
-            return "", 0  # 整行注释
+            return 0  # 整行注释
 
         line_content = re.sub(r"\s+#.*", "", line_content)  # 移除右侧注释
         line_content = line_content.strip()  # 去除前后空格
-        self.line = line_content  # 保存简化后的行内容
 
         if not line_content:
             return 0  # 空行
+
+        self.line = line_content  # 保存简化后的行内容
 
         # 正则捕获组是函数名称
         func_match = re.match(r"^(\s*)def\s+(\w+)\s*\([^)]*\)\s*:", line_content)
@@ -245,7 +246,7 @@ class PythonASTParser(ASTParser):
         else:
             content = self._extract_multi_lines(result)
         # 将结果添加到全局数组
-        results = self.parsers[-1].result_lines  # get last function parser
+        results = self.parsers[-1].results  # get last function parser
         results.append(f"{cmd} {ln_no} {content}")
 
     def _parse_function(self, file_rec):
@@ -260,7 +261,6 @@ class PythonASTParser(ASTParser):
                 break
 
             status = self._parse_line_preprocess()
-            curr_parser = self.parsers[-1]
             match status:
                 case 0:
                     continue  # 注释、空行、单行函数：跳过
@@ -270,12 +270,13 @@ class PythonASTParser(ASTParser):
                     if self._check_heredoc_block():
                         continue
                 case 8:
-                    curr_parser.brace_count += 1  # 出现左括号，计数器+1
+                    self.parsers[-1].brace_count += 1  # 出现左括号，计数器+1
                 case 9:
-                    curr_parser.brace_count -= 1  # 出现右括号，计数器-1
-                    if curr_parser.brace_count <= 0:
-                        if curr_parser.result_lines:
-                            set_func_msgs(file_rec, curr_parser.func_name, curr_parser.result_lines)
+                    parser = self.parsers[-1]
+                    parser.brace_count -= 1  # 出现右括号，计数器-1
+                    if parser.brace_count <= 0:
+                        if parser.results:
+                            set_func_msgs(file_rec, parser.name, parser.results)
 
                         self.parsers.pop()  # remove current function parser
                         return  # end of function
