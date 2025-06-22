@@ -58,9 +58,10 @@ class PythonASTParser(ASTParser):
 
         line_content = re.sub(r"\s+#.*", "", line_content)  # 移除右侧注释
         line_content = line_content.strip()  # 去除前后空格
+        self.line = line_content  # 保存简化后的行内容
 
         if not line_content:
-            return "", 0  # 空行
+            return 0  # 空行
 
         # 正则捕获组是函数名称
         func_match = re.match(r"^(\s*)def\s+(\w+)\s*\([^)]*\)\s*:", line_content)
@@ -71,19 +72,19 @@ class PythonASTParser(ASTParser):
             indent = indent.count(" ") + indent.count("\t") * 4  # 1 tab = 4 space
             func_name = func_match.group(2)  # 函数名
             self.parsers.append(FuncParser.py(func_name, indent))
-            return line_content, 2  # 多行函数定义
+            return 2  # 多行函数定义
 
         # Multi-line string literals check
         if "'''" in line_content or '"""' in line_content:
-            return line_content, 3  # Multi-line 标记
+            return 3  # Multi-line 标记
 
         # 检查单个括号
         if line_content == "{":
-            return line_content, 8  # 单个左括号
+            return 8  # 单个左括号
         elif line_content == "}":
-            return line_content, 9  # 单个右括号
+            return 9  # 单个右括号
 
-        return line_content, 1  # 需进一步解析
+        return 1  # 需进一步解析
 
     def _check_heredoc_block(self):
         """
@@ -119,14 +120,14 @@ class PythonASTParser(ASTParser):
 
         return False
 
-    def _split_match_type(self, line):
+    def _split_match_type(self):
         """
         Split and match function calls
 
         Split the line into possible function call segments
         """
         # Add leading space to avoid offset calculation errors
-        line = " " + line
+        line = " " + self.line
 
         # 完整匹配模式
         pattern = r"([\s;{\(\[]|&&|\|\|)" + self.PATTERNS + r"([\s;}\)\]]|&&|\|\||$)"
@@ -258,7 +259,7 @@ class PythonASTParser(ASTParser):
             if self.line_number >= len(self.lines):
                 break
 
-            line, status = self._parse_line_preprocess()
+            status = self._parse_line_preprocess()
             curr_parser = self.parsers[-1]
             match status:
                 case 0:
@@ -280,7 +281,7 @@ class PythonASTParser(ASTParser):
                         return  # end of function
 
             # 解析匹配项
-            matches = self._split_match_type(line)
+            matches = self._split_match_type()
             for matched in matches:
                 self._parse_match_type(matched)
 

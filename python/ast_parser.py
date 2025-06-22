@@ -64,6 +64,7 @@ class ASTParser:
         self.code_file: str
         self.lines: List[str]
         self.line_number: int
+        self.line: str  # used by _split_match_type
         self.parsers: List[FuncParser] = []
 
     def parse_code_files(self, target):
@@ -86,7 +87,7 @@ class ASTParser:
             results[code_file] = {self.DUPL_HASH: {}}
 
             while self.line_number < len(self.lines):
-                line, status = self._parse_line_preprocess()
+                status = self._parse_line_preprocess()
                 if status == 2:  # Function definition
                     self._parse_function(results[code_file])
                 self.line_number += 1
