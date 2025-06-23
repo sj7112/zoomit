@@ -33,44 +33,6 @@ def show_help_info(cmd: str, meta_command: dict):
         exiterr(f"Error: Command '{cmd}' not found.")
 
 
-def add_lang_files(lang_code: str, lang_files: list[str]):
-    # 多行模板字符串
-    template = string(
-        """# {0} 语言包，文档结构：
-# 1. 自动处理 bin | lib 目录 sh 文件
-# 2. 解析函数 string | info | exiterr | error | success | warning
-# 3. key=distinct hash code + position + order
-# 4. value=localized string""",
-        lang_code,
-    )
-
-    # 遍历文件路径，创建文件
-    for file in lang_files:
-        if not os.path.exists(file):
-            with open(file, "w", encoding="utf-8") as f:
-                f.write(template + "\n")
-            info("{0} 语言文件已创建", file)
-
-
-def test_same_line_heredoc(lang_code: str, lang_files: list[str]):
-    # 多行模板字符串
-    template = string(
-        """# {0} 语言包，文档结构：
-# 1. 自动处理 bin | lib 目录 sh 文件
-# 2. 解析函数 string | info | exiterr | error | success | warning
-# 3. key=distinct hash code + position + order
-# 4. value=localized string""",
-        lang_code,
-    )
-
-    # 遍历文件路径，创建文件
-    for file in lang_files:
-        if not os.path.exists(file):
-            with open(file, "w", encoding="utf-8") as f:
-                f.write(template + "\n")
-            info("""{0} test comments """, "{0} 语言文件已创建", file)
-
-
 def del_lang_files(lang_code: str, no_prompt: bool = False) -> int:
     """
     删除指定语言代码的语言文件
@@ -112,3 +74,22 @@ def del_lang_files(lang_code: str, no_prompt: bool = False) -> int:
     confirm_action(prompt=prompt, action=do_del_lang_files, cancel_msg=cancel_msg)
 
     return 0
+
+
+def add_lang_files(lang_code: str, lang_files: list[str]):
+    # 多行模板字符串
+    template = string(
+        """# {0} 语言包，文档结构：
+# 1. 自动处理 bin | lib 目录 sh 文件
+# 2. 解析函数 string | info | exiterr | error | success | warning
+# 3. key=distinct hash code + position + order
+# 4. value=localized string""",
+        lang_code,
+    )
+
+    # 遍历文件路径，创建文件
+    for file in lang_files:
+        if not os.path.exists(file):
+            with open(file, "w", encoding="utf-8") as f:
+                f.write(template + "\n")
+            info("{0} 语言文件已创建", file)
