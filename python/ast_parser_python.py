@@ -52,28 +52,46 @@ class PythonASTParser(ASTParser):
             2: 是函数定义
             3: Multi-line 标记
         """
-        line_content = self.lines[self.line_number]
-        if re.match(r"^\s*(#|$)", line_content):
-            return 0  # 整行注释或整行空白
+        if self.line_number >= len(self.lines):
+            return 9  # end of file
 
-        line_content = self.strip_comment_and_calc_indent(line_content)  # 移除右侧注释
+        line_content = self.strip_comment_and_calc_indent()  # 移除右侧注释
         if not line_content:
-            return 0  # 空行
+            return 0  # 整行注释或空白：跳过
 
         # 正则捕获组是函数名称
-        func_match = re.match(r"^def\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\([^)]*\)\s*:", line_content)
+        func_match = re.match(r"^def\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(", line_content)
         if func_match:
-            # add new function parser
             func_name = func_match.group(1)  # 函数名
-            self.parsers.append(FuncParser.py(func_name, self.indent))
-            return 2  # 多行函数定义
+
+            if len(self.parsers) > 0:
+                indent_func = self.parsers[-1].indent
+                indent_line = self.indent
+                if indent_func >= indent_line:
+                    self.line_number -= 1  # 回退一行，先处理函数结束，再重新处理新函数
+                    return 9  # 函数结束条件：未缩进
+
+            # add new function parser
+            self.parsers.append(FuncParser.py(func_name, self.line_number, self.indent))
+            if len(self.parsers) == 1:
+                return 0  # 主函数初始化：继续
+            else:
+                return 2  # 子函数初始化：递归
 
         # Multi-line string literals check
         if "'''" in line_content or '"""' in line_content:
             if self._check_heredoc_block():
-                return 0  # Multi-line 标记
+                return 0  # Multi-line ：跳过
 
-        return 1  # 需进一步解析
+        if self.parsers:
+            indent_func = self.parsers[-1].indent
+            indent_line = self.indent
+            if indent_func >= indent_line:
+                return 9  # 函数结束条件：未缩进
+
+            return 1  # 需进一步解析
+
+        return 0  # 异常处理：不在函数内部
 
     def _check_heredoc_block(self):
         """
@@ -148,10 +166,11 @@ class PythonASTParser(ASTParser):
         while True:
             match = re.search(r"\(\s*(.*)", segment)
             if not match:
-                self.line_number += 1
                 if self.line_number >= len(self.lines):
                     return None  # 异常处理，到达文件末尾
+
                 segment = self.lines[self.line_number]
+                self.line_number += 1
                 continue
             content = match.group(1)
             break
@@ -159,10 +178,11 @@ class PythonASTParser(ASTParser):
         # 跳过空行
         while True:
             if not content.rstrip():
-                self.line_number += 1
                 if self.line_number >= len(self.lines):
                     return None  # 异常处理，到达文件末尾
+
                 content = self.lines[self.line_number].lstrip()
+                self.line_number += 1
                 continue
             break
 
@@ -232,11 +252,9 @@ class PythonASTParser(ASTParser):
             return content_match.group(1)
 
         # 检查是否多行文本
-        while True:
+        lines = self.lines
+        while self.line_number < len(lines):
             content += "\n"  # 增加换行
-            self.line_number += 1
-            if self.line_number >= len(self.lines):
-                return None  # 异常处理，到达文件末尾
             line = self.lines[self.line_number]
             content_match = re.match(r"^(.*?)(?<!\\)" + f"{pattern}", line)  # 采用单引号 / 双引号结束（读取代码文件）
             if content_match:  # 最后一行
@@ -244,6 +262,9 @@ class PythonASTParser(ASTParser):
                 return content
             else:  # 中间行
                 content += line
+                self.line_number += 1
+
+        return content
 
     def _parse_match_type(self, segment):
         """
@@ -259,7 +280,7 @@ class PythonASTParser(ASTParser):
         # 提取第一个字段（命令名）
         match = re.match(rf"^({self.PATTERNS})", segment)
         cmd = match.group(1)
-        ln_no = self.line_number + 1
+        ln_no = self.line_number
         # 提取双引号之间内容
         content = self._extract_quoted_string(segment)
         if not content:
@@ -276,11 +297,8 @@ class PythonASTParser(ASTParser):
 
         # 处理函数体内容
         while True:
-            self.line_number += 1
-            if self.line_number >= len(self.lines):
-                return
-
             status = self._parse_line_preprocess()
+            self.line_number += 1
             match status:
                 case 0:
                     continue  # 注释、空行、Multi-line：跳过
@@ -288,11 +306,10 @@ class PythonASTParser(ASTParser):
                     self._split_match_type()  # Parse matching items
                 case 2:
                     self._parse_function()
+                    return  # sub function
                 case 9:
                     self.parse_function_end()
-                    return  # end of function
-
-        # 终止条件
+                    return  # end of function | end of file
 
 
 # =============================================================================

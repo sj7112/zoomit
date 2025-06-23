@@ -57,12 +57,9 @@ class ShellASTParser(ASTParser):
         if self.line_number >= len(self.lines):
             return 9  # end of file
 
-        line_content = self.lines[self.line_number]
-
-        if re.match(r"^\s*(#|$)", line_content):
+        line_content = self.strip_comment_and_calc_indent()  # 移除右侧注释
+        if not line_content:
             return 0  # 整行注释或空白：跳过
-
-        line_content = self.strip_comment_and_calc_indent(line_content)  # 移除右侧注释
 
         # 正则捕获组是函数名称
         func_match = re.match(r"^([a-zA-Z_][a-zA-Z0-9_]*)\s*\(\)\s*(\{)?", line_content)
@@ -73,13 +70,13 @@ class ShellASTParser(ASTParser):
                 # add new function parser (name, brace_counts)
                 func_name = func_match.group(1)  # 函数名
                 brace_count = 1 if func_match.group(2) else None
-                self.parsers.append(FuncParser.sh(func_name, brace_count))
+                self.parsers.append(FuncParser.sh(func_name, self.line_number, brace_count))
                 if len(self.parsers) == 1:
                     return 0  # 主函数初始化：继续
                 else:
                     return 2  # 子函数初始化：递归
 
-        # heredoc 检查：包含 << 但不包含 <<<
+        # heredoc check： include << not include <<<
         if "<<" in line_content and "<<<" not in line_content:
             if self._check_heredoc_block():
                 return 0  # heredoc 标记：跳过
@@ -92,9 +89,11 @@ class ShellASTParser(ASTParser):
             elif line_content == "}":
                 parser.brace_count -= 1  # 出现右括号，计数器-1
                 if parser.brace_count <= 0:
-                    return 8  # 函数结束条件：单个右括号
+                    return 9  # 函数结束条件：单个右括号
 
-        return 1  # 需进一步解析
+            return 1  # 需进一步解析
+
+        return 0  # 异常处理：不在函数内部
 
     def _check_heredoc_block(self):
         """
@@ -217,8 +216,8 @@ class ShellASTParser(ASTParser):
         Returns:
         - content: Multi-line joined with \n
         """
-        lines = self.lines
         # 检查是否多行文本
+        lines = self.lines
         while self.line_number < len(lines):
             content += "\n"  # 增加换行
             line = lines[self.line_number]
@@ -266,17 +265,15 @@ class ShellASTParser(ASTParser):
             self.line_number += 1
             match status:
                 case 0:
-                    continue  # comments / blank line / one-line func / heredoc / main function
+                    continue  # comment line / blank line / one-line func / heredoc / main function
                 case 1:
                     self._split_match_type()  # Parse matching items
                 case 2:
                     self._parse_function()
                     return  # sub function
-                case 8:
-                    self.parse_function_end()
-                    return  # end of function
                 case 9:
-                    return  # end of file
+                    self.parse_function_end()
+                    return  # end of function | end of file
 
 
 # =============================================================================

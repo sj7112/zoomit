@@ -34,17 +34,18 @@ from debug_tool import print_array
 class FuncParser:
 
     name: str  # function name
+    line_no: int  # line number
     brace_count: int = 0  # function brace ounts (for shell)
     indent: int = 0  # function indent (only for python)
     results: List[str] = field(default_factory=list)  # function parse result set
 
     @classmethod
-    def sh(cls, name: str, brace_count: int = 0):
-        return cls(name=name, brace_count=brace_count)
+    def sh(cls, name: str, line_no: int, brace_count: int = 0):
+        return cls(name=name, line_no=line_no, brace_count=brace_count)
 
     @classmethod
-    def py(cls, name: str, indent: int = 0):
-        return cls(name=name, indent=indent)
+    def py(cls, name: str, line_no: int, indent: int = 0):
+        return cls(name=name, line_no=line_no, indent=indent)
 
 
 def count_indent(line: str) -> int:
@@ -84,15 +85,20 @@ class ASTParser:
         self.multiline: bool  # check if multiline starts
         self.parsers: List[FuncParser] = []
 
-    def strip_comment_and_calc_indent(self, line):
+    def strip_comment_and_calc_indent(self):
         """calculate indents, remove comments, and trim result"""
+
+        line = self.lines[self.line_number]
+
+        if re.match(r"^\s*(#|$)", line):
+            return None  # comment line | blank line
 
         self.indent = count_indent(line)  # Number of leading blanks (tab=4space)
         line = line.strip()  # remove leading and trailing spaces
         self.line = line
 
         # 1. Check if the line is a continuation (ends with a backslash)
-        if line.endswith("\\"):
+        if self.EXTS == "sh" and line.endswith("\\"):
             return line
 
         in_single = False
@@ -131,12 +137,13 @@ class ASTParser:
         """
         Finish parse function
         """
-        parser = self.parsers[-1]
-        if parser.results:
-            file_rec = self.results[self.code_file]
-            set_func_msgs(file_rec, parser.name, parser.results)
+        if self.parsers:
+            parser = self.parsers[-1]
+            if parser.results:
+                file_rec = self.results[self.code_file]
+                set_func_msgs(file_rec, parser.name, parser.results)
 
-        self.parsers.pop()  # remove current function parser
+            self.parsers.pop()  # remove current function parser
 
     def parse_code_files(self, target):
         """
@@ -160,5 +167,5 @@ class ASTParser:
                 self._parse_function()
 
             set_file_msgs(self.results, code_file)
-        # write_array(self.results)
+
         return self.results

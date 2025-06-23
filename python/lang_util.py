@@ -528,17 +528,13 @@ def update_lang_files(lang_codes, files, test_run=False, file_yml=None):
     global FULL_OPERATE  # 是否完整操作(处理所有文件)
     FULL_OPERATE = not files
 
-    # 语言消息 - shell
-    parser = ShellASTParser(TRIM_SPACE)
-    lang_data = parser.parse_code_files(files)
+    # 解析语言消息
+    lang_data_sh = ShellASTParser(TRIM_SPACE).parse_code_files(files)  # 语言消息 - shell
+    lang_data_py = PythonASTParser(TRIM_SPACE).parse_code_files(files)  # 语言消息 - python
+    lang_data = {**lang_data_sh, **lang_data_py}
+    # 写入yml和properties配置
     for lang_code in (BASE_LANG, *lang_codes):
         update_lang_properties(lang_code, lang_data, file_yml, test_run)
-
-    # 语言消息 - python
-    # parser = PythonASTParser(TRIM_SPACE)
-    # lang_data = parser.parse_code_files(files)
-    # for lang_code in (BASE_LANG, *lang_codes):
-    #     update_lang_properties(lang_code, lang_data, file_yml, test_run)
 
 
 # =============================================================================
