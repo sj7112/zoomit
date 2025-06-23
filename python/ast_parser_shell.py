@@ -54,13 +54,15 @@ class ShellASTParser(ASTParser):
             8: 单个左括号
             9: 单个右括号
         """
+        if self.line_number >= len(self.lines):
+            return 9  # end of file
+
         line_content = self.lines[self.line_number]
+
         if re.match(r"^\s*(#|$)", line_content):
-            return 0  # 整行注释或整行空白
+            return 0  # 整行注释或空白：跳过
 
         line_content = self.strip_comment_and_calc_indent(line_content)  # 移除右侧注释
-        if not line_content:
-            return 0  # 空行
 
         # 正则捕获组是函数名称
         func_match = re.match(r"^([a-zA-Z_][a-zA-Z0-9_]*)\s*\(\)\s*(\{)?", line_content)
@@ -72,7 +74,10 @@ class ShellASTParser(ASTParser):
                 func_name = func_match.group(1)  # 函数名
                 brace_count = 1 if func_match.group(2) else None
                 self.parsers.append(FuncParser.sh(func_name, brace_count))
-                return 2  # 多行函数定义
+                if len(self.parsers) == 1:
+                    return 0  # 主函数初始化：继续
+                else:
+                    return 2  # 子函数初始化：递归
 
         # heredoc 检查：包含 << 但不包含 <<<
         if "<<" in line_content and "<<<" not in line_content:
@@ -87,8 +92,7 @@ class ShellASTParser(ASTParser):
             elif line_content == "}":
                 parser.brace_count -= 1  # 出现右括号，计数器-1
                 if parser.brace_count <= 0:
-                    self.parse_function_end()
-                    return 9  # 结束条件：单个右括号
+                    return 8  # 函数结束条件：单个右括号
 
         return 1  # 需进一步解析
 
@@ -215,8 +219,7 @@ class ShellASTParser(ASTParser):
         """
         lines = self.lines
         # 检查是否多行文本
-        while self.line_number < len(lines) - 1:
-            self.line_number += 1
+        while self.line_number < len(lines):
             content += "\n"  # 增加换行
             line = lines[self.line_number]
             content_match = re.match(r'^(.*?)(?<!\\)"', line)  # 采用双引号结束（读取代码文件）
@@ -225,6 +228,7 @@ class ShellASTParser(ASTParser):
                 return content
             else:  # 中间行
                 content += line
+                self.line_number += 1
 
         return content
 
@@ -241,7 +245,7 @@ class ShellASTParser(ASTParser):
 
         # 提取第一个字段（命令名）
         cmd = segment.split()[0] if segment.split() else ""
-        ln_no = self.line_number + 1
+        ln_no = self.line_number
         # 提取双引号之间内容
         content = self._extract_quoted_string(segment)
         if not content:
@@ -258,20 +262,21 @@ class ShellASTParser(ASTParser):
 
         # 处理函数体内容
         while True:
-            self.line_number += 1
-            if self.line_number >= len(self.lines):
-                return  # end of file
-
             status = self._parse_line_preprocess()
+            self.line_number += 1
             match status:
                 case 0:
-                    continue  # 注释、空行、单行函数、heredoc：跳过
+                    continue  # comments / blank line / one-line func / heredoc / main function
                 case 1:
-                    self._split_match_type()  # 解析匹配项
+                    self._split_match_type()  # Parse matching items
                 case 2:
                     self._parse_function()
-                case 9:
+                    return  # sub function
+                case 8:
+                    self.parse_function_end()
                     return  # end of function
+                case 9:
+                    return  # end of file
 
 
 # =============================================================================

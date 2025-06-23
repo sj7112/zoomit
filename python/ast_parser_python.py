@@ -285,7 +285,7 @@ class PythonASTParser(ASTParser):
                 case 0:
                     continue  # 注释、空行、Multi-line：跳过
                 case 1:
-                    self._split_match_type()  # 解析匹配项
+                    self._split_match_type()  # Parse matching items
                 case 2:
                     self._parse_function()
                 case 9:

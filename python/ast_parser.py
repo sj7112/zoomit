@@ -157,11 +157,11 @@ class ASTParser:
             self.results[code_file] = {self.DUPL_HASH: {}}
 
             while self.line_number < len(self.lines):
-                status = self._parse_line_preprocess()
-                if status == 2:  # Function definition
-                    self._parse_function()
-                self.line_number += 1
+                # status = self._parse_line_preprocess()
+                # if status == 2:  # Function definition
+                self._parse_function()
+            # self.line_number += 1
 
             set_file_msgs(self.results, code_file)
-        write_array(self.results)
+        # write_array(self.results)
         return self.results

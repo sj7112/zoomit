@@ -8,6 +8,8 @@ import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from msg_handler import exiterr, info, string
+from i18n import resolve_lang_files
+from system import confirm_action
 
 
 # ==============================================================================
@@ -67,3 +69,46 @@ def test_same_line_heredoc(lang_code: str, lang_files: list[str]):
             with open(file, "w", encoding="utf-8") as f:
                 f.write(template + "\n")
             info("""{0} test comments """, "{0} 语言文件已创建", file)
+
+
+def del_lang_files(lang_code: str, no_prompt: bool = False) -> int:
+    """
+    删除指定语言代码的语言文件
+
+    Args:
+        lang_code: 语言代码
+        no_prompt: 是否跳过确认提示，默认False
+
+    Returns:
+        int: 返回码，0表示成功
+    """
+    lang_files = []
+
+    # 获取所有文件路径
+    resolve_lang_files(lang_files, lang_code, "0-e")
+
+    # 嵌套删除文件子程序
+    def do_del_lang_files():
+        delstr = string("{0} 语言文件已删除", lang_code)
+        # 删除文件
+        for file_path in lang_files:
+            try:
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+            except OSError as e:
+                print(f"删除文件失败: {file_path}, 错误: {e}")
+
+        info(delstr, ignore_translation=True)
+
+    # 如果指定了 no_prompt 为 True，则直接删除文件
+    if no_prompt:
+        do_del_lang_files()
+        return 0
+
+    # 文件存在，提示用户是否删除
+    prompt = string("确定要删除 {0} 语言文件吗?", lang_code)
+    cancel_msg = string("操作已取消，文件未删除")
+
+    confirm_action(prompt=prompt, action=do_del_lang_files, cancel_msg=cancel_msg)
+
+    return 0
