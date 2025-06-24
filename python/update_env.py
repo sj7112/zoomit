@@ -72,7 +72,7 @@ def save_env(env_file, env_dict, backup=True):
     保存环境变量到文件
     """
     if backup:
-        shutil.copy(env_file, f"{env_file}.bak")
+        shutil.copy2(env_file, f"{env_file}.bak")
 
     temp_file = tempfile.NamedTemporaryFile(delete=False, mode="w")
     try:

@@ -38,7 +38,7 @@ class PythonASTParser(ASTParser):
     # Class variables
     DIRS = ["python"]
     EXTS = "py"
-    PATTERNS = "string|exiterr|error|success|warning|info"
+    PATTERNS = "string|exiterr|error|success|warning|info|_mf"
 
     def _parse_line_preprocess(self):
         """

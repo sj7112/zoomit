@@ -332,7 +332,7 @@ class MirrorTester:
                 # Special case: input is 0
                 if choice == "0":
                     print("\n已取消配置，保持当前设置")
-                    return
+                    return 1
 
                 # Convert input to an integer
                 choice_num = int(choice)
@@ -346,7 +346,7 @@ class MirrorTester:
 
                     self.update_pm_file(selected_mirror)  # Update PM configuration file
                     self.refresh_pm()  # refresh PM configuration
-                    return
+                    return 0
                 else:
                     # Input number is out of range
                     error(f"Invalid input! Please enter a number between 0-{tot_len}")
@@ -358,7 +358,7 @@ class MirrorTester:
             except KeyboardInterrupt:
                 # User interrupted with Ctrl+C
                 print("\n\nOperation canceled\n")
-                return
+                return 2
 
     def refresh_pm(self):
         """refresh package manager"""
@@ -437,7 +437,7 @@ class MirrorTester:
             # 3. update mirrors
             curr_url = self.current_mirror()
             prompt = f"{'已选镜像: ' + curr_url + ' ' if curr_url else ''}是否重新选择镜像?"
-            confirm_action(prompt, self.choose_mirror, no_sigint=True)
+            confirm_action(prompt, self.choose_mirror)
         # except KeyboardInterrupt:
         #     print("\n\n用户中断了测试")
         except Exception as e:

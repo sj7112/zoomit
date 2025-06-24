@@ -7,11 +7,12 @@ import re
 import locale
 import inspect
 
+__all__ = ["string", "_mf"]  # export
+
 # default python sys.path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 # from debug_tool import print_array
-
 from json_handler import json_getopt
 
 
@@ -289,22 +290,27 @@ def get_current_context():
     return func, file_path, os.path.basename(file_path)
 
 
-# ==============================================================================
-# 功能：
-# template自动合并动态参数
-#
-# 参数：
-# 第一个参数为模板；后续参数用来替换模板中的字符串
-#
-# 使用示例：
-# msg_parse_tmpl("How {0} {1} {0}!", "do", "you") ==> "How do you do!"
-#
-# 注意事项：
-# 1) 调试只能用print(..., file=sys.stderr) ！！！否则父函数接收返回值时，会出错
-# ==============================================================================
 def msg_parse_tmpl(template, *args):
+    """
+    功能：
+    template自动合并动态参数(每轮循环，替换第一个{}，和{i}占位符)
+
+    参数：
+    template: 带占位符的模板字符串
+    *args: 用来替换模板中占位符的参数
+
+    使用示例：
+    msg_parse_tmpl("How {0} {1} {0}!", "do", "you")  # => "How do you do!"
+    msg_parse_tmpl("How {} {} {0}!", "do", "you")    # => "How do you do!"
+    msg_parse_tmpl("How {0} {1} {}!", "do", "you")   # => "How do you do!"
+
+    返回：
+    替换占位符后的字符串
+    """
     for i, var in enumerate(args):
-        template = template.replace(f"{{{i}}}", str(var))
+        template = template.replace("{}", str(var), 1)  # 替换第一个 {}
+        template = template.replace(f"{{{i}}}", str(var))  # 替换所有 {i}
+
     return template
 
 
@@ -421,6 +427,10 @@ def string(*args, **kwargs):
     直接返回字符串转换结果
     """
     return msg_parse_param(kwargs, *args)
+
+
+# 别名函数
+_mf = string
 
 
 def exiterr(*args, **kwargs):
