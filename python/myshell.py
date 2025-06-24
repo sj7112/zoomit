@@ -43,7 +43,7 @@ def main():
 
         # 检查服务器是否使用静态IP并提供交互式选项
         case "sh_fix_ip":
-            result = NetworkSetup().need_fix_ip()
+            result = NetworkSetup().fix_ip()
             sys.exit(result)
         case _:
             sys.exit(f"Error: Unknown command '{command}'")
