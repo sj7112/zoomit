@@ -21,7 +21,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from os_info import get_os_info
 from system import confirm_action, setup_logging
-from cmd_handler import cmd_ex_be, refresh_pm, upgrade_pm
+from cmd_handler import cmd_ex_be, pm_refresh, pm_upgrade
 from msg_handler import error, info, warning
 from file_util import write_array
 
@@ -345,7 +345,7 @@ class MirrorTester:
                     print(f"   下载速度: {selected_mirror.avg_speed:.1f}s")
 
                     self.update_pm_file(selected_mirror)  # Update PM configuration file
-                    return refresh_pm()  # refresh PM configuration
+                    return pm_refresh()  # refresh PM configuration
                 else:
                     # Input number is out of range
                     error(f"Invalid input! Please enter a number between 0-{tot_len}")
@@ -397,4 +397,4 @@ class MirrorTester:
 
         finally:
             prompt = "是否立刻升级软件包?"
-            confirm_action(prompt, upgrade_pm)  # upgrade PM configuration
+            confirm_action(prompt, pm_upgrade)  # upgrade PM configuration

@@ -6,7 +6,7 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Tuple
+from typing import Any, List, Tuple, Union
 
 
 # default python sys.path
@@ -236,8 +236,8 @@ def monitor_progress(cmd, log_file=None):
 # ==============================================================================
 # (3) Package management related command execution
 # ==============================================================================
-def refresh_pm():
-    """refresh package manager"""
+def pm_refresh():
+    """package manager refresh"""
     # Define refresh commands for each package manager
     pm_commands = {
         "apt": ["apt-get clean", "apt-get update -q"],
@@ -254,8 +254,8 @@ def refresh_pm():
         return result
 
 
-def upgrade_pm():
-    """upgrade package manager"""
+def pm_upgrade():
+    """package manager upgrade"""
     # Define upgrade commands for each package manager
     pm_commands = {
         "apt": ["apt-get upgrade -y", "apt-get autoremove -y"],
@@ -269,6 +269,27 @@ def upgrade_pm():
         result = cmd_ex_be(*commands)
         if result == 0:
             info("更新系统完成")
+        return result
+
+
+def pm_install(lnx_cmds: Union[str, List[str]]):
+    """package manager install"""
+    # Define install commands for each package manager
+    pm_commands = {
+        "apt": "apt-get install -y",  # Debian, Ubuntu
+        "yum": "yum install -y",  # CentOS, RHEL (旧版本)
+        "dnf": "dnf install -y",  # Fedora, CentOS 8+, RHEL 8+
+        "zypper": "zypper install -y",  # openSUSE
+        "pacman": "pacman -Sy --noconfirm",  # Arch Linux, Manjaro
+    }
+    if isinstance(lnx_cmds, str):
+        lnx_cmds = [lnx_cmds]
+
+    info(r"正在安装{}...", " ".join(lnx_cmds))
+    if cmd := pm_commands.get(_os_info.package_mgr):
+        result = cmd_ex_be(*[f"{cmd} {lnx_cmd}" for lnx_cmd in lnx_cmds])
+        if result == 0:
+            info(r"安装{}完成", " ".join(lnx_cmds))
         return result
 
 
