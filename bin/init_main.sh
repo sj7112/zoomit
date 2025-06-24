@@ -25,27 +25,21 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   DISTRO_PM=""       # 包管理器
   DISTRO_OSTYPE=""   # 发行版名称
   DISTRO_CODENAME="" # 发行版代号 | 版本号
-  SUDO_CMD=""        # sudo 默认为空字符串
+  SUDO_CMD=""        # sudo 默认字符串
 
   # ** 环境变量：包管理器 | 操作系统名称 **
   initial_global() {
     if [ -f /etc/os-release ]; then
       . /etc/os-release
+      DISTRO_OSTYPE="$ID"
       case "$ID" in
-        debian)
-          DISTRO_OSTYPE="debian"
-          DISTRO_PM="apt" # Debian | Ubuntu
-          ;;
-        ubuntu)
-          DISTRO_OSTYPE="ubuntu"
+        debian | ubuntu)
           DISTRO_PM="apt" # Debian | Ubuntu
           ;;
         centos)
-          DISTRO_OSTYPE="centos"
           DISTRO_PM="yum" # CentOS
           ;;
         rhel)
-          DISTRO_OSTYPE="rhel"
           DISTRO_PM="dnf" # RHEL
           ;;
         opensuse* | suse)
@@ -53,7 +47,6 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
           DISTRO_PM="zypper" # openSUSE
           ;;
         arch)
-          DISTRO_OSTYPE="arch"
           DISTRO_PM="pacman" # Arch
           ;;
         *)
@@ -64,7 +57,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
       exiterr "Unable to detect Linux distribution, cannot proceed"
     fi
 
-    # ** 环境变量：发行版代号 | 版本号 **
+    # ** Env param：Distribution codename | version codename **
     if [ -f /etc/os-release ]; then
       DISTRO_CODENAME=$(grep "^VERSION_CODENAME=" /etc/os-release | cut -d'=' -f2 || true)
 
@@ -90,6 +83,11 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     else
       DISTRO_CODENAME="unknown"
     fi
+
+    # initial sudo param
+    if [ "$(id -u)" -ne 0 ]; then
+      SUDO_CMD="sudo"
+    fi
   }
 
   # Initial language & translations
@@ -112,11 +110,6 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
       elif ! id -nG | grep -qw "sudo"; then
         exiterr "用户非 sudo 组，请使用 root 账号执行本脚本(su -)，或手动加入 sudo"
       fi
-    fi
-
-    # 增加 sudo 命令前缀
-    if [ "$(id -u)" -ne 0 ]; then
-      SUDO_CMD="sudo"
     fi
   }
 
@@ -152,6 +145,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   # ==============================================================================
   config_sshd() {
     local sshd_config="/etc/ssh/sshd_config"
+    echo ""
 
     # 检查是否安装 sshd
     if ! ($SUDO_CMD systemctl is-active ssh &>/dev/null || $SUDO_CMD systemctl is-active sshd &>/dev/null); then
@@ -201,10 +195,13 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   # 功能3: 配置静态IP
   # --------------------------
   configure_ip() {
-    # 设置环境配置文件
-    if ! need_fix_ip; then
-      return 0
-    fi
+    set +e
+    sh_fix_ip # 设置环境配置文件
+    ret=$?
+    set -e
+
+    exiterr "return value=$ret"
+
     if [[ ${ENV_NETWORK["CURR_NM"]} == "NetworkManager" ]]; then
       info "NetworkManager 正在运行"
       config_nmcli
@@ -273,12 +270,12 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   # 公共初始化子函数（兼容：debian | ubuntu | centos | rhel | openSUSE | arch Linux）
   # ==============================================================================
   init_main() {
-    initial_global   # 设置环境变量
+    initial_global # 设置环境变量
+    echo -e "\n=== init system start - $PRETTY_NAME ===\n"
     initial_language # inital language & translation
-    echo "=== init system start - $PRETTY_NAME ==="
-    initial_env  # 基础值初始化
-    config_sshd  # SSH配置
-    configure_ip # 静态IP配置
+    initial_env      # 基础值初始化
+    config_sshd      # SSH配置
+    configure_ip     # 静态IP配置
     # docker_compose # 安装软件
     echo "=== init system end - $PRETTY_NAME ==="
   }

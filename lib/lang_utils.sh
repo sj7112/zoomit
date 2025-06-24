@@ -116,7 +116,7 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
 
     local input_lang
     while true; do
-      read -rp "Please set shell language (Default = ${lang}): " input_lang
+      read -rp "Set shell language (Default = ${lang}): " input_lang
 
       # get input language
       if [[ -z "$input_lang" ]]; then

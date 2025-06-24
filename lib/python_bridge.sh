@@ -23,8 +23,9 @@ if [[ -z "${LOADED_PYTHON_BRIDGE:-}" ]]; then
     py_exec "$PYTHON_DIR/myshell.py" sh_update_source "$DISTRO_OSTYPE"
   }
 
-  sh_check_ip() {
-    py_exec "$PYTHON_DIR/myshell.py" sh_check_ip </dev/tty
+  # User interaction, cannot use subshells like $(...), use configuration file to pass data
+  sh_fix_ip() {
+    py_exec "$PYTHON_DIR/myshell.py" sh_fix_ip
   }
 
   # ===== 调用 mypip.py 中的命令 =====
