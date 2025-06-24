@@ -6,18 +6,26 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
+from typing import Any, Tuple
+
+
+# default python sys.path
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+from msg_handler import info
+from os_info import OSInfo, get_os_info
 
 # Global configuration
 LOG_FILE = "/var/log/sj_install.log"
 DEBUG = False
 
+_os_info: OSInfo = get_os_info()
+
 
 # ==============================================================================
 # (1) Frontend command execution
 # ==============================================================================
-
-
-def cmd_exec(cmd, **kwargs):
+def cmd_exec(cmd, **kwargs) -> Tuple[bool, Any]:
     """
     Execute a system command and return the result, with optional regex matching.
 
@@ -36,16 +44,27 @@ def cmd_exec(cmd, **kwargs):
     if isinstance(cmd, str):
         cmd = cmd.split()
 
-    # Provide default values, allow overriding via kwargs
-    run_args = {
-        "stdout": subprocess.PIPE,
-        "stderr": subprocess.DEVNULL,
-        "text": True,
-    }
-    run_args.update(kwargs)  # Allow user to override defaults
+    try:
+        # Provide default values, allow overriding via kwargs
+        run_args = {
+            "stdout": subprocess.PIPE,
+            "stderr": subprocess.DEVNULL,
+            "text": True,
+            "timeout": 300,
+        } | kwargs  # Allow user to override defaults
 
-    result = subprocess.run(cmd, **run_args)
-    return result
+        result = subprocess.run(cmd, **run_args)
+        if result.returncode != 0:
+            return False, result.stderr
+        return True, result  # 原始对象
+    except subprocess.TimeoutExpired:
+        error_msg = f"[ERROR] 命令执行超时: {' '.join(cmd)}"
+        print(error_msg)
+        return False, error_msg
+    except Exception as e:
+        error_msg = f"[ERROR] 命令执行异常: {e}"
+        print(error_msg)
+        return False, str(e)
 
 
 def cmd_ex_str(cmd, **kwargs):
@@ -56,11 +75,11 @@ def cmd_ex_str(cmd, **kwargs):
         str:
             - If the command fails or no pattern match is found, returns an empty string "".
     """
-    result = cmd_exec(cmd, **kwargs)
-    if result.returncode != 0:
-        return ""  # Command failed, return an empty string
-    else:
+    success, result = cmd_exec(cmd, **kwargs)
+    if success:
         return result.stdout  # No regex pattern provided, return full output
+    else:
+        return ""  # Command failed, return an empty string
 
 
 def cmd_ex_pat(cmd, pattern, **kwargs):
@@ -87,8 +106,6 @@ def cmd_ex_pat(cmd, pattern, **kwargs):
 # ==============================================================================
 # (2) Backend command execution
 # ==============================================================================
-
-
 def cmd_ex_be(*commands):
     """
     Execute multiple commands connected with &&
@@ -207,15 +224,58 @@ def monitor_progress(cmd, log_file=None):
             except subprocess.TimeoutExpired:
                 process.kill()
         print("脚本已中断并清理子进程。")
-        sys.exit(130)  # 128 + 2 (SIGINT)
+        # sys.exit(130)  # 128 + 2 (SIGINT)
+        return 2
 
     except Exception as e:
         print(f"\r\033[KError: {e}", file=sys.stderr)
         print()
-        return 1
+        return 3
 
 
-# Usage examples and tests
+# ==============================================================================
+# (3) Package management related command execution
+# ==============================================================================
+def refresh_pm():
+    """refresh package manager"""
+    # Define refresh commands for each package manager
+    pm_commands = {
+        "apt": ["apt-get clean", "apt-get update -q"],
+        "yum": ["yum clean all", "yum makecache"],
+        "dnf": ["dnf clean all", "dnf makecache"],
+        "zypper": ["zypper refresh -f"],
+        "pacman": ["pacman -Syy"],
+    }
+    info("正在刷新缓存...")
+    if commands := pm_commands.get(_os_info.package_mgr):
+        result = cmd_ex_be(*commands)
+        if result == 0:
+            info("缓存刷新完成")
+        return result
+
+
+def upgrade_pm():
+    """upgrade package manager"""
+    # Define upgrade commands for each package manager
+    pm_commands = {
+        "apt": ["apt-get upgrade -y", "apt-get autoremove -y"],
+        "yum": ["yum upgrade -y", "yum autoremove -y"],
+        "dnf": ["dnf upgrade -y", "dnf autoremove -y"],
+        "zypper": ["zypper update -y"],
+        "pacman": ["pacman -Syu --noconfirm"],
+    }
+    info("正在更新系统...")
+    if commands := pm_commands.get(_os_info.package_mgr):
+        result = cmd_ex_be(*commands)
+        if result == 0:
+            info("更新系统完成")
+        return result
+
+
+# ==============================================================================
+# Main program : Usage examples and tests
+# ==============================================================================
+
 if __name__ == "__main__":
     DEBUG = os.environ.get("DEBUG") == "1"  # 测试标志
 

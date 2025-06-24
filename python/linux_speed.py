@@ -19,9 +19,9 @@ from typing import Dict, List, Optional
 # default python sys.path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from os_info import init_os_info, OSInfo
+from os_info import get_os_info
 from system import confirm_action, setup_logging
-from cmd_handler import cmd_ex_be
+from cmd_handler import cmd_ex_be, refresh_pm, upgrade_pm
 from msg_handler import error, info, warning
 from file_util import write_array
 
@@ -84,7 +84,7 @@ class MirrorTester:
                 "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
             }
         )
-        self.os_info = init_os_info()
+        self.os_info = get_os_info()
         self.system_country = os.environ.get("LANGUAGE").split("_")[1].split(":")[0]
         self.mirror_list = ""
         self.netlocs = set()  # 用于去重的域名集合
@@ -345,8 +345,7 @@ class MirrorTester:
                     print(f"   下载速度: {selected_mirror.avg_speed:.1f}s")
 
                     self.update_pm_file(selected_mirror)  # Update PM configuration file
-                    self.refresh_pm()  # refresh PM configuration
-                    return 0
+                    return refresh_pm()  # refresh PM configuration
                 else:
                     # Input number is out of range
                     error(f"Invalid input! Please enter a number between 0-{tot_len}")
@@ -359,52 +358,6 @@ class MirrorTester:
                 # User interrupted with Ctrl+C
                 print("\n\nOperation canceled\n")
                 return 2
-
-    def refresh_pm(self):
-        """refresh package manager"""
-
-        # Define refresh commands for each package manager
-        pm_commands = {
-            "apt": ["apt-get clean", "apt-get update -q"],
-            "yum": ["yum clean all", "yum makecache"],
-            "dnf": ["dnf clean all", "dnf makecache"],
-            "zypper": ["zypper refresh -f"],
-            "pacman": ["pacman -Syy"],
-        }
-
-        try:
-            info("正在刷新缓存...")
-            if commands := pm_commands.get(self.os_info.package_mgr):
-                cmd_ex_be(*commands)
-                info("缓存刷新完成")
-                return True
-
-        except Exception as e:
-            error(f"刷新缓存失败: {e}")
-            return False
-
-    def upgrade_pm(self):
-        """upgrade package manager"""
-
-        # Define upgrade commands for each package manager
-        pm_commands = {
-            "apt": ["apt-get upgrade -y", "apt-get autoremove -y"],
-            "yum": ["yum upgrade -y", "yum autoremove -y"],
-            "dnf": ["dnf upgrade -y", "dnf autoremove -y"],
-            "zypper": ["zypper update -y"],
-            "pacman": ["pacman -Syu --noconfirm"],
-        }
-
-        try:
-            info("正在更新系统...")
-            if commands := pm_commands.get(self.os_info.package_mgr):
-                cmd_ex_be(*commands)
-                info("更新系统完成")
-                return True
-
-        except Exception as e:
-            error(f"更新系统失败: {e}")
-            return False
 
     def print_results(self, results: List[MirrorResult]):
         print()
@@ -444,4 +397,4 @@ class MirrorTester:
 
         finally:
             prompt = "是否立刻升级软件包?"
-            confirm_action(prompt, self.upgrade_pm)  # upgrade PM configuration
+            confirm_action(prompt, upgrade_pm)  # upgrade PM configuration

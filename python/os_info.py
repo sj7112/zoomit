@@ -18,6 +18,16 @@ class OSInfo:
     package_mgr: str = ""  # 包管理器 (如: apt, yum, dnf, zypper, pacman)
 
 
+_os_info: OSInfo = None
+
+
+def get_os_info():
+    global _os_info
+    if _os_info is None:
+        _os_info = init_os_info()
+    return _os_info
+
+
 def init_os_info(os_release_path: str = "/etc/os-release") -> OSInfo:
     """
     初始化OS信息
