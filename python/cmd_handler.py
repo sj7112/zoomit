@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import re
 import subprocess
 import time
 import os
@@ -11,7 +12,84 @@ LOG_FILE = "/var/log/sj_install.log"
 DEBUG = False
 
 
-def cmd_exec(*commands):
+# ==============================================================================
+# (1) Frontend command execution
+# ==============================================================================
+
+
+def cmd_exec(cmd, **kwargs):
+    """
+    Execute a system command and return the result, with optional regex matching.
+
+    Args:
+        cmd (str or list): The command to execute, either as a string (e.g., "ls -l")
+                           or a list (e.g., ["ls", "-l"]).
+
+    Examples:
+        # Get the current user
+        user = cmd_exec("whoami")
+
+        # Extract IP address
+        ip = cmd_exec("ip -o route get 1")
+    """
+    # If cmd is a string, convert it to a list using split()
+    if isinstance(cmd, str):
+        cmd = cmd.split()
+
+    # Provide default values, allow overriding via kwargs
+    run_args = {
+        "stdout": subprocess.PIPE,
+        "stderr": subprocess.DEVNULL,
+        "text": True,
+    }
+    run_args.update(kwargs)  # Allow user to override defaults
+
+    result = subprocess.run(cmd, **run_args)
+    return result
+
+
+def cmd_ex_str(cmd, **kwargs):
+    """
+    Execute a system command and return the result by string
+
+    Returns:
+        str:
+            - If the command fails or no pattern match is found, returns an empty string "".
+    """
+    result = cmd_exec(cmd, **kwargs)
+    if result.returncode != 0:
+        return ""  # Command failed, return an empty string
+    else:
+        return result.stdout  # No regex pattern provided, return full output
+
+
+def cmd_ex_pat(cmd, pattern, **kwargs):
+    """
+    Execute a system command and return the result, with optional regex matching.
+
+    Returns:
+        str:
+            - A regex pattern is provided, returns the first matched group;
+            - If the command fails or no pattern match is found, returns an empty string "".
+
+    Examples:
+        # Extract IP address
+        ip = cmd_ex_pat("ip -o route get 1", r"src (\d+\.\d+\.\d+\.\d+)")
+    """
+    result = cmd_ex_str(cmd, **kwargs)
+    if result:
+        match = re.search(pattern, result)
+        if match:
+            return match.group(1)  # Return the first matched group
+    return ""  # No match found, return an empty string
+
+
+# ==============================================================================
+# (2) Backend command execution
+# ==============================================================================
+
+
+def cmd_ex_be(*commands):
     """
     Execute multiple commands connected with &&
     Args: *commands - list of commands to execute
@@ -143,17 +221,17 @@ if __name__ == "__main__":
 
     # Example 1: Execute single command
     print("=== 示例1: 单个命令 ===")
-    result = cmd_exec("ls -la")
+    result = cmd_ex_be("ls -la")
     print(f"命令执行结果: {result}")
 
     # Example 2: Execute multiple commands
     print("\n=== 示例2: 多个命令 ===")
-    result = cmd_exec(
+    result = cmd_ex_be(
         "echo 'Step 1: Starting...'", "sleep 2", "echo 'Step 2: Processing...'", "sleep 1", "echo 'Step 3: Finished!'"
     )
     print(f"命令执行结果: {result}")
 
     # Example 3: Simulate long running command
     print("\n=== 示例3: 长时间运行 ===")
-    result = cmd_exec('for i in {1..5}; do echo "Progress: $i/5"; sleep 0.8; done')
+    result = cmd_ex_be('for i in {1..5}; do echo "Progress: $i/5"; sleep 0.8; done')
     print(f"命令执行结果: {result}")

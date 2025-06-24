@@ -20,8 +20,8 @@ from typing import Dict, List, Optional
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from os_info import init_os_info, OSInfo
-from system import confirm_action, run_cmd, setup_logging
-from cmd_handler import cmd_exec
+from system import confirm_action, setup_logging
+from cmd_handler import cmd_ex_be
 from msg_handler import error, info, warning
 from file_util import write_array
 
@@ -375,9 +375,7 @@ class MirrorTester:
         try:
             info("正在刷新缓存...")
             if commands := pm_commands.get(self.os_info.package_mgr):
-                cmd_exec(*commands)
-                # for cmd in commands:
-                #     run_cmd(cmd, stdout=None, stderr=None)
+                cmd_ex_be(*commands)
                 info("缓存刷新完成")
                 return True
 
@@ -400,9 +398,7 @@ class MirrorTester:
         try:
             info("正在更新系统...")
             if commands := pm_commands.get(self.os_info.package_mgr):
-                cmd_exec(*commands)
-                # for cmd in commands:
-                #     run_cmd(cmd, stdout=None, stderr=None)
+                cmd_ex_be(*commands)
                 info("更新系统完成")
                 return True
 

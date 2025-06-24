@@ -11,7 +11,6 @@ import sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from file_util import read_env_file
-from system import get_network_service, get_static_ip, run_cmd, check_dns
 
 # 设置默认路径
 PARENT_DIR = Path(__file__).parent.parent.resolve()

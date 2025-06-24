@@ -1,11 +1,17 @@
+from datetime import datetime
 import glob
 import logging
 import os
-import signal
+import shutil
 import subprocess
 import re
-from typing import Callable, Any
-from msg_handler import error, exiterr
+import sys
+
+# default python sys.path
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+from typing import Callable, Any, List
+from msg_handler import _mf, error, exiterr, info, warning
 
 # 全局日志配置（放在文件开头）
 LOG_FILE = "/var/log/sj_pkg_error.log"
@@ -30,7 +36,7 @@ def setup_logging():
         logging.basicConfig(level=logging.ERROR)
 
 
-def confirm_action(prompt: str, callback: Callable[..., Any] = None, *args: Any, **kwargs: Any) -> int:
+def confirm_action(prompt: str, callback: Callable[..., Any] = None, *args: Any, **kwargs: Any) -> Any:
     """
     Confirmation function with callback support
 
@@ -39,31 +45,13 @@ def confirm_action(prompt: str, callback: Callable[..., Any] = None, *args: Any,
         callback: Callback function. Returns 0 directly if None
         *args: Positional arguments for callback function
         **kwargs: Can contain cancellation messages and callback function keyword arguments
-                 no_sigint: Skip Ctrl+C signal handling when True
 
     Returns:
-        0: User confirmed execution
-        1: User cancelled operation
-        2: Input error
+        0: User confirmed
+        1: User cancelled
+        2: User interrupt
+        3: System Exception
     """
-
-    # Handle Ctrl+C signal processing
-    no_sigint = kwargs.pop("no_sigint", False)
-
-    # Get current signal handler
-    original_handler = signal.signal(signal.SIGINT, signal.getsignal(signal.SIGINT))
-
-    # Decide which handler to use based on no_sigint parameter
-    if no_sigint:
-        handle_sigint = original_handler  # Use original handler, equivalent to no change
-    else:
-
-        def handle_sigint(signum, frame):
-            print("")
-            exiterr("User interrupted the operation, exiting the program!")
-
-    # Set signal handler
-    signal.signal(signal.SIGINT, handle_sigint)
 
     try:
         # Priority: nomsg > msg > default value
@@ -72,8 +60,8 @@ def confirm_action(prompt: str, callback: Callable[..., Any] = None, *args: Any,
         err_msg = kwargs.pop("errmsg", kwargs.pop("msg", "输入错误，请输入 Y 或 N"))
 
         # Get default and exit parameters
-        default = kwargs.pop("default", "Y")
-        exit = kwargs.pop("exit", True)
+        default = kwargs.pop("default", "Y")  # default value = Y
+        exit = kwargs.pop("exit", True)  # default = exit immediately
 
         # Set prompt suffix based on default value
         if default.upper() == "Y":
@@ -90,69 +78,23 @@ def confirm_action(prompt: str, callback: Callable[..., Any] = None, *args: Any,
 
             if response in ("y", "yes"):
                 if callback:
-                    callback(*args)  # Execute callback function
+                    return callback(*args)  # Execute callback function
                 return 0
             elif response in ("n", "no"):
                 print(no_msg)  # Output message for 'no' choice
                 return 1
             else:
-                if exit:
-                    error(err_msg)
-                    return 2
-                else:
-                    print(err_msg)  # Continue loop without returning
+                print(err_msg)  # Output error message
+                if not exit:
+                    continue  # Continue loop without returning
+                return 2
 
-    finally:
-        if not no_sigint:
-            signal.signal(signal.SIGINT, original_handler)  # restore original handler
-
-
-def run_cmd(cmd, pattern="", **kwargs):
-    """
-    Execute a system command and return the result, with optional regex matching.
-
-    Args:
-        cmd (str or list): The command to execute, either as a string (e.g., "ls -l")
-                           or a list (e.g., ["ls", "-l"]).
-        pattern (str): Optional regex pattern to extract specific content from the command output.
-
-    Returns:
-        str:
-            - If a pattern is provided, returns the first matched group;
-            - If no pattern is provided, returns the full command output;
-            - If the command fails or no pattern match is found, returns an empty string "".
-
-    Examples:
-        # Get the current user
-        user = run_cmd("whoami")
-
-        # Extract IP address
-        ip = run_cmd("ip -o route get 1", r"src (\d+\.\d+\.\d+\.\d+)")
-    """
-    # If cmd is a string, convert it to a list using split()
-    if isinstance(cmd, str):
-        cmd = cmd.split()
-
-    # Provide default values, allow overriding via kwargs
-    run_args = {
-        "stdout": subprocess.PIPE,
-        "stderr": subprocess.DEVNULL,
-        "text": True,
-    }
-    run_args.update(kwargs)  # Allow user to override defaults
-
-    result = subprocess.run(cmd, **run_args)
-    if result.returncode != 0:
-        return ""  # Command failed, return an empty string
-    # If a regex pattern is provided, attempt to match
-    if pattern:
-        match = re.search(pattern, result.stdout)
-        if match:
-            return match.group(1)  # Return the first matched group
-        else:
-            return ""  # No match found, return an empty string
-    else:
-        return result.stdout  # No regex pattern provided, return full output
+    except KeyboardInterrupt:
+        print(_mf("\n操作已取消"))
+        return 2
+    except Exception as e:
+        print(_mf(r"输入处理出错: {}", e))
+        return 3
 
 
 # ==============================================================================
@@ -291,6 +233,106 @@ def check_dns():
         logging.error(f"check_dns() failed: {e}")
 
     return ""
+
+
+def install_packages():
+    """安装所需软件包"""
+
+    packages = [
+        "typer",  # CLI 框架
+        "ruamel.yaml",  # YAML 处理
+        "requests",  # HTTP 库
+        "iso3166",  # 查国家名称
+        # "pydantic",   # 数据验证
+        # "pathlib"     # 路径处理（Python 3.4+ 内置，但确保可用）
+    ]
+
+    info("安装所需 Python 包...")
+
+    # 安装每个包
+    for package in packages:
+        try:
+            subprocess.run(
+                [sys.executable, "-m", "pip", "install", package],
+                check=True,
+                capture_output=True,
+            )
+            info(f"{package} 安装成功")
+        except subprocess.CalledProcessError as e:
+            warning(f"{package} 安装失败")
+            print(f"错误详情: {e}")
+
+    def install_base_pkg(self, lnx_cmd: str, package_name: Optional[str] = None) -> bool:
+        """
+        安装基础包
+
+        Args:
+            lnx_cmd: 要检查的命令名
+            package_name: 包名（如果与命令名不同）
+
+        Returns:
+            bool: 安装是否成功
+        """
+        # 检查命令是否存在
+        if shutil.which(lnx_cmd):
+            self.info(f"'{lnx_cmd}' 已安装")
+            return True
+
+        # 如果没有指定包名，则使用命令名
+        if package_name is None:
+            package_name = lnx_cmd
+
+        self.info(f"自动安装 '{lnx_cmd}' (包名: {package_name})...")
+
+        # 检查包管理器是否可用
+        if self.distro_pm == "unknown":
+            self.exiterr("无法检测到支持的包管理器")
+
+        # 更新包缓存（某些发行版需要）
+        self._update_package_cache()
+
+        # 获取安装命令
+        cmd = self._get_install_command(package_name)
+
+        # 执行安装命令
+        success, output = self.cmd_exec(cmd)
+
+        # 记录时间
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        # 再次检查是否安装成功
+        if not success or not shutil.which(lnx_cmd):
+            error_msg = f"{lnx_cmd} 安装失败，请手动安装，日志: {self.log_file} [{current_time}]"
+            self.exiterr(error_msg)
+            return False
+        else:
+            success_msg = f"{lnx_cmd} 安装成功，日志: {self.log_file} [{current_time}]"
+            self.success(success_msg)
+            return True
+
+    def install_multiple_packages(self, packages: List[str]) -> bool:
+        """
+        批量安装多个包
+
+        Args:
+            packages: 包列表，可以是字符串或元组(命令名, 包名)
+
+        Returns:
+            bool: 所有包是否都安装成功
+        """
+        all_success = True
+
+        for pkg in packages:
+            if isinstance(pkg, tuple):
+                cmd_name, pkg_name = pkg
+                success = self.install_base_pkg(cmd_name, pkg_name)
+            else:
+                success = self.install_base_pkg(pkg)
+
+            if not success:
+                all_success = False
+
+        return all_success
 
 
 # 在程序启动时调用
