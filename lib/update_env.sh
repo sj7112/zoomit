@@ -6,10 +6,10 @@ if [[ -z "${LOADED_UPDATE_ENV:-}" ]]; then
 
   : "${LIB_DIR:=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}" # lib direcotry
 
-  CONF_DIR="$(dirname "$BIN_DIR")/config"          # system config direcotry
-  DOCKER_DIR="$(dirname "$BIN_DIR")/config/docker" # docker config direcotry
+  NETWORK_DIR="$(dirname "$BIN_DIR")/config/network" # system config direcotry
+  DOCKER_DIR="$(dirname "$BIN_DIR")/config/docker"   # docker config direcotry
   source "$LIB_DIR/debug_tool.sh"
-  ENV_SYSTEM="$CONF_DIR/.env"
+  ENV_NW_PATH="$NETWORK_DIR/.env"
   ENV_DOCKER="$DOCKER_DIR/.env"
 
   # 声明有序数组和关联数组
@@ -125,21 +125,15 @@ if [[ -z "${LOADED_UPDATE_ENV:-}" ]]; then
   }
 
   # 初始化函数：读取python传入的.env对象并初始化
-  init_env_py() {
-    local env_json="$1"
-    local section="$2"
-
+  init_env_nw() {
+    local env_file="$1"
     # 调用Python解析JSON并输出键值对
     while IFS='=' read -r key value; do
+      [[ -z "$key" || "$key" == '#' ]] && continue
       # 根据section存入不同数组
-      if [[ "$section" == "network" ]]; then
-        ENV_NETWORK["$key"]="$value"
-        keys_network+=("$key")
-      elif [[ "$section" == "infrastructure" ]]; then
-        ENV_INFRASTRUCTURE["$key"]="$value"
-        keys_infrastructure+=("$key")
-      fi
-    done < <(echo "$env_json" | jq -r 'to_entries[] | "\(.key)=\(.value)"')
+      ENV_NETWORK["$key"]="$value"
+      keys_network+=("$key")
+    done <"$env_file"
   }
 
   # 保存函数：按项目匹配更新文件
@@ -188,19 +182,19 @@ if [[ -z "${LOADED_UPDATE_ENV:-}" ]]; then
 
     main() {
       # 初始化环境变量
-      init_env "$ENV_SYSTEM"
+      init_env "$ENV_NW_PATH"
 
       # 修改示例，保存到文件
       local old_curr_ip="${ENV_NETWORK["CURR_IP"]}"
       set_env "network" "CURR_IP" "192.168.1.100"
-      save_env "$ENV_SYSTEM" ENV_NETWORK keys_network
+      save_env "$ENV_NW_PATH" ENV_NETWORK keys_network
 
       # 改回原始值
       ENV_NETWORK["CURR_IP"]="$old_curr_ip"
-      save_env "$ENV_SYSTEM" ENV_NETWORK keys_network "1" # 1表示不备份
+      save_env "$ENV_NW_PATH" ENV_NETWORK keys_network "1" # 1表示不备份
 
       # 比较.env和.bak文件
-      test_assertion "cmp -s '$ENV_SYSTEM' '$ENV_SYSTEM.bak'" "CURR_IP: $old_curr_ip"
+      test_assertion "cmp -s '$ENV_NW_PATH' '$ENV_NW_PATH.bak'" "CURR_IP: $old_curr_ip"
     }
 
     main "$@"

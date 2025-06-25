@@ -294,7 +294,7 @@ def pm_install(lnx_cmds: Union[str, List[str]]):
 
 
 # ==============================================================================
-# Main program : Usage examples and tests
+# Main program : Usage examples and tests cmd_ex_be
 # ==============================================================================
 
 if __name__ == "__main__":

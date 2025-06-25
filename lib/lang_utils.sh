@@ -102,7 +102,7 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
     # Check with [ locale -a ]
     locale -a | grep -Fxq "$lang"
     if [[ $? -ne 0 ]]; then
-      echo "Language not in the system locale list (locale -a). Please re-enter:" >&2
+      echo "Not in the locale list. Please check [ locale -a ] and re-enter:" >&2
       return 1 # Format does not exist
     fi
     echo "set LANG to $lang" >&2

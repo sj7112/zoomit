@@ -197,10 +197,12 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   configure_ip() {
     set +e
     sh_fix_ip # 设置环境配置文件
-    ret=$?
+    if [[ $? -ne 0 ]]; then
+      return
+    else
+      init_env_nw "$ENV_NW_PATH"
+    fi
     set -e
-
-    exiterr "return value=$ret"
 
     if [[ ${ENV_NETWORK["CURR_NM"]} == "NetworkManager" ]]; then
       info "NetworkManager 正在运行"

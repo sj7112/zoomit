@@ -22,7 +22,6 @@ def main():
     # print("LANGUAGE:", os.environ.get("LANGUAGE"))
 
     command = sys.argv[1]
-    print(f"command={command}")
     match command:
         case "sh_update_source":
             # 选择包管理器，并执行初始化
@@ -43,8 +42,8 @@ def main():
 
         # 检查服务器是否使用静态IP并提供交互式选项
         case "sh_fix_ip":
-            result = NetworkSetup().fix_ip()
-            sys.exit(result)
+            exit_code = NetworkSetup().fix_ip()
+            sys.exit(exit_code)
         case _:
             sys.exit(f"Error: Unknown command '{command}'")
 

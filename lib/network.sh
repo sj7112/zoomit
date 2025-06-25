@@ -92,11 +92,11 @@ if [[ -z "${LOADED_NETWORK:-}" ]]; then
 Name=$IFACE
 
 [Network]
+DHCP=no
 Address=$IP_ADDR/$PREFIX
 Gateway=$GATEWAY
 DNS=$DNS
 EOF
-
   }
 
   # ==============================================================================
