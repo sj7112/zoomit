@@ -27,8 +27,22 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   DISTRO_CODENAME="" # 发行版代号 | 版本号
   SUDO_CMD=""        # sudo 默认字符串
 
-  # ** 环境变量：包管理器 | 操作系统名称 **
-  initial_global() {
+  # ==============================================================================
+  # 兼容：debian | ubuntu | centos | rhel | openSUSE | arch Linux
+  # 功能1: 检查root权限并自动升级
+  # ==============================================================================
+  # initial sudo param
+  check_user_sudo() {
+    if [ "$(id -u)" -ne 0 ]; then
+      if ! command -v sudo &>/dev/null; then
+        exiterr -i "INIT_SUDO_NO_EXIST"
+      fi
+      SUDO_CMD="sudo" # If not root, elevate privileges
+    fi
+  }
+
+  # ** Environment parameters: package management | os name **
+  init_os_release() {
     if [ -f /etc/os-release ]; then
       . /etc/os-release
       DISTRO_OSTYPE="$ID"
@@ -85,6 +99,13 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     fi
   }
 
+  # ** 环境变量：包管理器 | 操作系统名称 **
+  initial_global() {
+    load_global_prop # Load global properties (Step 1)
+    check_user_sudo  # initial sudo param
+    init_os_release  # initial distribution data
+  }
+
   # Initial language & translations
   initial_language() {
     fix_shell_locale  # fix shell language to ensure UTF-8 support
@@ -97,20 +118,19 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   # @i18n: This function needs internationalization
   # ==============================================================================
   initial_env() {
-    # 2. 检查并安装 Python3 虚拟环境
+    # 2. install Python3 virtual environment
     install_py_venv
-    # 3. 选择包管理器，并执行初始化
+    # 3. Select and update package manager
     sh_update_source
-    # 4. 安装各类基础包
+    # 4. Install various basic packages
     info "安装所需软件包..."
     install_base_pkg "sudo"
     install_base_pkg "wget"
     install_base_pkg "curl"
     install_base_pkg "jq"
     install_base_pkg "make"
-    # 5. 加载json环境变量；初始化语言和国家代码变量
+    # 5. 加载json环境变量
     # META_Command=$(json_load_data "cmd_meta") # 命令解析json
-
   }
 
   # ==============================================================================
@@ -124,6 +144,8 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     local sshd_config="/etc/ssh/sshd_config"
     echo ""
 
+    local ssh_service=$([[ $DISTRO_OSTYPE == ubuntu ]] && echo ssh || echo sshd)
+
     # 检查是否安装 sshd
     if ! ($SUDO_CMD systemctl is-active ssh &>/dev/null || $SUDO_CMD systemctl is-active sshd &>/dev/null); then
       info "sshd 未安装，正在安装..."
@@ -132,10 +154,22 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
       else
         install_base_pkg "openssh-server"
       fi
-      if [[ "$DISTRO_OSTYPE" = "ubuntu" ]]; then
-        $SUDO_CMD systemctl enable --now ssh
-      else
-        $SUDO_CMD systemctl enable --now sshd
+      $SUDO_CMD systemctl enable --now "$ssh_service"
+    fi
+
+    # check status
+    if $SUDO_CMD systemctl is-active --quiet "$ssh_service" 2>/dev/null; then
+      # 方法2：从配置文件读取
+      local config_port=""
+      if [[ -f /etc/ssh/sshd_config ]]; then
+        config_port=$(grep -E "^Port " /etc/ssh/sshd_config 2>/dev/null | awk '{print $2}')
+      fi
+      if [[ -n $config_port ]]; then
+        config_port=$(string "(端口=$config_port)")
+      fi
+      prompt=$(string "SSH已启动{}，是否需要重新设置?", "$config_port")
+      if [[ $(confirm_action "$prompt" def="n") -eq 1 ]]; then
+        return
       fi
     fi
 
@@ -251,7 +285,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   init_main() {
     initial_global # 设置环境变量
     echo -e "\n=== $INIT_SYSTEM_START - $PRETTY_NAME ===\n"
-    initial_language # inital language & translation
+    initial_language # 1. inital language & translation
     initial_env      # 基础值初始化
     config_sshd      # SSH配置
     configure_ip     # 静态IP配置
@@ -260,14 +294,6 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   }
 
   if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    load_global_prop # Load global properties (Step 1)
-    if [[ $EUID -ne 0 ]]; then
-      if ! command -v sudo &>/dev/null; then
-        exiterr -i "$INIT_SUDO_NO_EXIST"
-      fi
-      exec sudo "$0" "$@" # If not root, elevate privileges
-    fi
-    echo "$(id)"
     init_main "$@" # Execute as root
   fi
 

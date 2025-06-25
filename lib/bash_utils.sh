@@ -26,39 +26,83 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
     $SUDO_CMD test -f "$1"
   }
   # ==============================================================================
-  # 确认操作函数（带回调）
-  # 参数:
-  #   $1: 提示消息
-  #   $2: 成功时的回调函数名称
-  #   $3: 失败时显示的消息 (可选，默认: "操作已取消")
-  # 返回:
-  #   回调函数的返回值，或者取消时返回2
+  # Confirmation function with callback
+  # Parameters:
+  #   $1: prompt message
+  #   $2+: callback function name and its arguments
+  # Optional parameters:
+  #   msg="text": custom cancel message (default: "operation is cancelled")
+  #   def="y|n": default value for empty input (default: "y")
+  # Returns:
+  #   callback function's return value, or 2 when cancelled
   # ==============================================================================
   confirm_action() {
     local prompt="$1"
     shift
 
-    # 如果最后一个参数是 msg:"xxx"，提取其中内容为取消提示语
+    # Parse optional parameters
     local cancel_msg
-    local last_arg="${!#}"
-    if [[ "$last_arg" == msg=* ]]; then
-      cancel_msg="${last_arg#msg=}"
-      set -- "${@:1:$(($# - 1))}" # 移除最后一个参数
-    else
+    local def_val="y" # Default: empty input means Yes
+    local args=()
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        msg=*)
+          cancel_msg="${1#msg=}"
+          ;;
+        def=*)
+          def_val="${1#def=}"
+          ;;
+        *)
+          args+=("$1")
+          ;;
+      esac
+      shift
+    done
+
+    # Set default cancel message
+    if [[ -z "$cancel_msg" ]]; then
       cancel_msg=$(string "operation is cancelled")
     fi
 
-    trap 'echo ""; exiterr "User interrupted the operation, exiting the program"' INT # Exit directly on Ctrl+C
-    read -p "$prompt [Y/n] " response
+    # Determine default behavior based on def_val parameter
+    local default_prompt="[Y/n]"
+    if [[ "$def_val" =~ ^[Nn]$ ]]; then
+      # If def_val=n, empty input means No
+      default_prompt="[y/N]"
+    fi
+
+    # User Exit on Ctrl+C
+    do_keyboard_interrupt() {
+      echo ""
+      exiterr "User interrupted the operation, exiting the program"
+    }
+
+    trap do_keyboard_interrupt INT # Exit directly on Ctrl+C
+
+    while true; do
+      read -p "$prompt $default_prompt " response
+      if [[ -z "$response" || "$response" =~ ^[YyNn]$ ]]; then
+        break
+      else
+        error "Please enter 'y' for yes, 'n' for no, or press Enter for default"
+      fi
+    done
+
     trap - INT # Remove SIGINT signal handler
 
-    if [[ -z "$response" || "$response" =~ ^[Yy]$ ]]; then
-      # 执行回调函数
-      "$@" # 👈 callback=$1, args=剩余参数
-      return $?
+    local ret_code=0 # user enter Y or y
+    if [[ -z "$response" && "$def_val" =~ ^[Nn]$ ]]; then
+      ret_code=1
+    elif [[ "$response" =~ ^[Nn]$ ]]; then
+      ret_code=1
+    fi
+
+    if [[ "$ret_code" -eq 0 ]]; then
+      "${args[@]}" # 👈 callback=$1, args=other parameter
+      return $?    # Return callback's exit code
     else
-      error "$cancel_msg"
-      return 2 # 用户主动取消操作
+      warning "$cancel_msg"
+      return $ret_code
     fi
   }
 

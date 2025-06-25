@@ -3,7 +3,6 @@
 import argparse
 import os
 import sys
-import re
 import locale
 import inspect
 
@@ -25,8 +24,6 @@ DARK_BLUE = "\033[0;34m"  # 暗蓝色
 CYAN = "\033[0;36m"  # 青色 (Cyan)
 RED_BG = "\033[41m"  # 红色背景
 NC = "\033[0m"  # No Color
-
-ENVIRONMENT = "TEST"  # TEST 测试环境 | PROD 生产环境
 
 
 # =============================================================================
@@ -64,60 +61,6 @@ MSG_ERROR = messages["error"]
 MSG_SUCCESS = messages["success"]
 MSG_WARNING = messages["warning"]
 MSG_INFO = messages["info"]
-
-
-# **获取翻译**
-def msg_match_lang(key):
-    """获取key对应的翻译"""
-    lang_file = f"./lang/{LANG_CODE}.lang"  # 语言文件命名如 'en.lang', 'zh.lang' 等
-
-    # 获取当前的父函数及父函数的父函数
-    caller_frame = inspect.currentframe().f_back.f_back
-    caller_func_name = caller_frame.f_code.co_name
-    caller_func_depth = len(inspect.stack())
-    key_suffix = f"{caller_func_depth:03d}"  # 生成类似 "003" 这样的编号
-
-    # 构造翻译键，例如 config_sshd_003
-    translation_key = f"{caller_func_name}_{key_suffix}"
-
-    # 如果 ENVIRONMENT 是 TEST，自动添加缺失的翻译
-    if ENVIRONMENT == "TEST":
-        try:
-            with open(lang_file, "r", encoding="utf-8") as f:
-                content = f.read()
-                has_key = re.search(f"^{key}=", content, re.MULTILINE) is not None
-                has_translation_key = re.search(f"^{translation_key}=", content, re.MULTILINE) is not None
-
-            if not has_key:
-                with open(lang_file, "a", encoding="utf-8") as f:
-                    f.write(f"{key}={key}\n")
-                print(f"Translation for '{key}' not found. Added to {lang_file}.")
-
-            if not has_translation_key:
-                with open(lang_file, "a", encoding="utf-8") as f:
-                    f.write(f"{translation_key}={key}\n")
-                print(f"Translation for '{translation_key}' not found. Added to {lang_file}.")
-        except FileNotFoundError:
-            # 如果文件不存在，创建它
-            os.makedirs(os.path.dirname(lang_file), exist_ok=True)
-            with open(lang_file, "w", encoding="utf-8") as f:
-                f.write(f"{key}={key}\n")
-                f.write(f"{translation_key}={key}\n")
-            print(f"Created new language file {lang_file} with keys '{key}' and '{translation_key}'.")
-
-    # 读取翻译
-    translation = key
-    try:
-        with open(lang_file, "r", encoding="utf-8") as f:
-            for line in f:
-                if line.startswith(f"{translation_key}="):
-                    translation = line.strip().split("=", 1)[1]
-                    break
-    except FileNotFoundError:
-        pass
-
-    # 返回翻译文本
-    return translation
 
 
 # ==============================================================================
@@ -505,5 +448,4 @@ if __name__ == "__main__":
     warning("这是一条警告: {0}", "测试警告")
     success("这是一条成功消息: {0}", "测试成功")
     error("这是一条错误消息: {0}", "测试错误")
-    # exiterr会导致程序退出，所以放在最后测试
-    # exiterr("这会导致程序退出: {0}", "测试退出")
+    exiterr("这会导致程序退出: {0}", "测试退出")

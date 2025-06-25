@@ -19,48 +19,6 @@ if [[ -z "${LOADED_MSG_HANDLER:-}" ]]; then
   RED_BG='\033[41m'       # 红色背景
   NC='\033[0m'            # No Color
 
-  # 获取当前系统语言
-  ENVIRONMENT="TEST"    # TEST 测试环境 | PROD 生产环境
-  LANG_CODE=${LANG:0:2} # 取前两个字母，比如 "en"、"zh"
-
-  # 根据语言定义消息文本
-  if [[ "$LANG_CODE" == "zh" ]]; then
-    MSG_ERROR="错误"
-    MSG_SUCCESS="成功"
-    MSG_WARNING="警告"
-    MSG_INFO="信息"
-  elif [[ "$LANG_CODE" == "de" ]]; then
-    MSG_ERROR="Fehler"
-    MSG_SUCCESS="Erfolg"
-    MSG_WARNING="Warnung"
-    MSG_INFO="Information"
-  elif [[ "$LANG_CODE" == "es" ]]; then
-    MSG_ERROR="Error"
-    MSG_SUCCESS="Éxito"
-    MSG_WARNING="Advertencia"
-    MSG_INFO="Información"
-  elif [[ "$LANG_CODE" == "fr" ]]; then
-    MSG_ERROR="Erreur"
-    MSG_SUCCESS="Succès"
-    MSG_WARNING="Avertissement"
-    MSG_INFO="Info"
-  elif [[ "$LANG_CODE" == "ja" ]]; then
-    MSG_ERROR="エラー"
-    MSG_SUCCESS="成功"
-    MSG_WARNING="警告"
-    MSG_INFO="情報"
-  elif [[ "$LANG_CODE" == "ko" ]]; then
-    MSG_ERROR="오류"
-    MSG_SUCCESS="성공"
-    MSG_WARNING="경고"
-    MSG_INFO="정보"
-  else
-    MSG_ERROR="ERROR"
-    MSG_SUCCESS="SUCCESS"
-    MSG_WARNING="WARNING"
-    MSG_INFO="INFO"
-  fi
-
   # 返回所有输入参数中的最小值
   min() {
     local min_val=$1
@@ -103,52 +61,6 @@ if [[ -z "${LOADED_MSG_HANDLER:-}" ]]; then
     info -se "错误消息带堆栈"
     info -ise "所有选项组合"
 EOF
-  }
-
-  # **get translations**
-  msg_match_lang() {
-    local key="$1"
-    local lang_file="./lang/${LANG_CODE}.lang" # lang files are named like 'en.lang', 'zh.lang', etc.
-
-    # 获取当前的父函数及父函数的父函数
-    local caller_func_name="${FUNCNAME[2]}"              # 获取父函数的名字
-    local caller_func_depth="${#FUNCNAME[@]}"            # 计算当前函数调用栈的深度
-    local key_suffix=$(printf "%03d" $caller_func_depth) # 生成类似 "003" 这样的编号
-
-    # 构造翻译键，例如 config_sshd_003
-    local translation_key="${caller_func_name}_${key_suffix}"
-
-    # 如果 ENVIRONMENT 是 TEST，自动添加缺失的翻译
-    if [[ "$ENVIRONMENT" == "TEST" ]]; then
-      # 检查翻译文件中是否存在对应的键
-      if ! grep -q "^$key=" "$lang_file"; then
-        # 如果没有找到对应的翻译，自动将 key 添加到文件中
-        echo "$key=$key" >>"$lang_file"
-        echo "Translation for '$key' not found. Added to $lang_file."
-      fi
-    fi
-
-    # 如果 ENVIRONMENT 是 TEST，自动添加缺失的翻译
-    if [[ "$ENVIRONMENT" == "TEST" ]]; then
-      # 检查翻译文件中是否存在对应的键
-      if ! grep -q "^$translation_key=" "$lang_file"; then
-        # 如果没有找到对应的翻译，自动将 key 添加到文件中
-        echo "$translation_key=$key" >>"$lang_file"
-        echo "Translation for '$translation_key' not found. Added to $lang_file."
-      fi
-    fi
-
-    # 读取翻译
-    local translation
-    translation=$(grep -oP "^$translation_key=\K.+" "$lang_file")
-
-    # 如果找不到翻译，返回原始 key
-    if [[ -z "$translation" ]]; then
-      translation="$key"
-    fi
-
-    # 返回翻译文本
-    echo "$translation"
   }
 
   # ==============================================================================
