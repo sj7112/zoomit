@@ -249,41 +249,40 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
   # ==============================================================================
   # Language translation functions
   # ==============================================================================
-  # Get the path to the language configuration file
-  get_language_prop() {
-    local lang_format="${1:-$LANGUAGE}"      # e.g. zh_CN:zh
+  # Initial default message translations
+  load_global_prop() {
+    local prop_file=$(get_lang_prop ".")
+    # shellcheck disable=SC1090
+    source "$prop_file"
+  }
+
+  # Get the path to the message language file
+  get_lang_prop() {
+    local prefix="${1:-}"
+    local lang_format="$LANGUAGE"            # e.g. zh_CN:zh
     local primary_lang="${lang_format%%:*}"  # zh_CN
     local fallback_lang="${lang_format##*:}" # zh
 
     # First, look for the complete language file
-    if [[ -f "$LANG_DIR/${primary_lang}.properties" ]]; then
-      echo "$LANG_DIR/${primary_lang}.properties"
-      return 0
-    fi
-
+    if [[ -f "$LANG_DIR/${prefix}${primary_lang}.properties" ]]; then
+      echo "$LANG_DIR/${prefix}${primary_lang}.properties"
     # Next, look for the simplified language file
-    if [[ -f "$LANG_DIR/${fallback_lang}.properties" ]]; then
-      echo "$LANG_DIR/${fallback_lang}.properties"
-      return 0
+    elif [[ -f "$LANG_DIR/${prefix}${fallback_lang}.properties" ]]; then
+      echo "$LANG_DIR/${prefix}${fallback_lang}.properties"
+    else
+      # If neither is found, return default file
+      echo "$LANG_DIR/${prefix}en.properties"
     fi
-
-    # If neither is found, return an error
-    echo "Error: No language file found for '$lang_format'" >&2
-    return 1
   }
 
   # Load message translations
-  load_msg_prop() {
+  load_message_prop() {
     # Skip if already loaded
     if [[ -n "${LANGUAGE_MSGS+x}" ]] && [[ ${#LANGUAGE_MSGS[@]} -ne 0 ]]; then
       return 0
     fi
 
-    local properties_file=$(get_language_prop)
-    if [[ $? -ne 0 ]]; then
-      echo "Using default language 'en_US:en'" >&2
-      properties_file=$(get_language_prop 'en_US:en')
-    fi
+    local prop_file=$(get_lang_prop)
 
     local current_file=""
     while IFS= read -r line; do
@@ -322,9 +321,9 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
           LANGUAGE_MSGS["${current_file}:${key}"]="$value"
         fi
       fi
-    done <"$properties_file"
+    done <"$prop_file"
 
-    echo "Loaded ${#LANGUAGE_MSGS[@]} messages from $properties_file"
+    echo "Loaded ${#LANGUAGE_MSGS[@]} messages from $prop_file"
   }
 
   # Translate message

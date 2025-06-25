@@ -50,11 +50,11 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
           DISTRO_PM="pacman" # Arch
           ;;
         *)
-          exiterr "Unsupported distribution: $ID ($PRETTY_NAME)"
+          exiterr -i "$INIT_LINUX_UNSUPPORT: $ID ($PRETTY_NAME)"
           ;;
       esac
     else
-      exiterr "Unable to detect Linux distribution, cannot proceed"
+      exiterr -i "$INIT_LINUX_UNSUPPORT"
     fi
 
     # ** Env param：Distribution codename | version codename **
@@ -83,34 +83,13 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     else
       DISTRO_CODENAME="unknown"
     fi
-
-    # initial sudo param
-    if [ "$(id -u)" -ne 0 ]; then
-      SUDO_CMD="sudo"
-    fi
   }
 
   # Initial language & translations
   initial_language() {
-    fix_shell_locale # fix shell language to ensure UTF-8 support
-    load_msg_prop    # load message translations
-  }
-
-  # ==============================================================================
-  # 兼容：debian | ubuntu | centos | rhel | openSUSE | arch Linux
-  # 功能1: 检查root权限并自动升级
-  # ==============================================================================
-
-  # 检查当前用户是否为 root（非root检测sudo是否可用）
-  check_user_sudo() {
-    # 1. 校验非root用户：是否已安装sudo；是否有sudo权限
-    if [ "$(id -u)" -ne 0 ]; then
-      if ! command -v sudo &>/dev/null; then
-        exiterr "无法安装 sudo，请使用 root 账号执行本脚本(su -)，或手动安装 sudo"
-      elif ! id -nG | grep -qw "sudo"; then
-        exiterr "用户非 sudo 组，请使用 root 账号执行本脚本(su -)，或手动加入 sudo"
-      fi
-    fi
+    fix_shell_locale  # fix shell language to ensure UTF-8 support
+    load_global_prop  # Load global properties (Step 2)
+    load_message_prop # load message translations
   }
 
   # ==============================================================================
@@ -118,8 +97,6 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   # @i18n: This function needs internationalization
   # ==============================================================================
   initial_env() {
-    # 1. 检查用户是否为 root（非root检测sudo可用）
-    check_user_sudo
     # 2. 检查并安装 Python3 虚拟环境
     install_py_venv
     # 3. 选择包管理器，并执行初始化
@@ -273,17 +250,25 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   # ==============================================================================
   init_main() {
     initial_global # 设置环境变量
-    echo -e "\n=== init system start - $PRETTY_NAME ===\n"
+    echo -e "\n=== $INIT_SYSTEM_START - $PRETTY_NAME ===\n"
     initial_language # inital language & translation
     initial_env      # 基础值初始化
     config_sshd      # SSH配置
     configure_ip     # 静态IP配置
     # docker_compose # 安装软件
-    echo "=== init system end - $PRETTY_NAME ==="
+    echo "=== $INIT_SYSTEM_END - $PRETTY_NAME ==="
   }
 
   if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    init_main "$@"
+    load_global_prop # Load global properties (Step 1)
+    if [[ $EUID -ne 0 ]]; then
+      if ! command -v sudo &>/dev/null; then
+        exiterr -i "$INIT_SUDO_NO_EXIST"
+      fi
+      echo "$(id)"
+      exec sudo "$0" "$@" # If not root, elevate privileges
+    fi
+    init_main "$@" # Execute as root
   fi
 
 fi
