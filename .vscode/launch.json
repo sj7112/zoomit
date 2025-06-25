@@ -77,7 +77,7 @@
                 // "--file=python/lang_test.py",
                 "--lang=zh en",
                 // "--lang=en",
-                "--test_run"
+                // "--test_run"
             ],
             "console": "integratedTerminal"
         },
@@ -134,9 +134,9 @@
             "request": "launch",
             "program": "${workspaceFolder}/python/myshell.py",
             "args": [
-                // "sh_check_ip",
+                "sh_fix_ip",
                 // ""
-                "sh_update_source",
+                // "sh_update_source",
                 "debian",
                 // "ubuntu",
                 // "centos",

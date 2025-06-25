@@ -265,9 +265,9 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
       if ! command -v sudo &>/dev/null; then
         exiterr -i "$INIT_SUDO_NO_EXIST"
       fi
-      echo "$(id)"
       exec sudo "$0" "$@" # If not root, elevate privileges
     fi
+    echo "$(id)"
     init_main "$@" # Execute as root
   fi
 
