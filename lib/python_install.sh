@@ -248,13 +248,9 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
   create_py_venv() {
     # 删除已存在的虚拟环境
     if [[ -d "$VENV_DIR" ]]; then
-      if ! confirm_action "虚拟环境 $VENV_DIR 已存在，是否删除重建？"; then
-        if confirm_action "是否重建 pip 和所需 python 库？"; then
-          return 0 # 重建pip
-        else
-          warning "跳过虚拟环境创建"
-          return 1
-        fi
+      if ! confirm_action "虚拟环境 $VENV_DIR 已存在，是否删除重建？" default="N"; then
+        confirm_action "是否重建 pip 和所需 python 库？" default="N" msg="跳过虚拟环境创建"
+        return $?
       else
         $SUDO_CMD rm -rf "$VENV_DIR"
       fi

@@ -55,9 +55,9 @@ def confirm_action(prompt: str, callback: Callable[..., Any] = None, *args: Any,
 
     try:
         # Priority: nomsg > msg > default value
-        no_msg = kwargs.pop("nomsg", kwargs.pop("msg", "操作已取消"))
+        no_msg = kwargs.pop("nomsg", kwargs.pop("msg", _mf("操作已取消")))
         # Priority: errmsg > msg > default value
-        err_msg = kwargs.pop("errmsg", kwargs.pop("msg", "输入错误，请输入 Y 或 N"))
+        err_msg = kwargs.pop("errmsg", kwargs.pop("msg", _mf("输入错误，请输入 Y 或 N")))
 
         # Get default and exit parameters
         default = kwargs.pop("default", "Y")  # default value = Y
@@ -90,7 +90,8 @@ def confirm_action(prompt: str, callback: Callable[..., Any] = None, *args: Any,
                 return 2
 
     except KeyboardInterrupt:
-        print(_mf("\n操作已取消"))
+        print("\n")
+        print(_mf("操作已取消"))
         return 2
     except Exception as e:
         print(_mf(r"输入处理出错: {}", e))

@@ -32,7 +32,7 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
   #   $2+: callback function name and its arguments
   # Optional parameters:
   #   msg="text": custom cancel message (default: "operation is cancelled")
-  #   def="y|n": default value for empty input (default: "y")
+  #   default="y|n": default value for empty input (default: "y")
   # Returns:
   #   callback function's return value, or 2 when cancelled
   # ==============================================================================
@@ -41,7 +41,7 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
     shift
 
     # Parse optional parameters
-    local cancel_msg
+    local cancel_msg=""
     local def_val="y" # Default: empty input means Yes
     local args=()
     while [[ $# -gt 0 ]]; do
@@ -49,8 +49,8 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
         msg=*)
           cancel_msg="${1#msg=}"
           ;;
-        def=*)
-          def_val="${1#def=}"
+        default=*)
+          def_val="${1#default=}"
           ;;
         *)
           args+=("$1")
@@ -72,9 +72,10 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
     fi
 
     # User Exit on Ctrl+C
+    # shellcheck disable=SC2317
     do_keyboard_interrupt() {
       echo ""
-      exiterr "User interrupted the operation, exiting the program"
+      exiterr "operation is cancelled"
     }
 
     trap do_keyboard_interrupt INT # Exit directly on Ctrl+C

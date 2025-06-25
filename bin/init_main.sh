@@ -168,7 +168,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
         config_port=$(string "(端口=$config_port)")
       fi
       prompt=$(string "SSH已启动{}，是否需要重新设置?", "$config_port")
-      if [[ $(confirm_action "$prompt" def="n") -eq 1 ]]; then
+      if [[ $(confirm_action "$prompt" default="N") -eq 1 ]]; then
         return
       fi
     fi

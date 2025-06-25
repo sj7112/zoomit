@@ -165,8 +165,8 @@ def add_lang_files(langs: List[str], no_prompt: bool = True) -> Tuple[str, List[
         # 文件存在，提示用户是否删除
         prompt = string("确定要新增 {0} 语言文件吗?", lang_code)
         errmsg = string("操作已取消，未增加 {0} 文件文件", lang_code)
-        act = confirm_action(prompt, do_add_lang_files, lang_code, lang_files, msg=errmsg)
-        if act == 0:
+        ret_code = confirm_action(prompt, do_add_lang_files, lang_code, lang_files, msg=errmsg)
+        if ret_code == 0:
             ret_lang.append((lang_code, lang_files))
 
     return ret_lang

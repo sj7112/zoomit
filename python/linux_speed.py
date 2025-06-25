@@ -386,9 +386,8 @@ class MirrorTester:
             # 3. update mirrors
             curr_url = self.current_mirror()
             prompt = f"{'已选镜像: ' + curr_url + ' ' if curr_url else ''}是否重新选择镜像?"
-            confirm_action(prompt, self.choose_mirror)
-        # except KeyboardInterrupt:
-        #     print("\n\n用户中断了测试")
+            ret_code = confirm_action(prompt, self.choose_mirror, default="N")
+            default = "N" if ret_code != 0 else "Y"
         except Exception as e:
             print(f"\n程序运行出错: {e}")
             import traceback
@@ -397,4 +396,4 @@ class MirrorTester:
 
         finally:
             prompt = "是否立刻升级软件包?"
-            confirm_action(prompt, pm_upgrade)  # upgrade PM configuration
+            confirm_action(prompt, pm_upgrade, default=f"{default}")  # upgrade PM configuration
