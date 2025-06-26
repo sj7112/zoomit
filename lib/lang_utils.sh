@@ -259,9 +259,9 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
   # Get the path to the message language file
   get_lang_prop() {
     local prefix="${1:-}"
-    local lang_format="$LANGUAGE"            # e.g. zh_CN:zh
-    local primary_lang="${lang_format%%:*}"  # zh_CN
-    local fallback_lang="${lang_format##*:}" # zh
+    local lang_format="${LANGUAGE:-en_US:en}" # e.g. zh_CN:zh
+    local primary_lang="${lang_format%%:*}"   # zh_CN
+    local fallback_lang="${lang_format##*:}"  # zh
 
     # First, look for the complete language file
     if [[ -f "$LANG_DIR/${prefix}${primary_lang}.properties" ]]; then
