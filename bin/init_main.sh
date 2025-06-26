@@ -27,18 +27,27 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   DISTRO_CODENAME="" # 发行版代号 | 版本号
   SUDO_CMD=""        # sudo 默认字符串
 
+  LOG_FILE="/var/log/sj_install.log"
+  ERR_FILE="/var/log/sj_pkg_err.log"
+
   # ==============================================================================
   # 兼容：debian | ubuntu | centos | rhel | openSUSE | arch Linux
   # 功能1: 检查root权限并自动升级
   # ==============================================================================
   # initial sudo param
-  check_user_sudo() {
+  check_user_auth() {
     if [ "$(id -u)" -ne 0 ]; then
       if ! command -v sudo &>/dev/null; then
         exiterr -i "INIT_SUDO_NO_EXIST"
       fi
       SUDO_CMD="sudo" # If not root, elevate privileges
     fi
+
+    # Set log file owner to the current user and current group, with 644 permissions
+    [[ -f "$LOG_FILE" ]] || $SUDO_CMD touch "$LOG_FILE"
+    [[ -f "$ERR_FILE" ]] || $SUDO_CMD touch "$ERR_FILE"
+    $SUDO_CMD chown "$USER:$USER" "$LOG_FILE" "$LOG_ERR_FILE"
+    $SUDO_CMD chmod 644 "$LOG_FILE" "$LOG_ERR_FILE"
   }
 
   # ** Environment parameters: package management | os name **
@@ -102,7 +111,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   # ** 环境变量：包管理器 | 操作系统名称 **
   initial_global() {
     load_global_prop # Load global properties (Step 1)
-    check_user_sudo  # initial sudo param
+    check_user_auth  # initial sudo param
     init_os_release  # initial distribution data
   }
 

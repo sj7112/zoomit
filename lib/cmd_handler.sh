@@ -4,8 +4,6 @@
 if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
   LOADED_CMD_HANDLER=1
 
-  LOG_FILE="/var/log/sj_install.log"
-
   # ==============================================================================
   # 公共子函数（兼容：debian | ubuntu | centos | rhel | openSUSE | arch Linux）
   # ==============================================================================
