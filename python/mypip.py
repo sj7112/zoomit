@@ -245,12 +245,12 @@ def install_packages():
     """安装所需 Python 包"""
 
     packages = [
-        "typer",  # CLI 框架
-        "ruamel.yaml",  # YAML 处理
-        "requests",  # HTTP 库
-        "iso3166",  # 查国家名称
-        # "pydantic",   # 数据验证
-        # "pathlib"     # 路径处理（Python 3.4+ 内置，但确保可用）
+        "typer",  # CLI framework
+        "ruamel.yaml",  # YAML processing
+        "requests",  # HTTP library
+        "iso3166",  # Lookup country names
+        "diskcache",  # Cache for translation messages
+        # "pydantic",   # Data validation
     ]
 
     info("安装所需 Python 包...")
