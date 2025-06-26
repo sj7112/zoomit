@@ -46,8 +46,8 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     # Set log file owner to the current user and current group, with 644 permissions
     [[ -f "$LOG_FILE" ]] || $SUDO_CMD touch "$LOG_FILE"
     [[ -f "$ERR_FILE" ]] || $SUDO_CMD touch "$ERR_FILE"
-    $SUDO_CMD chown "$USER:$USER" "$LOG_FILE" "$LOG_ERR_FILE"
-    $SUDO_CMD chmod 644 "$LOG_FILE" "$LOG_ERR_FILE"
+    $SUDO_CMD chown "$USER:$USER" "$LOG_FILE" "$ERR_FILE"
+    $SUDO_CMD chmod 644 "$LOG_FILE" "$ERR_FILE"
   }
 
   # ** Environment parameters: package management | os name **

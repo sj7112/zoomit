@@ -11,7 +11,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
   source "$LIB_DIR/python_bridge.sh"
 
   LOG_FILE="/var/log/sj_install.log"
-  LOG_ERR_FILE="/var/log/sj_pkg_error.log"
+  ERR_FILE="/var/log/sj_pkg_error.log"
 
   PY_BASE_URL="https://github.com/astral-sh/python-build-standalone/releases/download"
   PY_VERSION="3.10.17"
@@ -276,7 +276,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
   # ==============================================================================
   run_with_log() {
     local cmd=("$@")
-    "${cmd[@]}" >>"$LOG_FILE" 2> >(tee -a "$LOG_ERR_FILE" >>"$LOG_FILE")
+    "${cmd[@]}" >>"$LOG_FILE" 2> >(tee -a "$ERR_FILE" >>"$LOG_FILE")
     return ${PIPESTATUS[0]}
   }
 
