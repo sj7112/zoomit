@@ -34,7 +34,7 @@ if [[ -z "${LOADED_PYTHON_BRIDGE:-}" ]]; then
 
   # ===== 调用 mypip.py 中的命令 =====
   sh_install_pip() {
-    py_exec "$PYTHON_DIR/mypip.py" sh_install_pip
+    py_exec "$PYTHON_DIR/mypip.py"
   }
 
   # ===== 从ast_parser.py导入的函数 =====

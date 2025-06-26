@@ -268,7 +268,68 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     fi
   }
 
-  # 安装 Python 并创建虚拟环境
+  configure_pip() {
+    local mirror_url="$1"
+
+    if [[ -z "$mirror_url" ]]; then
+      echo "[ERROR] 未提供镜像地址"
+      return 1
+    fi
+
+    # 提取主机名作为 trusted-host
+    host=$(echo "$mirror_url" | awk -F/ '{print $3}')
+
+    # 设置 index-url
+    "$PY_BIN" -m pip config set global.index-url "$mirror_url"
+    if [[ $? -ne 0 ]]; then
+      echo "❌ 设置 index-url 失败"
+      return 1
+    fi
+
+    # 设置 trusted-host
+    "$PY_BIN" -m pip config set global.trusted-host "$host"
+    if [[ $? -ne 0 ]]; then
+      echo "❌ 设置 trusted-host 失败"
+      return 1
+    fi
+
+    echo -e "\n✅ 已配置 pip 使用新的镜像"
+    echo "   镜像: $mirror_url"
+    echo "   信任主机: $host"
+  }
+
+  upgrade_pip() {
+    echo "[INFO] 升级 pip..."
+    "$PY_BIN" -m pip install --upgrade pip
+
+    if [[ $? -ne 0 ]]; then
+      echo "[WARNING] pip 升级失败"
+    fi
+  }
+
+  install_packages() {
+    echo "[INFO] 安装常用 Python 包..."
+
+    packages=(
+      typer       # CLI framework
+      ruamel.yaml # YAML processing
+      requests    # HTTP library
+      iso3166     # Lookup country names
+      diskcache   # Cache for translation messages
+      # pydantic  # Data validation
+    )
+
+    for pkg in "${packages[@]}"; do
+      echo "[INFO] 安装 $pkg..."
+      "$PY_BIN" -m pip install "$pkg"
+      if [[ $? -ne 0 ]]; then
+        echo "[ERROR] 安装 $pkg 失败"
+      fi
+    done
+    echo ""
+  }
+
+  # Install Python and create virtual python environment
   install_py_venv() {
     # 检查是否需要重新安装 Python
     local def_bin="$(command -v python3 2>/dev/null || true)"
@@ -278,9 +339,23 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
       install_py_standalone "$loc_bin"
     fi
 
-    # 创建虚拟环境并安装包
+    # create ~/.venv; install pip; install third party packages
     if create_py_venv; then
-      sh_install_pip # 安装 pip 和所需的基础包
+      echo "=================================================="
+      echo "🌍 测试全球 pip 可用镜像速度..."
+      echo "=================================================="
+
+      set +e
+      sh_install_pip                     # test and pick up a faster mirror (User prompt in Python)
+      if [[ $? -eq 0 ]]; then            # use sys.exit() to return code
+        url=$(cat /tmp/mypip_result.log) # use temp file to return value
+        echo "Python写入的url是: $url"
+        configure_pip "$url"
+      fi
+      set -e
+
+      upgrade_pip
+      install_packages
     fi
   }
 

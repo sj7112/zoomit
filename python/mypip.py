@@ -14,7 +14,6 @@ from urllib.parse import urlparse
 # default python sys.path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from msg_handler import error, info, warning
 
 # Global pip mirrors
 GLOBAL_MIRRORS = {
@@ -85,10 +84,6 @@ def test_mirror_speed(mirror_name, mirror_url, timeout=10):
 
 def test_pip_mirrors(max_workers=5):
     """test speed for all mirrors concurrently"""
-    print("=" * 50)
-    print("🌍 测试全球 pip 可用镜像速度...")
-    print("=" * 50)
-
     results = []
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -146,7 +141,7 @@ def test_pip_mirrors(max_workers=5):
     return None
 
 
-def choose_pip_mirror(mirror_list):
+def choose_pip_mirror():
     """
     从镜像列表中选择一个镜像
     参数:
@@ -154,48 +149,50 @@ def choose_pip_mirror(mirror_list):
     返回:
         选中的镜像字典，如果用户选择不更改则返回 None
     """
-    if not mirror_list:
-        print("\n⚠️  没有找到可用的镜像，请检查网络连接")
-        return None
-
-    while True:  # 无限循环直到用户输入正确
-        print(f"\n请选择要使用的镜像 (1-{len(mirror_list)})，输入 0 表示不更改:")
-
-        try:
-            # 获取用户输入并去除首尾空格
-            choice = input("请输入选择 (0-{}): ".format(len(mirror_list))).strip()
-
-            # 处理输入为 0 的情况（不更改配置）
-            if choice == "0":
-                print("\n已取消配置，保持当前设置")
-                return None
-
-            # 将输入转换为整数
-            choice_num = int(choice)
-
-            # 检查输入是否在有效范围内
-            if 1 <= choice_num <= len(mirror_list):
-                # 获取用户选择的镜像（注意索引从0开始，所以要减1）
-                selected_mirror = mirror_list[choice_num - 1]
-
-                # 显示用户选择的镜像信息
-                print(f"\n✨ 您选择了: {selected_mirror['name']}")
-                print(f"   URL: {selected_mirror['url']}")
-                print(f"   响应时间: {selected_mirror['time']:.2f}s")
-
-                return selected_mirror
-            else:
-                # 输入的数字超出范围
-                error(f"输入错误！请输入 0-{len(mirror_list)} 之间的数字")
-
-        except ValueError:
-            # 输入的不是数字
-            error("输入错误！请输入数字")
-
-        except KeyboardInterrupt:
-            # 用户按 Ctrl+C 中断
-            print("\n\n已取消操作")
+    try:
+        mirror_list = test_pip_mirrors()
+        if not mirror_list:
+            print("\n⚠️  没有找到可用的镜像，请检查网络连接")
             return None
+
+        while True:  # 无限循环直到用户输入正确
+            print(f"\n请选择要使用的镜像 (1-{len(mirror_list)})，输入 0 表示不更改:")
+
+            try:
+                # 获取用户输入并去除首尾空格
+                choice = input("请输入选择 (0-{}): ".format(len(mirror_list))).strip()
+
+                # 处理输入为 0 的情况（不更改配置）
+                if choice == "0":
+                    print("\n已取消配置，保持当前设置")
+                    return None
+
+                # 将输入转换为整数
+                choice_num = int(choice)
+
+                # 检查输入是否在有效范围内
+                if 1 <= choice_num <= len(mirror_list):
+                    # 获取用户选择的镜像（注意索引从0开始，所以要减1）
+                    selected_mirror = mirror_list[choice_num - 1]
+
+                    # 显示用户选择的镜像信息
+                    print(f"\n✨ 您选择了: {selected_mirror['name']}")
+                    print(f"   URL: {selected_mirror['url']}")
+                    print(f"   响应时间: {selected_mirror['time']:.2f}s")
+
+                    return selected_mirror["url"]
+                else:
+                    # 输入的数字超出范围
+                    print(f"[ERROR] 输入错误！请输入 0-{len(mirror_list)} 之间的数字")
+
+            except ValueError:
+                # 输入的不是数字
+                print("[ERROR] 输入错误！请输入数字")
+
+    except KeyboardInterrupt:
+        # 用户按 Ctrl+C 中断
+        print("\n\n已取消操作")
+        return None
 
 
 def configure_pip(mirror_url):
@@ -229,16 +226,16 @@ def configure_pip(mirror_url):
 def upgrade_pip():
     """升级 pip"""
 
+    print("[INFO] Upgrade pip...")
+
     try:
         subprocess.run(
             [sys.executable, "-m", "pip", "install", "--upgrade", "pip"],
             check=True,
             capture_output=True,
         )
-        info("pip 升级成功")
     except subprocess.CalledProcessError as e:
-        warning("pip 升级失败，继续安装其他包")
-        print(f"错误详情: {e}")
+        print(f"[WARNING] pip upgrade failure, Detail of error: {e}")
 
 
 def install_packages():
@@ -253,7 +250,7 @@ def install_packages():
         # "pydantic",   # Data validation
     ]
 
-    info("安装所需 Python 包...")
+    print("[INFO] Install Python packages...")
 
     # 安装每个包
     for package in packages:
@@ -263,33 +260,35 @@ def install_packages():
                 check=True,
                 capture_output=True,
             )
-            info(f"{package} 安装成功")
         except subprocess.CalledProcessError as e:
-            warning(f"{package} 安装失败")
-            print(f"错误详情: {e}")
-
-
-def install_pip():
-    """主函数"""
-
-    # 测试镜像速度，并选择镜像
-    result = choose_pip_mirror(test_pip_mirrors())
-    if result:
-        configure_pip(result["url"])  # 重新配置 pip
-
-    # 升级 pip，安装常用包
-    upgrade_pip()
-    install_packages()
+            print(f"[ERROR] {package} install failed, Detail of error: {e}")
 
 
 def main():
-    """服务器管理工具库 - 提供多种配置和管理功能(对接shell脚本)"""
+    """主函数"""
 
-    command = sys.argv[1]
+    # 测试镜像速度，并选择镜像
+    url = choose_pip_mirror()
+    if url:
+        with open("/tmp/mypip_result.log", "w") as f:
+            f.write(url)
+        sys.exit(0)
+    else:
+        sys.exit(1)
+    # return url
 
-    # 选择 python pip 镜像
-    if command == "sh_install_pip":
-        install_pip()
+    # sys.exit(1)
+    # if url:
+    #     configure_pip(url)  # 重新配置 pip
+
+    # # 升级 pip，安装常用包
+    # upgrade_pip()
+    # install_packages()
+
+
+# def main():
+#     """服务器管理工具库 - 提供多种配置和管理功能(对接shell脚本)"""
+#     install_pip()
 
 
 if __name__ == "__main__":
