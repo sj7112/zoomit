@@ -195,79 +195,10 @@ def choose_pip_mirror():
         return None
 
 
-def configure_pip(mirror_url):
-    """配置 pip 使用指定镜像"""
-    try:
-        # 设置全局配置
-        subprocess.run(
-            [sys.executable, "-m", "pip", "config", "set", "global.index-url", mirror_url],
-            check=True,
-            capture_output=True,
-        )
-
-        # 添加信任主机
-        host = urlparse(mirror_url).netloc
-        subprocess.run(
-            [sys.executable, "-m", "pip", "config", "set", "global.trusted-host", host],
-            check=True,
-            capture_output=True,
-        )
-
-        print(f"\n✅ 已配置 pip 使用新的镜像")
-        print(f"   镜像: {mirror_url}")
-        print(f"   信任主机: {host}")
-        return True
-
-    except subprocess.CalledProcessError as e:
-        print(f"\n❌ 配置失败: {e}")
-        return False
-
-
-def upgrade_pip():
-    """升级 pip"""
-
-    print("[INFO] Upgrade pip...")
-
-    try:
-        subprocess.run(
-            [sys.executable, "-m", "pip", "install", "--upgrade", "pip"],
-            check=True,
-            capture_output=True,
-        )
-    except subprocess.CalledProcessError as e:
-        print(f"[WARNING] pip upgrade failure, Detail of error: {e}")
-
-
-def install_packages():
-    """安装所需 Python 包"""
-
-    packages = [
-        "typer",  # CLI framework
-        "ruamel.yaml",  # YAML processing
-        "requests",  # HTTP library
-        "iso3166",  # Lookup country names
-        "diskcache",  # Cache for translation messages
-        # "pydantic",   # Data validation
-    ]
-
-    print("[INFO] Install Python packages...")
-
-    # 安装每个包
-    for package in packages:
-        try:
-            subprocess.run(
-                [sys.executable, "-m", "pip", "install", package],
-                check=True,
-                capture_output=True,
-            )
-        except subprocess.CalledProcessError as e:
-            print(f"[ERROR] {package} install failed, Detail of error: {e}")
-
-
 def main():
     """主函数"""
 
-    # 测试镜像速度，并选择镜像
+    # Test mirror speed and select a mirror
     url = choose_pip_mirror()
     if url:
         with open("/tmp/mypip_result.log", "w") as f:
@@ -275,20 +206,6 @@ def main():
         sys.exit(0)
     else:
         sys.exit(1)
-    # return url
-
-    # sys.exit(1)
-    # if url:
-    #     configure_pip(url)  # 重新配置 pip
-
-    # # 升级 pip，安装常用包
-    # upgrade_pip()
-    # install_packages()
-
-
-# def main():
-#     """服务器管理工具库 - 提供多种配置和管理功能(对接shell脚本)"""
-#     install_pip()
 
 
 if __name__ == "__main__":

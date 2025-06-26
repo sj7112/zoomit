@@ -271,29 +271,24 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
   configure_pip() {
     local mirror_url="$1"
 
-    if [[ -z "$mirror_url" ]]; then
-      echo "[ERROR] 未提供镜像地址"
-      return 1
-    fi
-
     # 提取主机名作为 trusted-host
     host=$(echo "$mirror_url" | awk -F/ '{print $3}')
 
     # 设置 index-url
     "$PY_BIN" -m pip config set global.index-url "$mirror_url"
     if [[ $? -ne 0 ]]; then
-      echo "❌ 设置 index-url 失败"
+      echo "设置 index-url 失败"
       return 1
     fi
 
     # 设置 trusted-host
     "$PY_BIN" -m pip config set global.trusted-host "$host"
     if [[ $? -ne 0 ]]; then
-      echo "❌ 设置 trusted-host 失败"
+      echo "设置 trusted-host 失败"
       return 1
     fi
-
-    echo -e "\n✅ 已配置 pip 使用新的镜像"
+    echo ""
+    echo -e "✅ 已配置 pip 使用新的镜像"
     echo "   镜像: $mirror_url"
     echo "   信任主机: $host"
   }
@@ -301,7 +296,6 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
   upgrade_pip() {
     echo "[INFO] 升级 pip..."
     "$PY_BIN" -m pip install --upgrade pip
-
     if [[ $? -ne 0 ]]; then
       echo "[WARNING] pip 升级失败"
     fi
@@ -326,7 +320,6 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
         echo "[ERROR] 安装 $pkg 失败"
       fi
     done
-    echo ""
   }
 
   # Install Python and create virtual python environment
@@ -356,6 +349,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
 
       upgrade_pip
       install_packages
+      echo ""
     fi
   }
 
