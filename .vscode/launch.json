@@ -74,7 +74,7 @@
                 // "-y",
                 // "--lang=ko fr",
                 // "--file=bin/i18n.sh bin/init_main.sh",
-                // "--file=python/lang_test.py",
+                // "--file=python/test_lang.py",
                 "--lang=zh en",
                 // "--lang=en",
                 // "--test_run"
@@ -125,6 +125,16 @@
                 "-ie",
                 "bin/i18n.sh",
                 "bin/init_main.sh",
+            ],
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "debugpy",
+            "name": "Python: 启动 lang_server.py",
+            "request": "launch",
+            "program": "${workspaceFolder}/python/lang_server.py",
+            "args": [
+                // "client",
             ],
             "console": "integratedTerminal"
         },
