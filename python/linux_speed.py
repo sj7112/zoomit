@@ -395,5 +395,5 @@ class MirrorTester:
             traceback.print_exc()
 
         finally:
-            prompt = "是否立刻升级软件包?"
+            prompt = "\n是否立刻升级软件包?"
             confirm_action(prompt, pm_upgrade, default=f"{default}")  # upgrade PM configuration

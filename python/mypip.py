@@ -153,19 +153,19 @@ def choose_pip_mirror():
         mirror_list = test_pip_mirrors()
         if not mirror_list:
             print("\n⚠️  没有找到可用的镜像，请检查网络连接")
-            return None
+            return 3, None
 
         while True:  # 无限循环直到用户输入正确
-            print(f"\n请选择要使用的镜像 (1-{len(mirror_list)})，输入 0 表示不更改:")
-
             try:
                 # 获取用户输入并去除首尾空格
-                choice = input("请输入选择 (0-{}): ".format(len(mirror_list))).strip()
+                choice = input(
+                    f"\n请选择要使用的镜像，输入 0 表示不更改 (0-{len(mirror_list)}): ".format(len(mirror_list))
+                ).strip()
 
                 # 处理输入为 0 的情况（不更改配置）
                 if choice == "0":
                     print("\n已取消配置，保持当前设置")
-                    return None
+                    return 1, None
 
                 # 将输入转换为整数
                 choice_num = int(choice)
@@ -174,38 +174,29 @@ def choose_pip_mirror():
                 if 1 <= choice_num <= len(mirror_list):
                     # 获取用户选择的镜像（注意索引从0开始，所以要减1）
                     selected_mirror = mirror_list[choice_num - 1]
-
-                    # 显示用户选择的镜像信息
-                    print(f"\n✨ 您选择了: {selected_mirror['name']}")
-                    print(f"   URL: {selected_mirror['url']}")
-                    print(f"   响应时间: {selected_mirror['time']:.2f}s")
-
-                    return selected_mirror["url"]
+                    return 0, selected_mirror["url"]
                 else:
-                    # 输入的数字超出范围
                     print(f"[ERROR] 输入错误！请输入 0-{len(mirror_list)} 之间的数字")
 
             except ValueError:
-                # 输入的不是数字
-                print("[ERROR] 输入错误！请输入数字")
+                print(f"[ERROR] 输入错误！请输入 0-{len(mirror_list)} 之间的数字")
 
     except KeyboardInterrupt:
         # 用户按 Ctrl+C 中断
         print("\n\n已取消操作")
-        return None
+        return 2, None
 
 
 def main():
     """主函数"""
 
     # Test mirror speed and select a mirror
-    url = choose_pip_mirror()
+    status, url = choose_pip_mirror()
     if url:
         with open("/tmp/mypip_result.log", "w") as f:
             f.write(url)
-        sys.exit(0)
-    else:
-        sys.exit(1)
+
+    sys.exit(status)
 
 
 if __name__ == "__main__":

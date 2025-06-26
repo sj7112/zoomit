@@ -123,7 +123,6 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     # 3. Select and update package manager
     sh_update_source
     # 4. Install various basic packages
-    info "安装所需软件包..."
     install_base_pkg "sudo"
     install_base_pkg "wget"
     install_base_pkg "curl"
@@ -165,10 +164,10 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
         config_port=$(grep -E "^Port " /etc/ssh/sshd_config 2>/dev/null | awk '{print $2}')
       fi
       if [[ -n $config_port ]]; then
-        config_port=$(string "(端口=$config_port)")
+        config_port=$(string "(端口={})" "$config_port")
       fi
-      prompt=$(string "SSH已启动{}，是否需要重新设置?", "$config_port")
-      if [[ $(confirm_action "$prompt" default="N") -eq 1 ]]; then
+      prompt=$(string "SSH已启动{}，是否重新设置?" "$config_port")
+      if ! confirm_action "$prompt" default="N"; then
         return
       fi
     fi
