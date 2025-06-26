@@ -128,7 +128,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   # ==============================================================================
   initial_env() {
     # 2. install Python3 virtual environment
-    install_py_venv
+    create_py_venv
     # 3. Select and update package manager
     sh_update_source
     # 4. Install various basic packages

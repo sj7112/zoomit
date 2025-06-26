@@ -7,14 +7,15 @@ if [[ -z "${LOADED_PYTHON_BRIDGE:-}" ]]; then
   # Declare global
   : "${LIB_DIR:=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}" # bin direcotry
   : "${PYTHON_DIR:=$(dirname "$BIN_DIR")/python}"               # python directory
+  : VENV_BIN="$HOME/.venv/bin/python"
 
   # python3虚拟环境（区分是否需要 sudo 包装）
   # PYTHON="$HOME/.venv/bin/python"
   py_exec() {
     if [ -n "$SUDO_CMD" ]; then
-      env LANG="$LANG" LANGUAGE="$LANGUAGE" "$SUDO_CMD" "$HOME/.venv/bin/python" "$@"
+      env LANG="$LANG" LANGUAGE="$LANGUAGE" "$SUDO_CMD" "$VENV_BIN" "$@"
     else
-      env LANG="$LANG" LANGUAGE="$LANGUAGE" "$HOME/.venv/bin/python" "$@"
+      env LANG="$LANG" LANGUAGE="$LANGUAGE" "$VENV_BIN" "$@"
     fi
   }
 

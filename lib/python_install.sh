@@ -19,8 +19,8 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
 
   PY_INST_DIR="$HOME/.local/python-$PY_VERSION"
   PY_GZ_FILE="/tmp/cpython-${PY_VERSION}-standalone.tar.gz"
-  PY_BIN=""
   VENV_DIR="$HOME/.venv"
+  VENV_BIN="$HOME/.venv/bin/python"
 
   # ==============================================================================
   # 安装python虚拟环境
@@ -32,7 +32,6 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
       # 确保 venv 和 ensurepip 都存在
       if "$py_path" -m venv --help >/dev/null 2>&1 \
         && "$py_path" -m ensurepip --version >/dev/null 2>&1; then
-        PY_BIN="$py_path"
         return 0
       fi
     fi
@@ -223,7 +222,6 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
 
   # 下载并安装 Python standalone
   install_py_standalone() {
-    local loc_bin="$1"
     local system_type=$(detect_system)
     local python_url=$(get_python_url "$system_type")
 
@@ -238,36 +236,52 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     if ! tar -zxf "$PY_GZ_FILE" -C "$PY_INST_DIR" --strip-components=1; then
       exiterr "解压安装失败"
     fi
+  }
 
-    # 验证是否可用
-    if ! check_py_version "$loc_bin"; then
-      exiterr "Python 安装失败: $loc_bin 不存在或不可执行"
+  install_py_bin() {
+    local default_bin="$(command -v python3 2>/dev/null || true)"
+    local local_bin="${PY_INST_DIR}/bin/python3"
+
+    # Check if Python needs to be reinstalled
+    if check_py_version "$default_bin"; then
+      echo "$default_bin"
+    elif check_py_version "$local_bin"; then
+      echo "$local_bin"
     else
-      info "Python $PY_VERSION 安装完成！"
+      install_py_standalone
+      # 验证是否可用
+      if check_py_version "$local_bin"; then
+        info "Python $PY_VERSION 安装完成！"
+        echo "$local_bin"
+      else
+        exiterr "Python $PY_VERSION 安装失败: $local_bin 不存在或不可执行"
+      fi
     fi
   }
 
   # 创建虚拟环境并安装常用包
-  create_py_venv() {
+  install_py_venv() {
     # 删除已存在的虚拟环境
     if [[ -d "$VENV_DIR" ]]; then
       if ! confirm_action "虚拟环境 $VENV_DIR 已存在，是否删除重建？" default="N"; then
         confirm_action "是否重建 pip 和所需 python 库？" default="N" msg="跳过虚拟环境创建"
         return $?
       else
+        info "删除虚拟环境 $VENV_DIR..."
         $SUDO_CMD rm -rf "$VENV_DIR"
       fi
-    else
-      info "创建虚拟环境 $VENV_DIR..."
     fi
 
-    # 创建虚拟环境
-    if "$PY_BIN" -m venv "$VENV_DIR"; then
+    # 找到python系统路径
+    local py_bin=$(install_py_bin)
+
+    # 创建python虚拟环境
+    info "创建虚拟环境 $VENV_DIR..."
+    if "$py_bin" -m venv "$VENV_DIR"; then
       success "虚拟环境创建成功！"
       return 0 # 创建pip
     else
       exiterr "创建虚拟环境失败"
-      return 1
     fi
   }
 
@@ -287,7 +301,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     host=$(echo "$mirror_url" | awk -F/ '{print $3}')
 
     # 设置 index-url
-    run_with_log "$PY_BIN" -m pip config set global.index-url "$mirror_url"
+    run_with_log "$VENV_BIN" -m pip config set global.index-url "$mirror_url"
     if [[ $? -ne 0 ]]; then
       echo "Config index-url failure"
       return 1
@@ -295,7 +309,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
 
     # 设置 trusted-host
     if [[ "$mirror_url" =~ ^http:// ]]; then
-      run_with_log "$PY_BIN" -m pip config set global.trusted-host "$host"
+      run_with_log "$VENV_BIN" -m pip config set global.trusted-host "$host"
       if [[ $? -ne 0 ]]; then
         echo "Config trusted-host failure"
         return 1
@@ -309,7 +323,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
   }
 
   upgrade_pip() {
-    run_with_log "$PY_BIN" -m pip install --upgrade pip
+    run_with_log "$VENV_BIN" -m pip install --upgrade pip
     if [[ $? -eq 0 ]]; then
       echo "[INFO] pip ${CMD_UPGRADE}${CMD_SUCCESS}"
     else
@@ -328,7 +342,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     )
 
     for pkg in "${packages[@]}"; do
-      run_with_log "$PY_BIN" -m pip install "$pkg"
+      run_with_log "$VENV_BIN" -m pip install "$pkg"
       if [[ $? -eq 0 ]]; then
         echo "[INFO] $pkg ${CMD_INSTALL}${CMD_SUCCESS}"
       else
@@ -336,21 +350,12 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
       fi
     done
   }
-
   # ==============================================================================
-  # 函数: Install Python and create virtual python environment
+  # 函数: create venv, install pip
   # ==============================================================================
-  install_py_venv() {
-    local def_bin="$(command -v python3 2>/dev/null || true)"
-    local loc_bin="$PY_INST_DIR/bin/python3"
-
-    # Check if Python needs to be reinstalled
-    if ! check_py_version "$def_bin" && ! check_py_version "$loc_bin"; then
-      install_py_standalone "$loc_bin"
-    fi
-
+  create_py_venv() {
     # create ~/.venv; install pip; install third party packages
-    if create_py_venv; then
+    if install_py_venv; then
       echo "=================================================="
       echo "🌍 测试全球 pip 可用镜像速度..."
       echo "=================================================="
@@ -363,6 +368,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
         configure_pip "$url"
       fi
       set -e
+
       if [[ $status -eq 0 || $status -eq 1 ]]; then
         upgrade_pip
         install_packages
@@ -381,7 +387,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     # 主函数
     main() {
       info "Python $PY_VERSION Standalone 自动安装脚本"
-      install_py_venv
+      create_py_venv
     }
 
     # 执行主函数
