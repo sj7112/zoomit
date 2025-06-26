@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from datetime import datetime
+from pathlib import Path
 import sys
 import os
 from ruamel.yaml.comments import CommentedMap
@@ -15,11 +16,15 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from ast_parser_shell import ShellASTParser
 from ast_parser_python import PythonASTParser
+from lang_cache import LangCache
 from file_util import read_lang_prop, write_lang_prop, write_array
 from debug_tool import test_assertion, print_array
 
 # 全局变量
-YML_PATH = "/usr/local/shell/config/lang/_lang.yml"
+
+# 获取当前文件的绝对路径的父目录
+PARENT_DIR = Path(__file__).parent.parent.resolve()
+YML_PATH = PARENT_DIR / "config" / "lang" / "_lang.yml"
 
 # 多语言支持
 FILE_MODE = "c|cpp|java|js|py|sh|ts"
@@ -507,6 +512,7 @@ def yaml_file_interceptor():
             stat_config_yml(data)  # 设置统计信息
             if not test_run:
                 write_lang_yml(data, yaml)
+                LangCache.get_instance().clear_cache()
 
             return data
 

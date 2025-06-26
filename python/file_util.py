@@ -15,8 +15,7 @@ from msg_handler import error, exiterr, info, warning
 
 # 获取当前文件的绝对路径的父目录
 PARENT_DIR = Path(__file__).parent.parent.resolve()
-
-PROP_PATH = "/usr/local/shell/config/lang/"
+PROP_PATH = PARENT_DIR / "config" / "lang"
 
 
 def _path_resolve(path_str):
@@ -211,7 +210,7 @@ def write_source_file(path, lines):
 
 def read_lang_prop(lang_code):
     """读取配置文件为数组"""
-    fn = PROP_PATH + lang_code + ".properties"
+    fn = PROP_PATH / f"{lang_code}.properties"
     with open(fn, "r", encoding="utf-8") as fh:
         lines = fh.readlines()
     return [line.rstrip("\n") for line in lines]
@@ -219,7 +218,7 @@ def read_lang_prop(lang_code):
 
 def write_lang_prop(lang_code, content_list):
     """写入配置文件内容"""
-    fn = PROP_PATH + lang_code + ".properties"
+    fn = PROP_PATH / f"{lang_code}.properties"
     with open(fn, "w", encoding="utf-8") as fh:
         fh.writelines(f"{line}\n" for line in content_list)
 

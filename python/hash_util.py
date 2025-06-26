@@ -3,6 +3,7 @@
 import hashlib
 import math
 import os
+from pathlib import Path
 import sys
 from ruamel.yaml import YAML
 
@@ -16,7 +17,10 @@ from debug_tool import (
 DUPL_HASH = "Z-HASH"  # hash池（一个文件中不允许有重复的hash）
 BASE64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"  # url安全
 PROP_FILE = {}  # key=path/program; value = 待翻译消息列表
-YML_PATH = "/usr/local/shell/config/lang/_lang.yml"
+
+# 获取当前文件的绝对路径的父目录
+PARENT_DIR = Path(__file__).parent.parent.resolve()
+YML_PATH = PARENT_DIR / "config" / "lang" / "_lang.yml"
 
 
 # ==============================================================================
@@ -253,11 +257,13 @@ def set_file_msgs(results, sh_file):
 # =============================================================================
 def main():
     # 测试1：hash计算
-    a = "operation is cancelled"
+    a = "检测到服务器已配置静态IP，是否调整IP？"
     b = _djb2_with_salt_20(a)
+    print(b)
     # 测试2：base64转换
     a = b
     b6 = _padded_number_to_base64(f"{a}_6")
+    print(b6)
     b = 0
     b64 = _padded_number_to_base64(f"{a}_4", f"{b}_2")
     c = _base64_to_number(b64[:4])  # 前4位

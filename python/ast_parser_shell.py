@@ -219,7 +219,7 @@ class ShellASTParser(ASTParser):
         # 检查是否多行文本
         lines = self.lines
         while self.line_number < len(lines):
-            content += "\n"  # 增加换行
+            content += "\n"  # Add a newline
             line = lines[self.line_number]
             content_match = re.match(r'^(.*?)(?<!\\)"', line)  # 采用双引号结束（读取代码文件）
             if content_match:  # 最后一行

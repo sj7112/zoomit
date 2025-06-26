@@ -286,19 +286,22 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
 
     local current_file=""
     while IFS= read -r line; do
-      # Skip empty lines
-      [[ -z "$line" ]] && continue
 
-      # Skip comments, but handle file markers
-      if [[ "$line" =~ ^[[:space:]]*# ]]; then
-        if [[ "$line" =~ ^#[[:space:]]*■=(.+)$ ]]; then
-          current_file="${BASH_REMATCH[1]}"
-        fi
+      # shell file starts with postfix = ".sh"
+      if [[ "$line" =~ ^#[[:space:]]*■=(.+)$ ]]; then
+        case "${BASH_REMATCH[1]}" in
+          *.sh)
+            current_file="${BASH_REMATCH[1]}"
+            ;;
+          *)
+            current_file=""
+            ;;
+        esac
         continue
       fi
 
-      # Skip separator lines
-      [[ "$line" =~ ^[[:space:]]*--- ]] && continue
+      # Exclude not ".sh" files; Skip empty lines; Skip comments
+      [[ -z "$current_file" || -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
 
       # Match key-value pairs KEY=VALUE
       if [[ "$line" =~ ^([A-Za-z0-9_-]+)=(.*)$ ]]; then

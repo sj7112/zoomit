@@ -254,7 +254,8 @@ class PythonASTParser(ASTParser):
         # 检查是否多行文本
         lines = self.lines
         while self.line_number < len(lines):
-            content += "\n"  # 增加换行
+            content += "\\"  # Add "\" (used as a multi-line reading marker when reading messages)
+            content += "\n"  # Add a newline
             line = self.lines[self.line_number]
             content_match = re.match(r"^(.*?)(?<!\\)" + f"{pattern}", line)  # 采用单引号 / 双引号结束（读取代码文件）
             if content_match:  # 最后一行

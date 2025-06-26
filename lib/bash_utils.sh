@@ -91,19 +91,19 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
 
     trap - INT # Remove SIGINT signal handler
 
-    local ret_code=0 # user enter Y or y
+    local result=0 # user enter Y or y
     if [[ -z "$response" && "$def_val" =~ ^[Nn]$ ]]; then
-      ret_code=1
+      result=1
     elif [[ "$response" =~ ^[Nn]$ ]]; then
-      ret_code=1
+      result=1
     fi
 
-    if [[ "$ret_code" -eq 0 ]]; then
+    if [[ "$result" -eq 0 ]]; then
       "${args[@]}" # 👈 callback=$1, args=other parameter
       return $?    # Return callback's exit code
     else
       warning "$cancel_msg"
-      return $ret_code
+      return $result
     fi
   }
 
