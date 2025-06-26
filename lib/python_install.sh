@@ -338,26 +338,13 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
   }
 
   # ==============================================================================
-  # 函数: clean_pkg_mgr 清理缓存
+  # 函数: Install Python and create virtual python environment
   # ==============================================================================
-  clean_pkg_mgr() {
-    info "清理 {0} 缓存..." "$DISTRO_PM"
-    local result=0 # 默认成功
-    case "$DISTRO_PM" in
-      apt) cmd="apt-get clean" ;;
-      yum | dnf) cmd="$DISTRO_PM clean all" ;;
-      zypper) cmd="zypper clean -a" ;;
-      pacman) cmd="pacman -Sc --noconfirm" ;;
-    esac
-    cmd_exec "$cmd" || exiterr "清理缓存失败"
-  }
-
-  # Install Python and create virtual python environment
   install_py_venv() {
-    # 检查是否需要重新安装 Python
     local def_bin="$(command -v python3 2>/dev/null || true)"
     local loc_bin="$PY_INST_DIR/bin/python3"
 
+    # Check if Python needs to be reinstalled
     if ! check_py_version "$def_bin" && ! check_py_version "$loc_bin"; then
       install_py_standalone "$loc_bin"
     fi
