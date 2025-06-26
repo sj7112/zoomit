@@ -2,17 +2,22 @@
 
 import argparse
 import os
+from pathlib import Path
 import sys
 import locale
 import inspect
+
+from hash_util import _djb2_with_salt_20, _padded_number_to_base64, md5
+
 
 __all__ = ["string", "_mf"]  # export
 
 # default python sys.path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-# from debug_tool import print_array
+from lang_cache import LangCache
 from json_handler import json_getopt
+from debug_tool import print_array
 
 
 # 颜色定义
@@ -24,6 +29,11 @@ DARK_BLUE = "\033[0;34m"  # 暗蓝色
 CYAN = "\033[0;36m"  # 青色 (Cyan)
 RED_BG = "\033[41m"  # 红色背景
 NC = "\033[0m"  # No Color
+
+# global parameter
+LANG_CACHE = LangCache.get_instance()
+PARENT_DIR = Path(__file__).parent.parent.resolve()
+LIB_DIR = (PARENT_DIR / "lib").resolve()
 
 
 # =============================================================================
@@ -215,22 +225,51 @@ def print_stack_err(max_depth=6, start_depth=2):
 # 输出格式：
 # 返回全局变量：CURRENT_FUNCTION | CURRENT_FILE
 # ==============================================================================
-def get_current_context():
-    frame = inspect.currentframe().f_back.f_back  # 绕过消息函数，找到实际执行的函数
-    func = frame.f_code.co_name
-    file_path = frame.f_code.co_filename
-    line = frame.f_lineno
+def get_trans_msg(msg):
+    """
+    Translate message using global variables
 
-    print(f"{file_path}:{line} {func}", file=sys.stderr)
+    Args:
+        msg (str): Original message
 
-    global CURRENT_FUNCTION, CURRENT_FILEPATH, CURRENT_FILE
-    CURRENT_FUNCTION = func
-    CURRENT_FILEPATH = file_path
-    CURRENT_FILE = os.path.basename(file_path)
+    Returns:
+        str: Translated message or original message if translation not found
+    """
+    global LANG_CACHE, LIB_DIR
 
-    print(f"===> {CURRENT_FUNCTION} {CURRENT_FILEPATH} {CURRENT_FILE}", file=sys.stderr)
+    # Get the calling file path
+    frame = inspect.currentframe()
+    try:
+        caller_frame = frame.f_back.f_back.f_back  # Equivalent to BASH_SOURCE[3]
+        if caller_frame is None:
+            caller_frame = frame.f_back
+        source_file = caller_frame.f_code.co_filename
+    finally:
+        del frame
 
-    return func, file_path, os.path.basename(file_path)
+    # Remove root directory
+    if LIB_DIR:
+        root_dir = os.path.dirname(LIB_DIR)
+        if source_file.startswith(root_dir + "/"):
+            source_file = source_file[len(root_dir) + 1 :]
+
+    # Try DJB2 hash first
+    current_hash = _djb2_with_salt_20(msg)
+    current_hash = _padded_number_to_base64(f"{current_hash}_6")
+    key = f"{source_file}:{current_hash}"
+
+    result = LANG_CACHE.get(key)
+
+    if not result:
+        # Try MD5
+        current_hash = md5(msg)
+        key = f"{source_file}:{current_hash}"
+        result = LANG_CACHE.get(key)
+
+    if not result:
+        result = msg
+
+    return result
 
 
 def msg_parse_tmpl(template, *args):
@@ -287,7 +326,12 @@ def msg_parse_tmpl(template, *args):
 # 1) 调试只能用print(..., file=sys.stderr) ！！！否则父函数接收返回值时，会出错
 # ==============================================================================
 def msg_parse_param(options, *args):
-    template = msg_parse_tmpl(args[0], *args[1:])  # parse text by template
+    # 自动翻译
+    if not json_getopt(options, "ignore"):
+        result = get_trans_msg(args[0])  # 获取翻译消息
+    else:
+        result = args[0]
+    template = msg_parse_tmpl(result, *args[1:])  # parse text by template
 
     # 检查stack参数
     if json_getopt(options, "stack"):

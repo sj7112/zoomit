@@ -279,6 +279,13 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     apps_setup
   }
 
+  # --------------------------
+  # 功能3: 安装指定软件
+  # --------------------------
+  close_env() {
+    sh_clear_cache
+  }
+
   # ==============================================================================
   # 公共初始化子函数（兼容：debian | ubuntu | centos | rhel | openSUSE | arch Linux）
   # ==============================================================================
@@ -290,6 +297,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     config_sshd      # SSH配置
     configure_ip     # 静态IP配置
     # docker_compose # 安装软件
+    close_env # close python cache
     echo "=== $INIT_SYSTEM_END - $PRETTY_NAME ==="
   }
 
