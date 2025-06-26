@@ -28,6 +28,10 @@ if [[ -z "${LOADED_PYTHON_BRIDGE:-}" ]]; then
     py_exec "$PYTHON_DIR/myshell.py" sh_fix_ip
   }
 
+  sh_clear_cache() {
+    py_exec "$PYTHON_DIR/myshell.py" sh_clear_cache
+  }
+
   # ===== 调用 mypip.py 中的命令 =====
   sh_install_pip() {
     py_exec "$PYTHON_DIR/mypip.py" sh_install_pip

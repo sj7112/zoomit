@@ -8,12 +8,13 @@ import sys
 # default python sys.path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from network_util import NetworkSetup
 from linux_speed_arch import ArchMirrorTester
 from linux_speed_cos import CentosMirrorTester
 from linux_speed_deb import DebianMirrorTester
 from linux_speed_suse import OpenSUSEMirrorTester
 from linux_speed_ubt import UbuntuMirrorTester
+from network_util import NetworkSetup
+from lang_cache import LangCache
 
 
 def main():
@@ -44,6 +45,11 @@ def main():
         case "sh_fix_ip":
             exit_code = NetworkSetup().fix_ip()
             sys.exit(exit_code)
+
+        # clear cache (diskcache for language messages)
+        case "sh_clear_cache":
+            LangCache.get_instance().clear_cache()
+
         case _:
             sys.exit(f"Error: Unknown command '{command}'")
 
