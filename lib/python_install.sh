@@ -10,6 +10,9 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
   source "$LIB_DIR/bash_utils.sh"
   source "$LIB_DIR/python_bridge.sh"
 
+  LOG_FILE="/var/log/sj_install.log"
+  LOG_ERR_FILE="/var/log/sj_pkg_error.log"
+
   PY_BASE_URL="https://github.com/astral-sh/python-build-standalone/releases/download"
   PY_VERSION="3.10.17"
   PY_REL_DATE="20250517" # 使用稳定的发布版本
@@ -268,6 +271,15 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     fi
   }
 
+  # ==============================================================================
+  # 封装命令执行函数并返回状态code（自动生成正常日志，错误信息同时进错误日志）
+  # ==============================================================================
+  run_with_log() {
+    local cmd=("$@")
+    "${cmd[@]}" >>"$LOG_FILE" 2> >(tee -a "$LOG_ERR_FILE" >>"$LOG_FILE")
+    return ${PIPESTATUS[0]}
+  }
+
   configure_pip() {
     local mirror_url="$1"
 
@@ -275,35 +287,37 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     host=$(echo "$mirror_url" | awk -F/ '{print $3}')
 
     # 设置 index-url
-    "$PY_BIN" -m pip config set global.index-url "$mirror_url"
+    run_with_log "$PY_BIN" -m pip config set global.index-url "$mirror_url"
     if [[ $? -ne 0 ]]; then
-      echo "设置 index-url 失败"
+      echo "Config index-url failure"
       return 1
     fi
 
     # 设置 trusted-host
-    "$PY_BIN" -m pip config set global.trusted-host "$host"
-    if [[ $? -ne 0 ]]; then
-      echo "设置 trusted-host 失败"
-      return 1
+    if [[ "$mirror_url" =~ ^http:// ]]; then
+      run_with_log "$PY_BIN" -m pip config set global.trusted-host "$host"
+      if [[ $? -ne 0 ]]; then
+        echo "Config trusted-host failure"
+        return 1
+      fi
     fi
     echo ""
-    echo -e "✅ 已配置 pip 使用新的镜像"
+    echo -e "✨ 已配置 pip 使用新的镜像"
     echo "   镜像: $mirror_url"
     echo "   信任主机: $host"
+    echo ""
   }
 
   upgrade_pip() {
-    echo "[INFO] 升级 pip..."
-    "$PY_BIN" -m pip install --upgrade pip
-    if [[ $? -ne 0 ]]; then
-      echo "[WARNING] pip 升级失败"
+    run_with_log "$PY_BIN" -m pip install --upgrade pip
+    if [[ $? -eq 0 ]]; then
+      echo "[INFO] pip ${CMD_UPGRADE}${CMD_SUCCESS}"
+    else
+      echo "[ERROR] pip ${CMD_UPGRADE}${CMD_FAILURE}"
     fi
   }
 
   install_packages() {
-    echo "[INFO] 安装常用 Python 包..."
-
     packages=(
       typer       # CLI framework
       ruamel.yaml # YAML processing
@@ -314,12 +328,28 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     )
 
     for pkg in "${packages[@]}"; do
-      echo "[INFO] 安装 $pkg..."
-      "$PY_BIN" -m pip install "$pkg"
-      if [[ $? -ne 0 ]]; then
-        echo "[ERROR] 安装 $pkg 失败"
+      run_with_log "$PY_BIN" -m pip install "$pkg"
+      if [[ $? -eq 0 ]]; then
+        echo "[INFO] $pkg ${CMD_INSTALL}${CMD_SUCCESS}"
+      else
+        echo "[ERROR] $pkg ${CMD_INSTALL}${CMD_FAILURE}"
       fi
     done
+  }
+
+  # ==============================================================================
+  # 函数: clean_pkg_mgr 清理缓存
+  # ==============================================================================
+  clean_pkg_mgr() {
+    info "清理 {0} 缓存..." "$DISTRO_PM"
+    local result=0 # 默认成功
+    case "$DISTRO_PM" in
+      apt) cmd="apt-get clean" ;;
+      yum | dnf) cmd="$DISTRO_PM clean all" ;;
+      zypper) cmd="zypper clean -a" ;;
+      pacman) cmd="pacman -Sc --noconfirm" ;;
+    esac
+    cmd_exec "$cmd" || exiterr "清理缓存失败"
   }
 
   # Install Python and create virtual python environment
@@ -339,16 +369,17 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
       echo "=================================================="
 
       set +e
-      sh_install_pip                     # test and pick up a faster mirror (User prompt in Python)
-      if [[ $? -eq 0 ]]; then            # use sys.exit() to return code
+      sh_install_pip # test and pick up a faster mirror (User prompt in Python)
+      status=$?
+      if [[ $status -eq 0 ]]; then       # use sys.exit() to return code
         url=$(cat /tmp/mypip_result.log) # use temp file to return value
-        echo "Python写入的url是: $url"
         configure_pip "$url"
       fi
       set -e
-
-      upgrade_pip
-      install_packages
+      if [[ $status -eq 0 || $status -eq 1 ]]; then
+        upgrade_pip
+        install_packages
+      fi
       echo ""
     fi
   }
