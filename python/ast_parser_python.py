@@ -34,6 +34,20 @@ class PythonASTParser(ASTParser):
     EXTS = "py"
     PATTERNS = "string|exiterr|error|success|warning|info|_mf"
 
+    def _set_function_end_flag(self):
+        """python set function end flag"""
+        if not self.parsers:
+            return False
+
+        end_flag: bool = False
+        for parser in self.parsers:
+            if self.indent > parser.indent:
+                break
+            parser.end_flag = True  # set function end flag by indenting
+            end_flag = True
+
+        return end_flag
+
     def _parse_line_preprocess(self):
         """
         预处理行：移除注释部分和前后空格
@@ -47,6 +61,8 @@ class PythonASTParser(ASTParser):
             3: Multi-line 标记
         """
         if self.line_number >= len(self.lines):
+            self.indent = 0
+            self._set_function_end_flag()
             return 9  # end of file
 
         line_content = self.strip_comment_and_calc_indent()  # 移除右侧注释
@@ -58,15 +74,12 @@ class PythonASTParser(ASTParser):
         if func_match:
             func_name = func_match.group(1)  # 函数名
 
-            if len(self.parsers) > 0:
-                indent_func = self.parsers[-1].indent
-                indent_line = self.indent
-                if indent_func >= indent_line:
-                    self.line_number -= 1  # 回退一行，先处理函数结束，再重新处理新函数
-                    return 9  # 函数结束条件：未缩进
+            if self._set_function_end_flag():
+                self.line_number -= 1  # 回退一行，先处理函数结束，再重新处理新函数
+                return 9  # 函数结束条件：未缩进
 
             # add new function parser
-            self.parsers.append(FuncParser.py(func_name, self.line_number, self.indent))
+            self.parsers.insert(0, FuncParser.py(func_name, self.line_number, self.indent))
             if len(self.parsers) == 1:
                 return 0  # 主函数初始化：继续
             else:
@@ -77,12 +90,10 @@ class PythonASTParser(ASTParser):
             if self._check_heredoc_block():
                 return 0  # Multi-line ：跳过
 
-        if self.parsers:
-            indent_func = self.parsers[-1].indent
-            indent_line = self.indent
-            if indent_func >= indent_line:
-                return 9  # 函数结束条件：未缩进
+        if self._set_function_end_flag():
+            return 9  # 函数结束条件：未缩进
 
+        if self.parsers:
             return 1  # 需进一步解析
 
         return 0  # 异常处理：不在函数内部
@@ -282,7 +293,7 @@ class PythonASTParser(ASTParser):
             return
 
         # 将结果添加到全局数组
-        results = self.parsers[-1].results  # get last function parser
+        results = self.parsers[0].results  # get last function parser
         results.append(f"{cmd} {ln_no} {content}")
 
     def _parse_function(self):
@@ -292,6 +303,8 @@ class PythonASTParser(ASTParser):
 
         # 处理函数体内容
         while True:
+            if "system.py" in self.code_file and self.line_number == 340:
+                print(self.line_number)
             status = self._parse_line_preprocess()
             self.line_number += 1
             match status:

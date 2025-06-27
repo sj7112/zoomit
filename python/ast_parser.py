@@ -33,6 +33,7 @@ class FuncParser:
     line_no: int  # line number
     brace_count: int = 0  # function brace ounts (for shell)
     indent: int = 0  # function indent (only for python)
+    end_flag: bool = False  # sign of function ended
     results: List[str] = field(default_factory=list)  # function parse result set
 
     @classmethod
@@ -63,7 +64,7 @@ class ASTParser:
     """
 
     # Class variables
-    PARENT_DIR = Path(__file__).parent.parent.resolve()
+    PARENT_DIR = Path(__file__).resolve().parent.parent
     DUPL_HASH = "Z-HASH"  # Hash pool (duplicate hashes are not allowed in a file)
 
     def __init__(self, trim_space=False):
@@ -71,15 +72,15 @@ class ASTParser:
         Initialize the parser
         """
         self.trim_space: bool = trim_space
-        self.results: List = []
 
         self.code_file: str
+        self.results: List = []
+
         self.lines: List[str]
         self.line_number: int
+        self.parsers: List[FuncParser]  # nested functions, may have multiple items
         self.line: str  # used by _split_match_type
         self.indent: int  # calc the indent for Python code line
-        self.multiline: bool  # check if multiline starts
-        self.parsers: List[FuncParser] = []
 
     def strip_comment_and_calc_indent(self):
         """calculate indents, remove comments, and trim result"""
@@ -133,13 +134,21 @@ class ASTParser:
         """
         Finish parse function
         """
-        if self.parsers:
-            parser = self.parsers[-1]
+        if not self.parsers:
+            return
+
+        processed_count = 0
+        for parser in self.parsers:
+            if not parser.end_flag:
+                break
             if parser.results:
                 file_rec = self.results[self.code_file]
                 set_func_msgs(file_rec, parser.name, parser.results)
+            processed_count += 1
 
-            self.parsers.pop()  # remove current function parser
+        # Remove the finished items at once
+        if processed_count:
+            self.parsers = self.parsers[processed_count:]
 
     def parse_code_files(self, target):
         """
@@ -152,11 +161,14 @@ class ASTParser:
         self.results = {}  # File => Function | Messages
 
         for code_file in code_files:
+            if "lang_cache.py" in code_file or "system.py" in code_file:
+                print(code_file)
             # Read file content
             self.lines = read_file(code_file)
             code_file = str(Path(code_file).relative_to(self.PARENT_DIR))  # Relative path to project root
             self.code_file = code_file
             self.line_number = 0
+            self.parsers = []
             self.results[code_file] = {self.DUPL_HASH: {}}
 
             while self.line_number < len(self.lines):

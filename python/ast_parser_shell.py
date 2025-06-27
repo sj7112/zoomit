@@ -34,6 +34,16 @@ class ShellASTParser(ASTParser):
     EXTS = "sh"
     PATTERNS = "string|exiterr|error|success|warning|info"
 
+    def _set_function_end_flag(self):
+        """python set function end flag"""
+        if not self.parsers:
+            return False
+
+        parser = self.parsers[0]
+        parser.end_flag = True  # set function end flag by indenting
+
+        return True
+
     def _parse_line_preprocess(self):
         """
         预处理行：移除注释部分和前后空格
@@ -49,6 +59,7 @@ class ShellASTParser(ASTParser):
             9: 单个右括号
         """
         if self.line_number >= len(self.lines):
+            self._set_function_end_flag()
             return 9  # end of file
 
         line_content = self.strip_comment_and_calc_indent()  # 移除右侧注释
@@ -64,7 +75,7 @@ class ShellASTParser(ASTParser):
                 # add new function parser (name, brace_counts)
                 func_name = func_match.group(1)  # 函数名
                 brace_count = 1 if func_match.group(2) else None
-                self.parsers.append(FuncParser.sh(func_name, self.line_number, brace_count))
+                self.parsers.insert(0, FuncParser.sh(func_name, self.line_number, brace_count))
                 if len(self.parsers) == 1:
                     return 0  # 主函数初始化：继续
                 else:
@@ -77,12 +88,13 @@ class ShellASTParser(ASTParser):
 
         # 检查单个括号
         if self.parsers:
-            parser = self.parsers[-1]
+            parser = self.parsers[0]
             if line_content == "{":
                 parser.brace_count += 1  # 出现左括号，计数器+1
             elif line_content == "}":
                 parser.brace_count -= 1  # 出现右括号，计数器-1
                 if parser.brace_count <= 0:
+                    self._set_function_end_flag()
                     return 9  # 函数结束条件：单个右括号
 
             return 1  # 需进一步解析
@@ -245,7 +257,7 @@ class ShellASTParser(ASTParser):
             return
 
         # 将结果添加到全局数组
-        results = self.parsers[-1].results  # get last function parser
+        results = self.parsers[0].results  # get last function parser
         results.append(f"{cmd} {ln_no} {content}")
 
     def _parse_function(self):
