@@ -8,20 +8,21 @@ from typing import List, Optional, Tuple
 import typer
 
 
+sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.path
+
+from python.lang_util import debug_assertion, update_lang_files
+from python.msg_handler import string, info, warning, error, exiterr, get_lang_code
+from python.debug_tool import create_app, default_cmd, print_array
+from python.file_util import write_array
+from python.system import confirm_action
+
+
 # 设置默认路径
 PARENT_DIR = Path(__file__).parent.parent.resolve()
 LIB_DIR = (PARENT_DIR / "lib").resolve()
 CONF_DIR = (PARENT_DIR / "config").resolve()
 LANG_DIR = (CONF_DIR / "lang").resolve()
 
-# default python sys.path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
-from lang_util import debug_assertion, update_lang_files
-from msg_handler import string, info, warning, error, exiterr, get_lang_code
-from debug_tool import create_app, default_cmd, print_array
-from file_util import write_array
-from system import confirm_action
 
 # 确保目录存在
 os.makedirs(LANG_DIR, exist_ok=True)

@@ -2,16 +2,17 @@ from datetime import datetime
 import glob
 import logging
 import os
+from pathlib import Path
 import shutil
 import subprocess
 import re
 import sys
-
-# default python sys.path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
 from typing import Callable, Any, List
-from msg_handler import _mf, error, exiterr, info, warning
+
+
+sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.path
+
+from python.msg_handler import _mf, error, exiterr, info, warning
 
 # 全局日志配置（放在文件开头）
 LOG_FILE = "/var/log/sj_install.log"

@@ -10,14 +10,18 @@ import os
 from pathlib import Path
 import re
 from datetime import datetime
+import sys
 from typing import Dict, List, Optional, Union
 from diskcache import Cache
 
-from debug_tool import print_array
+
+sys.path.append(str(Path(__file__).resolve().parent.parent.parent))  # add root sys.path
+
+from python.debug_tool import print_array
 
 
 # 获取当前文件的绝对路径的父目录
-PARENT_DIR = Path(__file__).parent.parent.resolve()
+PARENT_DIR = Path(__file__).resolve().parent.parent.parent
 PROP_PATH = PARENT_DIR / "config" / "lang"
 DEFAULT_LANG = "en"
 CODE_POSTFIX = ".py"

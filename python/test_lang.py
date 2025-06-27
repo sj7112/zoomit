@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 
+from pathlib import Path
 import sys
 import os
 
 
-# default python sys.path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.path
 
-from msg_handler import exiterr, info, string
-from i18n import resolve_lang_files
-from system import confirm_action
+from python.msg_handler import exiterr, info, string
+from python.i18n import resolve_lang_files
+from python.system import confirm_action
 
 
 # ==============================================================================

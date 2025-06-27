@@ -1,20 +1,14 @@
 #!/usr/bin/env python3
 
-from collections import OrderedDict
-import os
 from pathlib import Path
 import re
 import sys
-from typing import List
 
 
-# default python sys.path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.path
 
-from ast_parser import ASTParser, FuncParser
-from hash_util import set_file_msgs, set_func_msgs
-from file_util import get_code_files, read_file, write_array
-from debug_tool import print_array
+from python.debug_tool import print_array
+from python.ast_parser import ASTParser, FuncParser
 
 
 # ==============================================================================
@@ -315,7 +309,7 @@ class PythonASTParser(ASTParser):
 
 # =============================================================================
 # Debug test function
-# ./python/ast_parser.py bin/i18n.sh bin/init_main.sh
+# ./python/ast_parser.py python/i18n.py python/docker_util.py
 # =============================================================================
 def main():
     parser = PythonASTParser()

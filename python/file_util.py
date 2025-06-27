@@ -8,10 +8,9 @@ import shutil
 import sys
 
 
-# default python sys.path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.path
 
-from msg_handler import error, exiterr, info, warning
+from python.msg_handler import error, exiterr, info, warning
 
 # 获取当前文件的绝对路径的父目录
 PARENT_DIR = Path(__file__).parent.parent.resolve()

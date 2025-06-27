@@ -9,11 +9,10 @@ from pathlib import Path
 from typing import Any, List, Tuple, Union
 
 
-# default python sys.path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.path
 
-from msg_handler import info
-from os_info import OSInfo, get_os_info
+from python.msg_handler import info
+from python.os_info import OSInfo, get_os_info
 
 # Global configuration
 LOG_FILE = "/var/log/sj_install.log"

@@ -4,6 +4,7 @@
 
 import logging
 import os
+from pathlib import Path
 import sys
 import time
 import threading
@@ -16,14 +17,13 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional
 
 
-# default python sys.path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.path
 
-from os_info import get_os_info
-from system import confirm_action, setup_logging
-from cmd_handler import cmd_ex_be, pm_refresh, pm_upgrade
-from msg_handler import error, info, warning
-from file_util import write_array
+from python.os_info import get_os_info
+from python.system import confirm_action, setup_logging
+from python.cmd_handler import cmd_ex_be, pm_refresh, pm_upgrade
+from python.msg_handler import error, info, warning
+from python.file_util import write_array
 
 setup_logging()
 

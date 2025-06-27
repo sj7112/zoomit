@@ -11,14 +11,13 @@ from typing import List, Optional
 from ruamel.yaml import YAML
 
 
-# default python sys.path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.path
 
-from ast_parser_shell import ShellASTParser
-from ast_parser_python import PythonASTParser
-from lang_cache import LangCache
-from file_util import read_lang_prop, write_lang_prop, write_array
-from debug_tool import test_assertion, print_array
+from python.ast_parser_shell import ShellASTParser
+from python.ast_parser_python import PythonASTParser
+from python.cache.lang_cache import LangCache
+from python.file_util import read_lang_prop, write_lang_prop, write_array
+from python.debug_tool import test_assertion, print_array
 
 # 全局变量
 

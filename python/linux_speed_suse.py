@@ -2,18 +2,16 @@
 
 """openSUSE Mirror Speed Tester"""
 
-import os
+from pathlib import Path
 import re
 import sys
-import time
 from typing import List
 
 
-# default python sys.path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.path
 
-from linux_speed import MirrorTester, get_country_name
-from file_util import write_source_file
+from python.linux_speed import MirrorTester, get_country_name
+from python.file_util import write_source_file
 
 
 class OpenSUSEMirrorTester(MirrorTester):

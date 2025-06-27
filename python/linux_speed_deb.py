@@ -2,19 +2,17 @@
 
 """Debian Mirror Speed Tester"""
 
-import os
 from pathlib import Path
 import re
 import sys
 from typing import List
 
 
-# default python sys.path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.path
 
-from linux_speed import MirrorResult, MirrorTester, _is_url_accessible
-from file_util import write_source_file
-from msg_handler import info, error
+from python.linux_speed import MirrorResult, MirrorTester, _is_url_accessible
+from python.file_util import write_source_file
+from python.msg_handler import info, error
 
 
 class DebianMirrorTester(MirrorTester):

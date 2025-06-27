@@ -1,20 +1,19 @@
 #!/usr/bin/env python3
 
-import json
 import os
+from pathlib import Path
 import sys
 
 
-# default python sys.path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(str(Path(__file__).resolve().parent))  # add root sys.path
 
-from linux_speed_arch import ArchMirrorTester
-from linux_speed_cos import CentosMirrorTester
-from linux_speed_deb import DebianMirrorTester
-from linux_speed_suse import OpenSUSEMirrorTester
-from linux_speed_ubt import UbuntuMirrorTester
-from network_util import NetworkSetup
-from lang_cache import LangCache
+from python.linux_speed_arch import ArchMirrorTester
+from python.linux_speed_cos import CentosMirrorTester
+from python.linux_speed_deb import DebianMirrorTester
+from python.linux_speed_suse import OpenSUSEMirrorTester
+from python.linux_speed_ubt import UbuntuMirrorTester
+from python.network_util import NetworkSetup
+from python.cache.lang_cache import LangCache
 
 
 def main():

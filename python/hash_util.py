@@ -2,17 +2,14 @@
 
 import hashlib
 import math
-import os
 from pathlib import Path
 import sys
 from ruamel.yaml import YAML
 
-# default python sys.path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from debug_tool import (
-    test_assertion,
-)
+sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.path
+
+from python.debug_tool import test_assertion
 
 DUPL_HASH = "Z-HASH"  # hash池（一个文件中不允许有重复的hash）
 BASE64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"  # url安全

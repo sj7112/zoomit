@@ -4,17 +4,15 @@ from pathlib import Path
 import os
 import shutil
 import sys
-import time
 
 
-# default python sys.path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.path
 
-from file_util import read_env_file
-from cmd_handler import cmd_ex_str, cmd_ex_pat
-from system import confirm_action, get_network_service, get_static_ip, check_dns
-from msg_handler import _mf, exiterr, info, string
-from debug_tool import print_array
+from python.file_util import read_env_file
+from python.cmd_handler import cmd_ex_str, cmd_ex_pat
+from python.system import confirm_action, get_network_service, get_static_ip, check_dns
+from python.msg_handler import _mf, exiterr, info, string
+from python.debug_tool import print_array
 
 
 def is_cloud_manufacturer(manufacturer):

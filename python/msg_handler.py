@@ -7,7 +7,10 @@ import sys
 import locale
 import inspect
 
-from hash_util import _djb2_with_salt_20, _padded_number_to_base64, md5
+
+sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.path
+
+from python.hash_util import _djb2_with_salt_20, _padded_number_to_base64, md5
 
 
 __all__ = ["string", "_mf"]  # export
@@ -15,7 +18,7 @@ __all__ = ["string", "_mf"]  # export
 # default python sys.path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from lang_cache import LangCache
+from cache.lang_cache import LangCache
 from json_handler import json_getopt
 from debug_tool import print_array
 

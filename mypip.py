@@ -4,15 +4,10 @@
 global pip speed tester, automatically selects the fastest pip mirror
 """
 
-import os
 import time
 import subprocess
 import sys
 import concurrent.futures
-from urllib.parse import urlparse
-
-# default python sys.path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 
 # Global pip mirrors

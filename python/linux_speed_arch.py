@@ -3,17 +3,17 @@
 """Arch Mirror Speed Tester"""
 
 import os
+from pathlib import Path
 import re
 import sys
 from typing import Dict, List
 
 
-# default python sys.path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.path
 
-from linux_speed import MirrorResult, MirrorTester, get_country_name
-from file_util import write_source_file
-from system import confirm_action
+from python.linux_speed import MirrorResult, MirrorTester, get_country_name
+from python.file_util import write_source_file
+from python.system import confirm_action
 
 
 class ArchMirrorTester(MirrorTester):

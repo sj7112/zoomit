@@ -4,18 +4,17 @@
 global package management speed tester, automatically selects the fastest linux mirror
 """
 
-import os
+from pathlib import Path
 import sys
 
 
-# default python sys.path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.path
 
-from linux_speed_deb import DebianMirrorTester
-from linux_speed_ubt import UbuntuMirrorTester
-from linux_speed_cos import CentosMirrorTester
-from linux_speed_suse import OpenSUSEMirrorTester
-from linux_speed_arch import ArchMirrorTester
+from python.linux_speed_deb import DebianMirrorTester
+from python.linux_speed_ubt import UbuntuMirrorTester
+from python.linux_speed_cos import CentosMirrorTester
+from python.linux_speed_suse import OpenSUSEMirrorTester
+from python.linux_speed_arch import ArchMirrorTester
 
 
 def update_source(distro_ostype: str) -> None:
