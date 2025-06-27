@@ -12,7 +12,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.pat
 from python.file_util import read_env_file
 
 # 设置默认路径
-PARENT_DIR = Path(__file__).parent.parent.resolve()
+PARENT_DIR = Path(__file__).resolve().parent.parent
 CONF_DIR = (PARENT_DIR / "config").resolve()
 
 FILE_PATH_INFRA = "/opt/docker/infra"

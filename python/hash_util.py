@@ -16,7 +16,7 @@ BASE64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_
 PROP_FILE = {}  # key=path/program; value = 待翻译消息列表
 
 # 获取当前文件的绝对路径的父目录
-PARENT_DIR = Path(__file__).parent.parent.resolve()
+PARENT_DIR = Path(__file__).resolve().parent.parent
 YML_PATH = PARENT_DIR / "config" / "lang" / "_lang.yml"
 
 

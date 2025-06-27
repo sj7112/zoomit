@@ -7,7 +7,7 @@ import shutil
 import subprocess
 import re
 import sys
-from typing import Callable, Any, List
+from typing import Callable, Any, List, Optional
 
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.path

@@ -13,7 +13,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.pat
 from python.msg_handler import error, exiterr, info, warning
 
 # 获取当前文件的绝对路径的父目录
-PARENT_DIR = Path(__file__).parent.parent.resolve()
+PARENT_DIR = Path(__file__).resolve().parent.parent
 PROP_PATH = PARENT_DIR / "config" / "lang"
 
 

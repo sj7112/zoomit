@@ -18,7 +18,7 @@ from python.system import confirm_action
 
 
 # 设置默认路径
-PARENT_DIR = Path(__file__).parent.parent.resolve()
+PARENT_DIR = Path(__file__).resolve().parent.parent
 LIB_DIR = (PARENT_DIR / "lib").resolve()
 CONF_DIR = (PARENT_DIR / "config").resolve()
 LANG_DIR = (CONF_DIR / "lang").resolve()

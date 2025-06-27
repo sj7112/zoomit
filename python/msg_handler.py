@@ -30,7 +30,7 @@ NC = "\033[0m"  # No Color
 
 # global parameter
 LANG_CACHE = LangCache.get_instance()
-PARENT_DIR = Path(__file__).parent.parent.resolve()
+PARENT_DIR = Path(__file__).resolve().parent.parent
 LIB_DIR = (PARENT_DIR / "lib").resolve()
 
 

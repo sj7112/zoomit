@@ -42,7 +42,7 @@ class NetworkSetup:
     """
 
     # 设置默认路径
-    PARENT_DIR = Path(__file__).parent.parent.resolve()
+    PARENT_DIR = Path(__file__).resolve().parent.parent
     CONF_DIR = (PARENT_DIR / "config/network").resolve()
     env_nw = {}
 
