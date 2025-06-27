@@ -12,7 +12,7 @@ from typing import Any, List, Tuple, Union
 sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.path
 
 from python.msg_handler import info
-from python.os_info import OSInfo, get_os_info
+from python.cache.os_info import OSInfo, get_os_info
 
 # Global configuration
 LOG_FILE = "/var/log/sj_install.log"
