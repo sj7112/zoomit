@@ -3,8 +3,16 @@
 简化的OS信息初始化程序
 """
 
+import os
 import re
 from dataclasses import dataclass
+from typing import Dict
+
+from diskcache import Cache
+
+
+CACHE_PATH = "/tmp/sj_cache"
+INIT_KEY = "__os_cache__"
 
 
 @dataclass
@@ -17,6 +25,76 @@ class OSInfo:
     version_id: str = ""  # 版本号 (如: 11, 12, 22.04)
     package_mgr: str = ""  # 包管理器 (如: apt, yum, dnf, zypper, pacman)
 
+    @classmethod
+    def from_dict(cls, data: Dict[str, str]) -> "OSInfo":
+        """create OSInfo from Dict object"""
+        return cls(
+            ostype=data.get("ostype", ""),
+            codename=data.get("codename", ""),
+            pretty_name=data.get("pretty_name", ""),
+            version_id=data.get("version_id", ""),
+            package_mgr=data.get("package_mgr", ""),
+        )
+
+
+class OSInfoCache:
+    _instance = None  # 单例缓存实例
+
+    def __new__(cls, cache_path: str = CACHE_PATH):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance.cache_path = cache_path
+            cls._instance.cache = None
+            cls._instance._closed = True
+        return cls._instance
+
+    @classmethod
+    def get_instance(cls):
+        instance = cls.__new__(cls)
+        instance.init_cache()  # 确保初始化只做一次
+        return instance
+
+    def init_cache(self) -> None:
+        """
+        一次性写入所有语言数据，每条记录独立存储
+        """
+        if self.cache is None or self._closed or not os.path.exists(self.cache_path):
+            self.cache = Cache(self.cache_path)
+            self._closed = False
+
+        if self.cache.get(INIT_KEY):  # 缓存已经初始化过
+            return
+
+        os_info: OSInfo = init_os_info()
+        with self.cache.transact():
+            self.cache.set(INIT_KEY, os_info)
+
+    def get(self) -> OSInfo:
+        """
+        - 返回全部数据
+        """
+        if self.cache is None or self._closed:
+            raise RuntimeError("Cache not initialized")
+        return OSInfo.from_dict(self.cache.get(INIT_KEY))
+
+    def close_cache(self):
+        """
+        Close the cache and release resources
+        """
+        if self.cache and not self._closed:
+            self.cache.close()
+            self._closed = True
+
+    def clear_cache(self):
+        """
+        Clear the cache and delete the cache file
+        """
+        if self.cache and not self._closed:
+            self.cache.close()
+            self._closed = True
+        self.cache = Cache(self.cache_path)
+        self.cache.clear()
+
 
 _os_info: OSInfo = None
 
@@ -28,7 +106,7 @@ def get_os_info():
     return _os_info
 
 
-def init_os_info(os_release_path: str = "/etc/os-release") -> OSInfo:
+def init_os_info(os_release_path: str = "/etc/os-release") -> Dict[str, str]:
     """
     初始化OS信息
 
@@ -113,9 +191,13 @@ def init_os_info(os_release_path: str = "/etc/os-release") -> OSInfo:
     elif "debian" in raw_data.get("ID_LIKE", ""):
         package_mgr = "apt"
 
-    return OSInfo(
-        ostype=ostype, codename=codename, pretty_name=pretty_name, version_id=version_id, package_mgr=package_mgr
-    )
+    return {
+        ostype: ostype,
+        codename: codename,
+        pretty_name: pretty_name,
+        version_id: version_id,
+        package_mgr: package_mgr,
+    }
 
 
 def main():

@@ -12,13 +12,13 @@ from typing import Any, List, Tuple, Union
 sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.path
 
 from python.msg_handler import info
-from python.cache.os_info import OSInfo, get_os_info
+from python.cache.os_info import OSInfo, OSInfoCache
 
 # Global configuration
 LOG_FILE = "/var/log/sj_install.log"
 DEBUG = False
 
-_os_info: OSInfo = get_os_info()
+_os_info: OSInfo = OSInfoCache.get_instance().get()
 
 
 # ==============================================================================

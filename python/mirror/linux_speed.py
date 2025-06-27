@@ -19,7 +19,7 @@ from typing import Dict, List, Optional
 
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))  # add root sys.path
 
-from python.cache.os_info import get_os_info
+from python.cache.os_info import OSInfoCache
 from python.system import confirm_action, setup_logging
 from python.cmd_handler import cmd_ex_be, pm_refresh, pm_upgrade
 from python.msg_handler import error, info, warning
@@ -84,7 +84,7 @@ class MirrorTester:
                 "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
             }
         )
-        self.os_info = get_os_info()
+        self.os_info = OSInfoCache.get_instance().get()
         self.system_country = os.environ.get("LANGUAGE").split("_")[1].split(":")[0]
         self.mirror_list = ""
         self.netlocs = set()  # 用于去重的域名集合

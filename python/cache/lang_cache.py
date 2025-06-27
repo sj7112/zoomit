@@ -25,7 +25,7 @@ PARENT_DIR = Path(__file__).resolve().parent.parent.parent
 PROP_PATH = PARENT_DIR / "config" / "lang"
 DEFAULT_LANG = "en"
 CODE_POSTFIX = ".py"
-CACHE_PATH = "/tmp/lang_cache"
+CACHE_PATH = "/tmp/sj_cache"
 INIT_KEY = "__lang_cache_initialized__"
 
 
