@@ -65,7 +65,7 @@ def confirm_action(prompt: str, callback: Callable[..., Any] = None, *args: Any,
         exit = kwargs.pop("exit", True)  # default = exit immediately
 
         # Set prompt suffix based on default value
-        if default.upper() == "Y":
+        if default.upper() == "Y" or default.upper() == "YES":
             prompt_suffix = "[Y/n]"
             default_choice = "y"
         else:

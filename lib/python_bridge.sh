@@ -24,6 +24,9 @@ if [[ -z "${LOADED_PYTHON_BRIDGE:-}" ]]; then
     py_exec "$ROOT_DIR/myshell.py" sh_update_source "$DISTRO_OSTYPE"
   }
 
+  sh_config_sshd() {
+    py_exec "$ROOT_DIR/myshell.py" sh_config_sshd
+  }
   # User interaction, cannot use subshells like $(...), use configuration file to pass data
   sh_fix_ip() {
     py_exec "$ROOT_DIR/myshell.py" sh_fix_ip

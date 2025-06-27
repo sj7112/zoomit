@@ -361,7 +361,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
       echo "=================================================="
 
       set +e
-      sh_install_pip # test and pick up a faster mirror (User prompt in Python)
+      sh_install_pip # python adds-on: test and pick up a faster mirror
       status=$?
       if [[ $status -eq 0 ]]; then       # use sys.exit() to return code
         url=$(cat /tmp/mypip_result.log) # use temp file to return value

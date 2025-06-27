@@ -149,7 +149,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   # 返回值: 无 (直接修改 /etc/ssh/sshd_config 并重启 sshd)
   # ==============================================================================
   config_sshd() {
-    local sshd_config="/etc/ssh/sshd_config"
+    # local sshd_config="/etc/ssh/sshd_config"
     echo ""
 
     local ssh_service=$([[ $DISTRO_OSTYPE == ubuntu ]] && echo ssh || echo sshd)
@@ -165,48 +165,55 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
       $SUDO_CMD systemctl enable --now "$ssh_service"
     fi
 
-    # check status
-    if $SUDO_CMD systemctl is-active --quiet "$ssh_service" 2>/dev/null; then
-      # 方法2：从配置文件读取
-      local config_port=""
-      if [[ -f /etc/ssh/sshd_config ]]; then
-        config_port=$(grep -E "^Port " /etc/ssh/sshd_config 2>/dev/null | awk '{print $2}')
-      fi
-      if [[ -n $config_port ]]; then
-        config_port=$(string "(端口={})" "$config_port")
-      fi
-      prompt=$(string "SSH已启动{}，是否重新设置?" "$config_port")
-      if ! confirm_action "$prompt" default="N"; then
-        return
-      fi
+    set +e
+    sh_config_sshd # python adds-on: config /etc/ssh/sshd_config
+    if [[ $? -ne 0 ]]; then
+      return
+    # else
+    #   init_env_nw "$ENV_NW_PATH"
     fi
+    set -e
 
-    # 询问 SSH 端口
-    curr_ssh_port=$(grep -oP '^Port \K\d+' "$sshd_config" || echo 22)
-    read -p "$(string "输入新的SSH端口 (当前: {0}) : " $curr_ssh_port)" ssh_port
-    if [[ "$ssh_port" =~ ^[0-9]+$ && "$ssh_port" -le 65535 ]]; then
-      $SUDO_CMD sed -i "s/^#*Port .*/Port $ssh_port/" "$sshd_config"
-      info "已设置SSH端口: {0}" "$ssh_port"
-    else
-      info "无效端口，保持默认: $curr_ssh_port" >&2
-    fi
+    # # check status
+    # if $SUDO_CMD systemctl is-active --quiet "$ssh_service" 2>/dev/null; then
+    #   # 方法2：从配置文件读取
+    #   local config_port=""
+    #   if [[ -f /etc/ssh/sshd_config ]]; then
+    #     config_port=$(grep -Eo "^[[:space:]]*Port[[:space:]]+[0-9]+" /etc/ssh/sshd_config | grep -Eo "[0-9]+")
+    #   fi
+    #   if [[ -n $config_port ]]; then
+    #     config_port=$(string "(端口={})" "$config_port")
+    #   fi
+    #   prompt=$(string "SSH已启动{}，是否重新设置?" "$config_port")
+    #   if ! confirm_action "$prompt" default="N"; then
+    #     return
+    #   fi
+    # fi
 
-    # 询问是否允许 root 登录
-    #PermitRootLogin prohibit-password
-    read -rp "允许 root 远程登录？[y/N]: " allow_root
-    case "$allow_root" in
-      [Yy]) fl_modify_line "$sshd_config" "PermitRootLogin" "PermitRootLogin yes" && info "已允许 root 登录" ;;
-      [Nn] | "") fl_modify_line "$sshd_config" "PermitRootLogin" "PermitRootLogin no" && info "已禁止 root 登录" ;;
-    esac
+    # # 询问 SSH 端口
+    # curr_ssh_port=$(grep -oP '^Port \K\d+' "$sshd_config" || echo 22)
+    # read -p "$(string "输入新的SSH端口 (当前: {0}) : " $curr_ssh_port)" ssh_port
+    # if [[ "$ssh_port" =~ ^[0-9]+$ && "$ssh_port" -le 65535 ]]; then
+    #   $SUDO_CMD sed -i "s/^#*Port .*/Port $ssh_port/" "$sshd_config"
+    #   info "已设置SSH端口: {0}" "$ssh_port"
+    # else
+    #   info "无效端口，保持默认: $curr_ssh_port" >&2
+    # fi
+
+    # # 询问是否允许 root 登录
+    # #PermitRootLogin prohibit-password
+    # read -rp "允许 root 远程登录？[y/N]: " allow_root
+    # case "$allow_root" in
+    #   [Yy]) fl_modify_line "$sshd_config" "PermitRootLogin" "PermitRootLogin yes" && info "已允许 root 登录" ;;
+    #   [Nn] | "") fl_modify_line "$sshd_config" "PermitRootLogin" "PermitRootLogin no" && info "已禁止 root 登录" ;;
+    # esac
 
     # 重启 SSH 服务
-    if [[ "$DISTRO_OSTYPE" = "ubuntu" ]]; then
-      $SUDO_CMD systemctl restart ssh
-    else
-      $SUDO_CMD systemctl restart sshd
-    fi
+    $SUDO_CMD systemctl restart "$ssh_service"
     if [[ $? -eq 0 ]]; then
-      info "SSH 配置已应用"
+      info "SSH 配置已生效"
+    else
+      warning "systemctl restart $ssh_service 失败，请手动执行"
     fi
   }
 
@@ -214,8 +221,10 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   # 功能3: 配置静态IP
   # --------------------------
   configure_ip() {
+    echo ""
+
     set +e
-    sh_fix_ip # 设置环境配置文件
+    sh_fix_ip # python adds-on: config network as fix ip
     if [[ $? -ne 0 ]]; then
       return
     else

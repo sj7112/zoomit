@@ -7,6 +7,7 @@ import sys
 
 sys.path.append(str(Path(__file__).resolve().parent))  # add root sys.path
 
+from python.config_sshd import SshSetup
 from python.mirror.linux_speed_arch import ArchMirrorTester
 from python.mirror.linux_speed_cos import CentosMirrorTester
 from python.mirror.linux_speed_deb import DebianMirrorTester
@@ -17,14 +18,14 @@ from python.cache.lang_cache import LangCache
 
 
 def main():
-    """服务器管理工具库 - 提供多种配置和管理功能(对接shell脚本)"""
+    """Provides various python functions (integrated with shell scripts)"""
     # print("LANG:", os.environ.get("LANG"))
     # print("LANGUAGE:", os.environ.get("LANGUAGE"))
 
     command = sys.argv[1]
     match command:
         case "sh_update_source":
-            # 选择包管理器，并执行初始化
+            # Select mirror for package manager and perform initialization
             distro_ostype = sys.argv[2]
             match distro_ostype:
                 case "debian":
@@ -40,7 +41,12 @@ def main():
                 case _:
                     sys.exit(f"Error: Unknown distro '{distro_ostype}'")
 
-        # 检查服务器是否使用静态IP并提供交互式选项
+        # Check if the server is using a static IP (user interactive)
+        case "sh_config_sshd":
+            exit_code = SshSetup().config_sshd()
+            sys.exit(exit_code)
+
+        # Check if the server is using a static IP (user interactive)
         case "sh_fix_ip":
             exit_code = NetworkSetup().fix_ip()
             sys.exit(exit_code)

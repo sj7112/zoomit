@@ -25,17 +25,6 @@ class OSInfo:
     version_id: str = ""  # 版本号 (如: 11, 12, 22.04)
     package_mgr: str = ""  # 包管理器 (如: apt, yum, dnf, zypper, pacman)
 
-    @classmethod
-    def from_dict(cls, data: Dict[str, str]) -> "OSInfo":
-        """create OSInfo from Dict object"""
-        return cls(
-            ostype=data.get("ostype", ""),
-            codename=data.get("codename", ""),
-            pretty_name=data.get("pretty_name", ""),
-            version_id=data.get("version_id", ""),
-            package_mgr=data.get("package_mgr", ""),
-        )
-
 
 class OSInfoCache:
     _instance = None  # 单例缓存实例
@@ -75,7 +64,7 @@ class OSInfoCache:
         """
         if self.cache is None or self._closed:
             raise RuntimeError("Cache not initialized")
-        return OSInfo.from_dict(self.cache.get(INIT_KEY))
+        return self.cache.get(INIT_KEY)
 
     def close_cache(self):
         """
@@ -106,7 +95,7 @@ def get_os_info():
     return _os_info
 
 
-def init_os_info(os_release_path: str = "/etc/os-release") -> Dict[str, str]:
+def init_os_info(os_release_path: str = "/etc/os-release") -> OSInfo:
     """
     初始化OS信息
 
@@ -191,13 +180,9 @@ def init_os_info(os_release_path: str = "/etc/os-release") -> Dict[str, str]:
     elif "debian" in raw_data.get("ID_LIKE", ""):
         package_mgr = "apt"
 
-    return {
-        ostype: ostype,
-        codename: codename,
-        pretty_name: pretty_name,
-        version_id: version_id,
-        package_mgr: package_mgr,
-    }
+    return OSInfo(
+        ostype=ostype, codename=codename, pretty_name=pretty_name, version_id=version_id, package_mgr=package_mgr
+    )
 
 
 def main():

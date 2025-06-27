@@ -161,8 +161,6 @@ class ASTParser:
         self.results = {}  # File => Function | Messages
 
         for code_file in code_files:
-            if "lang_cache.py" in code_file or "system.py" in code_file:
-                print(code_file)
             # Read file content
             self.lines = read_file(code_file)
             code_file = str(Path(code_file).relative_to(self.PARENT_DIR))  # Relative path to project root

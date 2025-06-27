@@ -303,8 +303,6 @@ class PythonASTParser(ASTParser):
 
         # 处理函数体内容
         while True:
-            if "system.py" in self.code_file and self.line_number == 340:
-                print(self.line_number)
             status = self._parse_line_preprocess()
             self.line_number += 1
             match status:
