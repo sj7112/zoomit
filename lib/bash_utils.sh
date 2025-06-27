@@ -9,16 +9,6 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
     date +"%Y-%m-%d %H:%M:%S"
   }
 
-  # 记录日志1
-  log_info() {
-    echo "$(timestamp) [INFO] $1"
-  }
-
-  # 记录错误
-  log_error() {
-    echo "$(timestamp) [ERROR] $1" >&2
-  }
-
   # ==============================================================================
   # check_root_path - 检测路径（需root权限）是否存在
   # ==============================================================================
@@ -105,108 +95,6 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
       warning "$cancel_msg"
       return $result
     fi
-  }
-
-  # ==============================================================================
-  # 函数: fl_check_exist
-  # 检查文件是否存在，并返回文件路径（如果存在），否则返回错误
-  # ==============================================================================
-  fl_check_exist() {
-    local file="$1"
-    if [ ! -f "$file" ]; then
-      echo "错误: 文件 '$file' 不存在" >&2
-      return 1 # 返回 1 表示文件不存在
-    fi
-    echo "$file" # 返回文件路径
-  }
-
-  # ==============================================================================
-  # 函数: fl_toggle_comments
-  # 作用: 改配置文件内容（加/去注释）
-  # 参数：
-  # 1. 配置文件路径
-  # 2. 可选参数：
-  #    -c: 找到匹配行并加注释（将行首加上 #）
-  #    -e: 找到已注释的行并去除注释（去掉行首的 #）
-  # 3. 一对或多对参数（每对包含：关键词）
-  #
-  # 示例: 修改参数（单个/多个）
-  #   多个: modify_config "/etc/ssh/sshd_config" "LANG=C" "LANGUAGE=C"
-  # ==============================================================================
-  fl_toggle_comments() {
-    local file mode key
-    mode=$(parse_options "ae" "a") # 解析选项，默认 -a
-    shift $((OPTIND - 1))          # 移除选项参数，剩下的是关键词
-
-    # 偏移已解析的选项，获取文件路径
-    shift $((OPTIND - 1))
-    file="$1"
-    shift # 剩余的是成对的关键词
-
-    # 检查文件是否存在
-    if [ ! -f "$file" ]; then
-      echo "错误: 文件 $file 不存在" >&2
-      return 1
-    fi
-
-    # 遍历剩余的参数，按对处理
-    while [ $# -gt 0 ]; do
-      key="$1"
-      shift # 移动到下一个关键词
-
-      # 如果文件中包含关键词，则执行加/去注释操作
-      if grep -q "$key" "$file"; then
-        if [ "$mode" == "-c" ]; then
-          # 在行首加上 #（注释）
-          $SUDO_CMD sed -i "s/^$key/#$key/" "$file" || return 1
-        elif [ "$mode" == "-e" ]; then
-          # 去掉行首的 #（去注释）
-          $SUDO_CMD sed -i "s/^#$key/$key/" "$file" || return 1
-        fi
-      fi
-    done
-
-    return 0
-  }
-
-  # ==============================================================================
-  # 函数: fl_modify_line
-  # 作用: 修改配置文件内容（找到参数，则替换整行！找不到参数，在文件末尾添加！）
-  # 参数：
-  # 1. 配置文件路径
-  # 2. 一对或多对参数（每对包含：关键词、新内容）
-  #
-  # 示例: 修改参数（单个/多个）
-  #   单个: fl_modify_line "/etc/ssh/sshd_config" "PermitRootLogin" "PermitRootLogin yes"
-  #   多个: fl_modify_line "/etc/ssh/sshd_config" "LANG=C" "#LANG=C" "LANGUAGE=C" "#LANGUAGE=C"
-  # ==============================================================================
-  fl_modify_line() {
-    local file="$1" # 第一个参数是文件路径
-    shift           # 移除文件路径参数，剩余的是成对的 key/new_content
-
-    # 检查文件是否存在
-    if [ ! -f "$file" ]; then
-      echo "错误: 文件 $file 不存在" >&2
-      return 1
-    fi
-
-    # 遍历剩余的参数，按对处理
-    while [ $# -gt 0 ]; do
-      key="$1"
-      new_content="$2"
-      shift 2 # 移动到下一对参数
-
-      # 如果文件中包含关键词，则替换整行
-      if grep -q "$key" "$file"; then
-        # 找到匹配行，替换整行
-        $SUDO_CMD sed -i "s/^.*$key.*$/$new_content/" "$file" || return 1
-      else
-        # 没有找到匹配行，添加到文件末尾
-        echo "$new_content" >>"$file" || return 1
-      fi
-    done
-
-    return 0
   }
 
   # ==============================================================================

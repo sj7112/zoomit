@@ -7,26 +7,6 @@ if [[ -z "${LOADED_SYSTEM:-}" ]]; then
   declare -A TMP_MAP # 定义全局关联数组
 
   # ==============================================================================
-  # get_language_code - 获取语言代码
-  # ==============================================================================
-  get_language_code() {
-    local lang=""
-    # 尝试从多个可能的环境变量获取
-    for var in LANG LC_ALL LC_MESSAGES; do
-      if [ -n "${!var}" ]; then
-        lang=$(echo "${!var}" | awk -F'[_.]' '{print $1}')
-        if [ -n "$lang" ]; then
-          echo "$lang"
-          return 0
-        fi
-      fi
-    done
-    # 如果无法获取，返回默认值
-    echo "en" # 默认为英语
-    return 1
-  }
-
-  # ==============================================================================
   # get_locale_code - 获取locale代码
   # ==============================================================================
   get_locale_code() {
@@ -43,26 +23,6 @@ if [[ -z "${LOADED_SYSTEM:-}" ]]; then
     done
     # 默认返回 en（英语）
     echo "en"
-    return 1
-  }
-
-  # ==============================================================================
-  # get_country_code - 获取国家代码函数
-  # ==============================================================================
-  get_country_code() {
-    local country=""
-    # 尝试从多个可能的环境变量获取
-    for var in LANG LC_ALL LC_MESSAGES; do
-      if [ -n "${!var}" ]; then
-        country=$(echo "${!var}" | awk -F'[_.]' '{print $2}')
-        if [ -n "$country" ]; then
-          echo "$country"
-          return 0
-        fi
-      fi
-    done
-    # 如果无法获取，返回默认值
-    echo "US" # 默认为美国
     return 1
   }
 
