@@ -7,10 +7,9 @@ import re
 import os
 import sys
 
-# default python sys.path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.path
 
-from file_util import read_env_file
+from python.file_util import read_env_file
 
 # 设置默认路径
 PARENT_DIR = Path(__file__).parent.parent.resolve()
