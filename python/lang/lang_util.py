@@ -11,10 +11,10 @@ from typing import List, Optional
 from ruamel.yaml import YAML
 
 
-sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.path
+sys.path.append(str(Path(__file__).resolve().parent.parent.parent))  # add root sys.path
 
-from python.ast_parser_shell import ShellASTParser
-from python.ast_parser_python import PythonASTParser
+from python.lang.ast_parser_shell import ShellASTParser
+from python.lang.ast_parser_python import PythonASTParser
 from python.cache.lang_cache import LangCache
 from python.file_util import read_lang_prop, write_lang_prop, write_array
 from python.debug_tool import test_assertion, print_array
@@ -22,7 +22,7 @@ from python.debug_tool import test_assertion, print_array
 # 全局变量
 
 # 获取当前文件的绝对路径的父目录
-PARENT_DIR = Path(__file__).resolve().parent.parent
+PARENT_DIR = Path(__file__).resolve().parent.parent.parent
 YML_PATH = PARENT_DIR / "config" / "lang" / "_lang.yml"
 
 # 多语言支持

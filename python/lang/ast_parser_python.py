@@ -5,10 +5,10 @@ import re
 import sys
 
 
-sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.path
+sys.path.append(str(Path(__file__).resolve().parent.parent.parent))  # add root sys.path
 
 from python.debug_tool import print_array
-from python.ast_parser import ASTParser, FuncParser
+from python.lang.ast_parser import ASTParser, FuncParser
 
 
 # ==============================================================================

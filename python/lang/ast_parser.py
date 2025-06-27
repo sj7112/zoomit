@@ -7,10 +7,13 @@ import sys
 from typing import List
 
 
-sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.path
+sys.path.append(str(Path(__file__).resolve().parent.parent.parent))  # add root sys.path
 
 from python.hash_util import set_file_msgs, set_func_msgs
 from python.file_util import get_code_files, read_file
+
+PARENT_DIR = Path(__file__).resolve().parent.parent.parent
+DUPL_HASH = "Z-HASH"  # Hash pool (duplicate hashes are not allowed in a file)
 
 
 # ==============================================================================
@@ -62,10 +65,6 @@ class ASTParser:
     """
     AST parser class
     """
-
-    # Class variables
-    PARENT_DIR = Path(__file__).resolve().parent.parent
-    DUPL_HASH = "Z-HASH"  # Hash pool (duplicate hashes are not allowed in a file)
 
     def __init__(self, trim_space=False):
         """
@@ -163,11 +162,11 @@ class ASTParser:
         for code_file in code_files:
             # Read file content
             self.lines = read_file(code_file)
-            code_file = str(Path(code_file).relative_to(self.PARENT_DIR))  # Relative path to project root
+            code_file = str(Path(code_file).relative_to(PARENT_DIR))  # Relative path to project root
             self.code_file = code_file
             self.line_number = 0
             self.parsers = []
-            self.results[code_file] = {self.DUPL_HASH: {}}
+            self.results[code_file] = {DUPL_HASH: {}}
 
             while self.line_number < len(self.lines):
                 self._parse_function()

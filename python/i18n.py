@@ -10,7 +10,7 @@ import typer
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.path
 
-from python.lang_util import debug_assertion, update_lang_files
+from python.lang.lang_util import debug_assertion, update_lang_files
 from python.msg_handler import string, info, warning, error, exiterr, get_lang_code
 from python.debug_tool import create_app, default_cmd, print_array
 from python.file_util import write_array
