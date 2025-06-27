@@ -9,9 +9,9 @@ import sys
 from typing import Dict, List
 
 
-sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.path
+sys.path.append(str(Path(__file__).resolve().parent.parent.parent))  # add root sys.path
 
-from python.linux_speed import MirrorResult, MirrorTester, get_country_name
+from python.mirror.linux_speed import MirrorResult, MirrorTester, get_country_name
 from python.file_util import write_source_file
 from python.system import confirm_action
 

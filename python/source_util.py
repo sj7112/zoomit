@@ -10,11 +10,11 @@ import sys
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.path
 
-from python.linux_speed_deb import DebianMirrorTester
-from python.linux_speed_ubt import UbuntuMirrorTester
-from python.linux_speed_cos import CentosMirrorTester
-from python.linux_speed_suse import OpenSUSEMirrorTester
-from python.linux_speed_arch import ArchMirrorTester
+from python.mirror.linux_speed_deb import DebianMirrorTester
+from python.mirror.linux_speed_ubt import UbuntuMirrorTester
+from python.mirror.linux_speed_cos import CentosMirrorTester
+from python.mirror.linux_speed_suse import OpenSUSEMirrorTester
+from python.mirror.linux_speed_arch import ArchMirrorTester
 
 
 def update_source(distro_ostype: str) -> None:

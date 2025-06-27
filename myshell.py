@@ -7,11 +7,11 @@ import sys
 
 sys.path.append(str(Path(__file__).resolve().parent))  # add root sys.path
 
-from python.linux_speed_arch import ArchMirrorTester
-from python.linux_speed_cos import CentosMirrorTester
-from python.linux_speed_deb import DebianMirrorTester
-from python.linux_speed_suse import OpenSUSEMirrorTester
-from python.linux_speed_ubt import UbuntuMirrorTester
+from python.mirror.linux_speed_arch import ArchMirrorTester
+from python.mirror.linux_speed_cos import CentosMirrorTester
+from python.mirror.linux_speed_deb import DebianMirrorTester
+from python.mirror.linux_speed_suse import OpenSUSEMirrorTester
+from python.mirror.linux_speed_ubt import UbuntuMirrorTester
 from python.network_util import NetworkSetup
 from python.cache.lang_cache import LangCache
 

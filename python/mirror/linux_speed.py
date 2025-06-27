@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional
 
 
-sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.path
+sys.path.append(str(Path(__file__).resolve().parent.parent.parent))  # add root sys.path
 
 from python.os_info import get_os_info
 from python.system import confirm_action, setup_logging
