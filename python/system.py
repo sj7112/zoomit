@@ -14,7 +14,7 @@ from typing import Callable, Any, List
 from msg_handler import _mf, error, exiterr, info, warning
 
 # 全局日志配置（放在文件开头）
-LOG_FILE = "/var/log/sj_pkg_error.log"
+LOG_FILE = "/var/log/sj_install.log"
 
 
 def setup_logging():
