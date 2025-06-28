@@ -272,29 +272,25 @@ class MirrorTester:
             self.cancelled.set()
 
         print()  # return line
-        end_time = time.time()
 
-        # 2 筛选和排序
-        top_10 = self.filter_and_rank_mirrors(fastest_results)
-        if not top_10:
-            print("没有找到可用的镜像")
-            return
+        # 1 filter：Remove mirrors that are completely inaccessible
+        valid_results = [r for r in fastest_results if r.success_rate > 0 and r.avg_speed > 0]
+        if not valid_results:
+            return None
+
+        # 2 sort the results
+        top_10 = self.filter_and_rank_mirrors(valid_results)
 
         # 3 print the result
-        tot_time = end_time - start_time
         self.print_results(top_10)
+        end_time = time.time()
+        tot_time = end_time - start_time
         print(f"\n找到前{len(top_10)}个最快的{self.os_info.ostype}镜像 (共耗时{tot_time:.2f}秒)")
 
         return top_10
 
     def filter_and_rank_mirrors(self, results: List[MirrorResult]) -> tuple:
         """Filter and rank mirrors"""
-        # Remove mirrors that are completely inaccessible
-        valid_results = [r for r in results if r.success_rate > 0 and r.avg_speed > 0]
-
-        if not valid_results:
-            print("警告: 没有找到可用的镜像!")
-            return []
 
         # Sort by composite score (speed * success rate / response time)
         def calculate_score(result: MirrorResult) -> float:
@@ -303,11 +299,11 @@ class MirrorTester:
             return (result.avg_speed * result.success_rate) / result.response_time
 
         # Calculate scores and sort
-        for result in valid_results:
+        for result in results:
             result.score = calculate_score(result)
 
         # Select the top 10 sites
-        return sorted(valid_results, key=lambda x: x.score, reverse=True)
+        return sorted(results, key=lambda x: x.score, reverse=True)
 
     def choose_mirror(self) -> None:
         """Select the fastest mirror and update the package manager file"""
@@ -315,8 +311,11 @@ class MirrorTester:
         self.fetch_mirror_list(12 if self.is_debug else None)
 
         top_10 = self.test_all_mirrors()
-        tot_len = len(top_10)
+        if not top_10:
+            print("没有找到可用的镜像")
+            return 3
 
+        tot_len = len(top_10)
         while True:
             print(f"\n请选择要使用的镜像 (1-{tot_len})，输入 0 表示不更改:")
 
