@@ -65,6 +65,17 @@
         },
         {
             "type": "debugpy",
+            "name": "Python: 启动 config_sshd.py",
+            "request": "launch",
+            "program": "${workspaceFolder}/python/config_sshd.py",
+            "args": [],
+            "env": {
+                "DEBUG": "1"
+            },
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "debugpy",
             "name": "Python: 启动 i18n.py",
             "request": "launch",
             "program": "${workspaceFolder}/python/i18n.py",
@@ -142,11 +153,11 @@
             "type": "debugpy",
             "name": "Python: 启动 myshell.py",
             "request": "launch",
-            "program": "${workspaceFolder}/python/myshell.py",
+            "program": "${workspaceFolder}/myshell.py",
             "args": [
-                "sh_fix_ip",
+                // "sh_fix_ip",
                 // ""
-                // "sh_update_source",
+                "sh_update_source",
                 "debian",
                 // "ubuntu",
                 // "centos",
