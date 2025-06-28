@@ -208,16 +208,6 @@ class MirrorTester:
             logging.error(msg)
             return None  # 没有成功的测试
 
-    def current_mirror(self):
-        """Check if the currently selected mirror is valid"""
-        curr_url = None
-        if len(self.urls) > 0:
-            for mirror in self.mirrors:
-                if mirror["url"] == self.urls[0]:
-                    curr_url = mirror["url"]
-                    break
-        return curr_url
-
     def test_all_mirrors(self, max_workers: int = 20, top_n: int = 10) -> List[MirrorResult]:
         """Test speed for all mirrors, only keep top_10"""
 
@@ -321,6 +311,8 @@ class MirrorTester:
 
     def choose_mirror(self) -> None:
         """Select the fastest mirror and update the package manager file"""
+        # fetch all active mirrors
+        self.fetch_mirror_list(12 if self.is_debug else None)
 
         top_10 = self.test_all_mirrors()
         tot_len = len(top_10)
@@ -383,13 +375,15 @@ class MirrorTester:
                 print(f"没有找到{self.os_info.package_mgr}源配置文件")
                 return
 
-            # 2. fetch all active mirrors
-            self.fetch_mirror_list(12 if self.is_debug else None)
+            if self.curr_mirror:
+                prompt = f"{'已选镜像: ' + self.curr_mirror}是否重新选择镜像?"
+                default = "N"
+            else:
+                prompt = f"是否重新选择镜像?"
+                default = "Y"
 
-            # 3. update mirrors
-            curr_url = self.current_mirror()
-            prompt = f"{'已选镜像: ' + curr_url + ' ' if curr_url else ''}是否重新选择镜像?"
-            ret_code = confirm_action(prompt, self.choose_mirror, default="N")
+            # 2. update mirrors
+            ret_code = confirm_action(prompt, self.choose_mirror, default=default)
             default = "N" if ret_code != 0 else "Y"
         except Exception as e:
             print(f"\n程序运行出错: {e}")
@@ -398,5 +392,6 @@ class MirrorTester:
             traceback.print_exc()
 
         finally:
+            # 3. upgrade PM configuration
             prompt = "\n是否立刻升级软件包?"
-            confirm_action(prompt, pm_upgrade, default=f"{default}")  # upgrade PM configuration
+            confirm_action(prompt, pm_upgrade, default=f"{default}")
