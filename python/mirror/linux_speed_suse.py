@@ -13,6 +13,8 @@ sys.path.append(str(Path(__file__).resolve().parent.parent.parent))  # add root 
 from python.mirror.linux_speed import MirrorTester, get_country_name
 from python.file_util import write_source_file
 
+DEF_URL = "https://download.opensuse.org/"
+
 
 class OpenSUSEMirrorTester(MirrorTester):
     def __init__(self):
@@ -66,8 +68,6 @@ class OpenSUSEMirrorTester(MirrorTester):
     def check_file(self, file_path):
         """filepath and urls"""
         baseurl = None
-        urls = []
-
         with open(file_path, "r", encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
@@ -76,20 +76,22 @@ class OpenSUSEMirrorTester(MirrorTester):
                     break
 
             if baseurl:
-                urls.append(re.split(r"/(distribution|update)/", baseurl)[0] + "/")
+                self.urls.append(re.split(r"/(distribution|update)/", baseurl)[0] + "/")
 
-        return (file_path, urls) if urls else (None, [])
+        if self.urls:
+            self.path = file_path
+            # assume the first url is the default mirror
+            if self.urls[0] != DEF_URL:
+                self.curr_mirror = self.urls[0]
 
     def find_mirror_source(self):
         """check repo-oss.repo, get path and urls"""
 
         SOURCE_FILE = "/etc/zypp/repos.d/repo-oss.repo"
 
-        self.path, self.urls = self.check_file(SOURCE_FILE)
+        self.check_file(SOURCE_FILE)
         if self.path:
             return
-
-        self.path = None
 
     # ==============================================================================
     # (2) Search Fast mirrors
@@ -159,7 +161,6 @@ class OpenSUSEMirrorTester(MirrorTester):
             write_source_file(path, lines)
 
     def add_custom_sources(self, url: str) -> str:
-        def_url = "https://download.opensuse.org/"
 
         repo_map = {
             "repo-oss": {"name": "main repository", "path": "distribution/leap/$releasever/repo/oss/"},
@@ -196,7 +197,7 @@ class OpenSUSEMirrorTester(MirrorTester):
                 "",
             ]
             # extend official value
-            full_url = def_url + info["path"]
+            full_url = DEF_URL + info["path"]
             gpgkey_url = full_url + "/repodata/repomd.xml.key"
             lines.extend(
                 [

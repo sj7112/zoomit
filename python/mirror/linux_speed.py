@@ -86,9 +86,12 @@ class MirrorTester:
         )
         self.os_info = OSInfoCache.get_instance().get()
         self.system_country = os.environ.get("LANGUAGE").split("_")[1].split(":")[0]
+        self.path = None  # package management configuation file
+        self.urls = []  # urls in the core configuration file
+        self.curr_mirror = None
         self.mirror_list = ""
-        self.netlocs = set()  # 用于去重的域名集合
-        self.is_debug = os.environ.get("DEBUG") == "1"  # 测试标志
+        self.netlocs = set()  # Unique domain names set (domain support both https and http, use https)
+        self.is_debug = os.environ.get("DEBUG") == "1"  # debug flag
 
     def fetch_mirror_list(self, limit: int = None) -> None:
         print(f"{self.os_info.ostype}镜像速度测试工具")

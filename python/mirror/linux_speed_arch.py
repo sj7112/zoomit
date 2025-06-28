@@ -47,8 +47,6 @@ class ArchMirrorTester(MirrorTester):
     # ==============================================================================
     def check_file(self, file_path):
         """filepath and urls"""
-        urls = []
-
         with open(file_path, "r", encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
@@ -57,21 +55,20 @@ class ArchMirrorTester(MirrorTester):
                     match = re.search(r"(https?://[^\s]+?/?)(?:\$repo/os/\$arch)?/?$", line)
                     if match:
                         url = match.group(1)
-                        if url not in urls:
-                            urls.append(url)
+                        if url not in self.urls:
+                            self.urls.append(url)
 
-        return (file_path, urls) if urls else (None, [])
+        if self.urls:
+            self.path = file_path
 
     def find_mirror_source(self):
         """find config file, get path and urls"""
 
         SOURCE_FILE = "/etc/pacman.d/mirrorlist"
 
-        self.path, self.urls = self.check_file(SOURCE_FILE)
+        self.check_file(SOURCE_FILE)
         if self.path:
             return
-
-        self.path = None
 
     # ==============================================================================
     # (2) Search Fast mirrors

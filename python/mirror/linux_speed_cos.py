@@ -99,7 +99,6 @@ class CentosMirrorTester(MirrorTester):
     # ==============================================================================
     def check_file(self, file_path):
         """filepath and urls"""
-        urls = []
         current_section = None
         valid_sections = ["Base", "Updates", "Extras"]
 
@@ -125,21 +124,20 @@ class CentosMirrorTester(MirrorTester):
                         # /centos/ or /centos-vault/
                         match = re.match(r"(https?://[^/]+/(centos|centos-vault)/)", url)
                         if match:
-                            urls.append(match.group(1))  # base URL
+                            self.urls.append(match.group(1))  # base URL
                     current_section = None  # reset section
 
-        return (file_path, urls) if urls else (None, [])
+        if self.urls:
+            self.path = file_path
 
     def find_mirror_source(self):
         """check CentOS-Base.repo, get path and urls"""
 
         SOURCE_FILE = "/etc/yum.repos.d/CentOS-Base.repo"
 
-        self.path, self.urls = self.check_file(SOURCE_FILE)
+        self.check_file(SOURCE_FILE)
         if self.path:
             return
-
-        self.path = None
 
     # ==============================================================================
     # (2) Search Fast mirrors

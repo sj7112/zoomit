@@ -16,6 +16,9 @@ from python.mirror.linux_speed import MirrorResult, MirrorTester, _is_url_access
 from python.file_util import write_source_file
 from python.msg_handler import info, error
 
+DEF_URL = "https://archive.ubuntu.com/ubuntu/"
+DEF_URL_SEC = "https://security.ubuntu.com/ubuntu/"
+
 
 class UbuntuMirrorTester(MirrorTester):
     def __init__(self):
@@ -49,25 +52,27 @@ class UbuntuMirrorTester(MirrorTester):
     # ==============================================================================
     def check_file(self, file_path):
         """filepath and urls"""
-        urls = []
         with open(file_path, "r", encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if line.startswith("#") or not line:
                     continue
                 elif line.startswith("cdrom:"):
-                    urls.append("cdrom:")
+                    self.urls.append("cdrom:")
                     break
                 else:
                     match = re.match(r"^\s*(?:deb|deb-src)\s+(http[s]?://[^\s]+)", line)
                     if match:
-                        urls.append(match.group(1))
+                        self.urls.append(match.group(1))
 
-        return (file_path, urls) if urls else (None, [])
+        if self.urls:
+            self.path = file_path
+            # assume the first url is the default mirror
+            if self.urls[0] != DEF_URL:
+                self.curr_mirror = self.urls[0]
 
     def check_file_new_format(self, file_path):
         """check new format (Deb822 .sources files)"""
-        urls = []
         with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
             uri_matches = re.findall(r"^\s*URIs:\s+(.+)$", content, re.MULTILINE)
@@ -75,10 +80,13 @@ class UbuntuMirrorTester(MirrorTester):
                 uris = uri_line.strip().split()
                 for uri in uris:
                     if uri.startswith(("http://", "https://")):
-                        urls.append(uri)
-        if urls:
-            return file_path, urls
-        return None, urls
+                        self.urls.append(uri)
+
+        if self.urls:
+            self.path = file_path
+            # assume the first url is the default mirror
+            if self.urls[0] != DEF_URL:
+                self.curr_mirror = self.urls[0]
 
     def find_mirror_source(self):
         """find config file, get path and urls"""
@@ -88,22 +96,20 @@ class UbuntuMirrorTester(MirrorTester):
 
         # 1. Deb822 new format: /etc/apt/sources.list.d/*.sources
         for full_path in Path(SOURCE_LIST_D_DIR).glob("*.sources"):
-            self.path, self.urls = self.check_file_new_format(full_path)
+            self.check_file_new_format(full_path)
             if self.path:
                 return
 
         # 2. traditional format: /etc/apt/sources.list
-        self.path, self.urls = self.check_file(SOURCE_FILE)
+        self.check_file(SOURCE_FILE)
         if self.path:
             return
 
         # 3. old style: /etc/apt/sources.list.d/*.list
         for full_path in Path(SOURCE_LIST_D_DIR).glob("*.list"):
-            self.path, self.urls = self.check_file(full_path)
+            self.check_file(full_path)
             if self.path:
                 return
-
-        self.path = None
 
     # ==============================================================================
     # (2) Search Fast mirrors
@@ -161,9 +167,6 @@ class UbuntuMirrorTester(MirrorTester):
     # (3) Update PM File
     # ==============================================================================
     def update_pm_file(self, mirror):
-        def_url = "https://archive.ubuntu.com/ubuntu/"
-        def_url_sec = "https://security.ubuntu.com/ubuntu/"
-
         # 1. check custom mirror
         self.check_mirror_components(mirror)
         url, url_sec = mirror.url, mirror.url_sec
@@ -172,7 +175,7 @@ class UbuntuMirrorTester(MirrorTester):
         lines = self.add_custom_sources(url, url_sec)
 
         # 3. generate default content
-        lines.extend(self.add_default_sources(def_url, def_url_sec))
+        lines.extend(self.add_default_sources())
 
         # 4. update source file
         write_source_file(self.path, lines)
@@ -210,7 +213,7 @@ class UbuntuMirrorTester(MirrorTester):
             "",
         ]
 
-    def add_default_sources(self, def_url: str, def_url_sec: str) -> list[str]:
+    def add_default_sources(self) -> list[str]:
         """
         add sources block (archive | security) for custom mirrors
         one block for each suite, separated by empty lines.
@@ -219,8 +222,8 @@ class UbuntuMirrorTester(MirrorTester):
         codename = self.os_info.codename
         lines = []
         suites = [
-            (def_url, f"{codename} {codename}-updates {codename}-backports"),
-            (def_url_sec, f"{codename}-security"),
+            (DEF_URL, f"{codename} {codename}-updates {codename}-backports"),
+            (DEF_URL_SEC, f"{codename}-security"),
         ]
 
         for uri, suite in suites:
