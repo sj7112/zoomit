@@ -351,7 +351,8 @@ class MirrorTester:
 
             except KeyboardInterrupt:
                 # User interrupted with Ctrl+C
-                print("\n\nOperation canceled\n")
+                print()
+                print("Operation canceled")
                 return 2
 
     def print_results(self, results: List[MirrorResult]):
@@ -376,7 +377,7 @@ class MirrorTester:
                 return
 
             if self.curr_mirror:
-                prompt = f"{'已选镜像: ' + self.curr_mirror}是否重新选择镜像?"
+                prompt = f"{'已选镜像: ' + self.curr_mirror}\n是否重新选择镜像?"
                 default = "N"
             else:
                 prompt = f"是否重新选择镜像?"

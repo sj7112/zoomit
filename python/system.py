@@ -91,7 +91,7 @@ def confirm_action(prompt: str, callback: Callable[..., Any] = None, *args: Any,
                 return 2
 
     except KeyboardInterrupt:
-        print("\n")
+        print()
         print(_mf("操作已取消"))
         return 2
     except Exception as e:
