@@ -80,7 +80,7 @@ if [[ -z "${LOADED_NETWORK:-}" ]]; then
   comment_ifupdown() {
     IFACE="${ENV_NETWORK["MAIN_IFACE"]}" # 网络接口名
 
-    NET_FILE="/etc/network/interfaces"
+    local NET_FILE="/etc/network/interfaces"
     if [[ -f "$NET_FILE" ]]; then
       # backup original network file
       $SUDO_CMD cp "$NET_FILE" "${NET_FILE}.$(date +%Y%m%d_%H%M%S)"
@@ -106,7 +106,7 @@ if [[ -z "${LOADED_NETWORK:-}" ]]; then
 
     # 1. 检查配置文件
     NETDIR="/etc/systemd/network"
-    NET_FILE="$NETDIR/10-$IFACE.network"
+    local NET_FILE="$NETDIR/10-$IFACE.network"
     if [ -f "$NET_FILE" ]; then
       $SUDO_CMD cp "$NET_FILE" "$NET_FILE.$(date +%Y%m%d_%H%M%S)"
     else
@@ -124,9 +124,9 @@ Address=$IP_ADDR/$PREFIX
 Gateway=$GATEWAY
 DNS=$DNS
 EOF
-  }
 
-  info "add new config file {}" $NET_FILE
+    info "add new config file {}" $NET_FILE
+  }
 
   # ==============================================================================
   # 配置切换脚本代码（networking -> systemd-networkd）
