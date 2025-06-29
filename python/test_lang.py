@@ -81,7 +81,7 @@ def add_lang_files(lang_code: str, lang_files: list[str]):
     template = string(
         """# {0} 语言包，文档结构：
 # 1. 自动处理 bin | lib 目录 sh 文件
-# 2. 解析函数 string | info | exiterr | error | success | warning
+# 2. 解析函数 exiterr | error | success | warning | info | string | _mf
 # 3. key=distinct hash code + position + order
 # 4. value=localized string""",
         lang_code,

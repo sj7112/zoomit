@@ -22,6 +22,9 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
   VENV_DIR="$HOME/.venv"
   VENV_BIN="$HOME/.venv/bin/python"
 
+  mirror_list=() # 👈 定义为全局数组
+  fail_list=()
+
   # ==============================================================================
   # 安装python虚拟环境
   # ==============================================================================
@@ -178,7 +181,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
           fi
 
           # 缓存统计信息（除了spinner和时间）
-          cached_stats=$(string "大小: $human_size ↑$size_change | 平均: $avg_speed_text")
+          cached_stats=$(_mf "大小: $human_size ↑$size_change | 平均: $avg_speed_text")
           prev_size=$current_size
         else
           cached_stats="等待文件创建..."
@@ -186,7 +189,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
       fi
 
       # 每0.5秒更新显示（只更新spinner和当前时间）
-      display_content=$(string "$(date '+%H:%M:%S') | 运行时间: $elapsed_formatted | $cached_stats")
+      display_content=$(_mf "$(date '+%H:%M:%S') | 运行时间: $elapsed_formatted | $cached_stats")
       printf "\r\033[K[%s] %s" "${spinner}" "${display_content}"
       sleep 0.5
     done
@@ -264,10 +267,12 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     # 删除已存在的虚拟环境
     if [[ -d "$VENV_DIR" ]]; then
       if ! confirm_action "虚拟环境 $VENV_DIR 已存在，是否删除重建？" default="N"; then
+        echo ""
         local pip_url=$("$VENV_BIN" -m pip config get global.index-url 2>/dev/null)
         local prompt=""
         if [[ -n $pip_url ]]; then
-          prompt=$(string "当前pip镜像: {}" "${pip_url}")$'\n'
+          prompt=$(_mf "当前pip镜像: {}" "${pip_url}")
+          prompt=${prompt}$'\n'
         fi
         prompt="${prompt}是否重建 pip 和所需 python 库？"
         confirm_action "$prompt" default="N" msg="跳过虚拟环境创建"
@@ -356,22 +361,145 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
       fi
     done
   }
+
+  # get result for all mirrors after test speed
+  show_pip_mirrors() {
+    log_file="/tmp/mypip_mirror_list.log"
+
+    # 读取并分类记录
+    while IFS="|" read -r status name url time; do
+      if [[ "$status" == "success" ]]; then
+        mirror_list+=("$name|$url|$time")
+      else
+        fail_list+=("$name|$url|$status")
+      fi
+    done <"$log_file"
+
+    # 打印成功记录
+    if [[ ${#mirror_list[@]} -gt 0 ]]; then
+      # 计算列宽
+      max_name=4
+      max_url=0
+      for item in "${mirror_list[@]}"; do
+        IFS="|" read -r name url time <<<"$item"
+        ((${#name} > max_name)) && max_name=${#name}
+        ((${#url} > max_url)) && max_url=${#url}
+      done
+      ((max_name += 4))
+      ((max_url += 4))
+
+      # 打印表头
+      printf "%-9s%-*s%6s%-*s%8s\n" "序号" "$max_name" "镜像名" "" "$max_url" "URL地址" "耗时"
+      printf "%0.s-" $(seq 1 $((max_name + max_url + 16))) && echo
+
+      # 打印数据
+      i=1
+      for item in "${mirror_list[@]}"; do
+        IFS="|" read -r name url time <<<"$item"
+        printf "%-4d %-*s %-*s %7.2fs\n" "$i" $max_name "$name" $max_url "$url" "$time"
+        ((i++))
+      done
+
+      # 最快镜像（第一条）
+      IFS="|" read -r fastest_name fastest_url fastest_time <<<"${mirror_list[0]}"
+      echo
+      echo "🚀 最快镜像: $fastest_name"
+      echo "   URL地址: $fastest_url"
+      printf "   响应时间: %.2fs\n" "$fastest_time"
+    fi
+
+    # 打印失败记录
+    if [[ ${#fail_list[@]} -gt 0 ]]; then
+      echo
+      echo "❌ 失败的镜像（${#fail_list[@]} 个）："
+
+      max_name=0
+      max_url=0
+      for item in "${fail_list[@]}"; do
+        IFS="|" read -r name url status <<<"$item"
+        ((${#name} > max_name)) && max_name=${#name}
+        ((${#url} > max_url)) && max_url=${#url}
+      done
+      ((max_name += 4))
+      ((max_url += 4))
+
+      printf "%-*s %-*s %8s\n" $max_name "镜像名" $max_url "URL地址" "状态"
+      printf "%0.s-" $(seq 1 $((max_name + max_url + 8))) && echo
+
+      for item in "${fail_list[@]}"; do
+        IFS="|" read -r name url status <<<"$item"
+        # 中文状态转换
+        case "$status" in
+          timeout) status_msg="超时" ;;
+          failed) status_msg="失败" ;;
+          error) status_msg="错误" ;;
+          *) status_msg="$status" ;;
+        esac
+        printf "%-*s %-*s %8s\n" $max_name "$name" $max_url "$url" "$status_msg"
+      done
+    fi
+  }
+
+  # Select a mirror from the list of available mirrors
+  choose_pip_mirror() {
+    local len=${#mirror_list[@]}
+    local choice
+    local choice_num
+    local selected_mirror
+    local url
+
+    if [[ $len -eq 0 ]]; then
+      string "\n⚠️  没有找到可用的镜像，请检查网络连接"
+      return 3
+    fi
+
+    while true; do
+      local prompt=$(_mf "\n请选择要使用的镜像，输入 0 表示不更改 (0-{}):  " "$len")
+      read -rp "$prompt" choice
+      choice="${choice// /}" # 去除空白字符
+      if [[ "$choice" == "0" ]]; then
+        string "已取消配置，保持当前设置"
+        return 1
+      fi
+
+      # 判断是否为整数
+      if [[ "$choice" =~ ^[0-9]+$ ]]; then
+        choice_num=$((choice))
+        if ((choice_num >= 1 && choice_num <= len)); then
+          selected_mirror="${mirror_list[choice_num - 1]}"
+          # mirror sample：AARNET (Australia)|https://pypi.aarnet.edu.au/simple/|0.4954190254211426
+          url="${selected_mirror%%|*}" # 取第1段，名字
+          url="${selected_mirror#*|}"  # 去掉第1段及分隔符
+          url="${url%%|*}"             # 取第2段，URL
+          echo "$url"
+          return 0
+        fi
+      fi
+
+      string "[ERROR] 输入错误！请输入 0-$len 之间的数字"
+    done
+  }
+
   # ==============================================================================
   # 函数: create venv, install pip
   # ==============================================================================
   create_py_venv() {
     # create ~/.venv; install pip; install third party packages
     if install_py_venv; then
+      echo ""
       echo "=================================================="
       echo "🌍 测试全球 pip 可用镜像速度..."
       echo "=================================================="
 
       set +e
       sh_install_pip # python adds-on: test and pick up a faster mirror
-      status=$?
-      if [[ $status -eq 0 ]]; then       # use sys.exit() to return code
-        url=$(cat /tmp/mypip_result.log) # use temp file to return value
-        configure_pip "$url"
+      local status=$?
+      if [[ $status -eq 0 ]]; then # use sys.exit() to return code
+        show_pip_mirrors
+        url=$(choose_pip_mirror)
+        status=$?
+        # url=$(cat /tmp/mypip_result.log) # use temp file to return value
+        [[ $status -eq 0 ]] && configure_pip "$url"
       fi
       set -e
 

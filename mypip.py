@@ -4,6 +4,7 @@
 global pip speed tester, automatically selects the fastest pip mirror
 """
 
+import pprint
 import time
 import subprocess
 import sys
@@ -31,6 +32,14 @@ GLOBAL_MIRRORS = {
     # Australia
     "AARNET (Australia)": "https://pypi.aarnet.edu.au/simple/",
 }
+
+
+def msg_parse_tmpl(template, *args):
+    for i, var in enumerate(args):
+        template = template.replace("{}", str(var), 1)  # replace the frist {}
+        template = template.replace(f"{{{i}}}", str(var))  # replace all {i}
+
+    return template
 
 
 def test_mirror_speed(mirror_name, mirror_url, timeout=10):
@@ -90,59 +99,58 @@ def test_pip_mirrors(max_workers=5):
             result = future.result()
             results.append(result)
 
-    """显示测试结果"""
-    # 按速度排序
+    # show result: Sort by speed
     successful_results = [r for r in results if r["status"] == "success"]
     failed_results = [r for r in results if r["status"] != "success"]
 
     successful_results.sort(key=lambda x: x["time"])
+    return successful_results, failed_results
 
-    if successful_results:
-        # 计算每列的最大宽度
-        name_width = max(len(r["name"]) for r in successful_results) + 4
-        url_width = max(len(r["url"]) for r in successful_results) + 4
+    # if successful_results:
+    #     # max width of each column
+    #     name_width = max(len(r["name"]) for r in successful_results) + 4
+    #     url_width = max(len(r["url"]) for r in successful_results) + 4
 
-        # 打印表头
-        print(f"{'序号':<4} {'镜像名':<{name_width}} {'URL地址':<{url_width - 4}} 耗时")
-        print("-" * (4 + name_width + url_width + 12))
+    #     # print title
+    #     print(f"{'序号':<4} {'镜像名':<{name_width}} {'URL地址':<{url_width - 4}} 耗时")
+    #     print("-" * (4 + name_width + url_width + 12))
 
-        # 打印数据行
-        for i, result in enumerate(successful_results, 1):
-            time_str = f"{result['time']:.2f}s"
-            print(f"{i:<4} {result['name']:<{name_width}} {result['url']:<{url_width}} {time_str:>8}")
+    #     # print data line
+    #     for i, result in enumerate(successful_results, 1):
+    #         time_str = f"{result['time']:.2f}s"
+    #         print(f"{i:<4} {result['name']:<{name_width}} {result['url']:<{url_width}} {time_str:>8}")
 
-        fastest = successful_results[0]
-        print(f"\n🚀 最快镜像: {fastest['name']}")
-        print(f"   URL地址: {fastest['url']}")
-        print(f"   响应时间: {fastest['time']:.2f}s")
+    #     fastest = successful_results[0]
+    #     print()
+    #     print(f"🚀 最快镜像: {fastest['name']}")
+    #     print(f"   URL地址: {fastest['url']}")
+    #     print(f"   响应时间: {fastest['time']:.2f}s")
 
-        return successful_results
+    # if failed_results:
+    #     print(f"\n❌ 失败的镜像 ({len(failed_results)}个):")
 
-    if failed_results:
-        print(f"\n❌ 失败的镜像 ({len(failed_results)}个):")
+    #     # max width of each column
+    #     name_width = max(len(r["name"]) for r in failed_results) + 4
+    #     url_width = max(len(r["url"]) for r in failed_results) + 4
 
-        # 计算失败结果的列宽
-        name_width = max(len(r["name"]) for r in failed_results) + 4
-        url_width = max(len(r["url"]) for r in failed_results) + 4
+    #     # print title
+    #     print(f"{'镜像名':<{name_width}} {'URL地址':<{url_width}} {'状态':>8}")
+    #     print("-" * (name_width + url_width + 8))
 
-        # 打印失败结果的表头
-        print(f"{'镜像名':<{name_width}} {'URL地址':<{url_width}} {'状态':>8}")
-        print("-" * (name_width + url_width + 8))
+    #     for result in failed_results:
+    #         status_msg = {"timeout": "超时", "failed": "失败", "error": "错误"}.get(result["status"], result["status"])
+    #         print(f"{result['name']:<{name_width}} {result['url']:<{url_width}} {status_msg:>8}")
 
-        for result in failed_results:
-            status_msg = {"timeout": "超时", "failed": "失败", "error": "错误"}.get(result["status"], result["status"])
-            print(f"{result['name']:<{name_width}} {result['url']:<{url_width}} {status_msg:>8}")
-
-    return None
+    # return None
 
 
 def choose_pip_mirror():
     """
-    从镜像列表中选择一个镜像
-    参数:
-        mirror_list: 可用镜像列表，每个元素包含 name, url, time 等信息
-    返回:
-        选中的镜像字典，如果用户选择不更改则返回 None
+    Select a mirror from the list of available mirrors.
+    Parameters:
+        mirror_list: A list of available mirrors, each containing name, url, time, etc.
+    Returns:
+        The selected mirror dictionary, or None if the user chooses not to change.
     """
     try:
         mirror_list = test_pip_mirrors()
@@ -178,13 +186,28 @@ def choose_pip_mirror():
 
     except KeyboardInterrupt:
         # 用户按 Ctrl+C 中断
-        print("\n\n已取消操作")
+        print()
+        print("已取消操作")
         return 2, None
 
 
 def main():
     """主函数"""
 
+    # Test all mirrors and return the result
+    mirror_list, failed_list = test_pip_mirrors()
+    if mirror_list:
+        with open("/tmp/mypip_mirror_list.log", "w", encoding="utf-8") as fh:
+            # 如果是列表，写入索引和值
+            for value in mirror_list:
+                line = f"{value['status']}|{value['name']}|{value['url']}|{value['time']}"
+                fh.write(f"{line}\n")
+            for value in failed_list:
+                line = f"{value['status']}|{value['name']}|{value['url']}"
+                fh.write(f"{line}\n")
+        sys.exit(0)
+
+    sys.exit(1)
     # Test mirror speed and select a mirror
     status, url = choose_pip_mirror()
     if url:

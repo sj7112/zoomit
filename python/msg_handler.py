@@ -273,7 +273,7 @@ def get_trans_msg(msg):
 def msg_parse_tmpl(template, *args):
     """
     功能：
-    template自动合并动态参数(每轮循环，替换第一个{}，和{i}占位符)
+    template自动合并动态参数(每轮循环，replace the frist{}，和{i}占位符)
 
     参数：
     template: 带占位符的模板字符串
@@ -288,8 +288,8 @@ def msg_parse_tmpl(template, *args):
     替换占位符后的字符串
     """
     for i, var in enumerate(args):
-        template = template.replace("{}", str(var), 1)  # 替换第一个 {}
-        template = template.replace(f"{{{i}}}", str(var))  # 替换所有 {i}
+        template = template.replace("{}", str(var), 1)  # replace the frist {}
+        template = template.replace(f"{{{i}}}", str(var))  # replace all {i}
 
     return template
 
@@ -353,7 +353,7 @@ def msg_parse_param(options, *args):
         print(f"{GREEN}✅ {MSG_SUCCESS}: {template}{NC}")
         return 0  # 成功
 
-    if caller_name == "string":
+    if caller_name in ["string", "_mf"]:
         return template  # 转换 normal text (no color)
 
     if caller_name == "warning":
@@ -398,7 +398,7 @@ def parse_options(args):
 
 
 # ==============================================================================
-# Auto translation: string | exiterr | error | success | warning | info
+# Auto translation:  exiterr | error | success | warning | info | string | _mf
 # 自动翻译 + 解析函数
 #
 # params:
@@ -406,7 +406,7 @@ def parse_options(args):
 # stack = s - 显示调用栈(测试)
 # error = e - 返回错误状态
 # ==============================================================================
-def string(*args, **kwargs):
+def _mf(*args, **kwargs):
     """
     格式化字符串，支持参数替换
     直接返回字符串转换结果
@@ -414,8 +414,12 @@ def string(*args, **kwargs):
     return msg_parse_param(kwargs, *args)
 
 
-# 别名函数
-_mf = string
+def string(*args, **kwargs):
+    """
+    格式化字符串，支持参数替换
+    直接返回字符串转换结果
+    """
+    return msg_parse_param(kwargs, *args)
 
 
 def exiterr(*args, **kwargs):

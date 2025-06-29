@@ -51,7 +51,7 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
 
     # Set default cancel message
     if [[ -z "$cancel_msg" ]]; then
-      cancel_msg=$(string "operation is cancelled")
+      cancel_msg=$(_mf "operation is cancelled")
     fi
 
     # Determine default behavior based on def_val parameter

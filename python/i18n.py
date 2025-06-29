@@ -136,7 +136,7 @@ def add_lang_files(langs: List[str], no_prompt: bool = True) -> Tuple[str, List[
         template = string(
             "# {0} 语言包，文档结构：\n\
 # 1. 自动处理 bin | lib 目录 sh 文件\n\
-# 2. 解析函数 string | info | exiterr | error | success | warning\n\
+# 2. 解析函数 exiterr | error | success | warning | info | string | _mf\n\
 # 3. key=hash code of wording\n\
 # 4. value=localized string",
             lang_code,

@@ -169,6 +169,13 @@
                 "DEBUG": "1"
             },
             "console": "integratedTerminal"
+        },
+        {
+            "type": "debugpy",
+            "name": "Python: 启动 mypip.py",
+            "request": "launch",
+            "program": "${workspaceFolder}/mypip.py",
+            "console": "integratedTerminal"
         }
     ]
 }

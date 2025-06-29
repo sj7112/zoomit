@@ -48,7 +48,7 @@ if [[ -z "${LOADED_MSG_HANDLER:-}" ]]; then
   # 显示使用帮助
   _show_usage() {
     cat <<EOF
-使用方法: string | info | exiterr | error | success | warning  [选项] [消息内容]
+使用方法: exiterr | error | success | warning | info | string | _mf  [选项] [消息内容]
 
 选项:
     -i    无需翻译
@@ -252,7 +252,7 @@ EOF
 
   # ==============================================================================
   # 功能：
-  # template自动合并动态参数(每轮循环，替换第一个{}，和{i}占位符)
+  # template自动合并动态参数(每轮循环，replace the frist{}，和{i}占位符)
   #
   # 参数：
   # 第一个参数为模板；后续参数用来替换模板中的字符串
@@ -267,10 +267,9 @@ EOF
   # ==============================================================================
   msg_parse_tmpl() {
     local template="$1" # 带占位符的模板：{0}{1}...
-
     local i=0
     for var in "${@:2}"; do
-      template="${template/\{\}/$var}"    # 替换第一个 {}
+      template="${template/\{\}/$var}"    # replace the frist {}
       template="${template//\{$i\}/$var}" # 替换 {i}
       ((i = i + 1))
     done
@@ -374,6 +373,8 @@ EOF
     elif [[ "${FUNCNAME[1]}" == "info" ]]; then
       echo -e "${LIGHT_BLUE}🔷 ${MSG_INFO}: $template${NC}"
     elif [[ "${FUNCNAME[1]}" == "string" ]]; then
+      echo -e "$template" >&2 # normal text (no color)
+    elif [[ "${FUNCNAME[1]}" == "_mf" ]]; then
       echo -e "$template" # normal text (no color)
     fi
 
@@ -382,7 +383,7 @@ EOF
 
   #
   # ==============================================================================
-  # Auto translation: string | exiterr | error | success | warning | info
+  # Auto translation: exiterr | error | success | warning | info | string | _mf
   # 自动翻译 + 解析函数
   #
   # params:
@@ -390,7 +391,10 @@ EOF
   # -s : sequence (手动设置序号)
   # -o : line order (行内序号 - 需手动输入)
   # ==============================================================================
-  string() { msg_parse_param "$@"; }
+  _mf() { msg_parse_param "$@"; }
+  string() {
+    echo "$(msg_parse_param "$@")"
+  }
   exiterr() {
     msg_parse_param "$@"
     exit 1

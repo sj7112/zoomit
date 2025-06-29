@@ -56,25 +56,15 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
       . /etc/os-release
       DISTRO_OSTYPE="$ID"
       case "$ID" in
-        debian | ubuntu)
-          DISTRO_PM="apt" # Debian | Ubuntu
-          ;;
-        centos)
-          DISTRO_PM="yum" # CentOS
-          ;;
-        rhel)
-          DISTRO_PM="dnf" # RHEL
-          ;;
+        debian | ubuntu) DISTRO_PM="apt" ;; # Debian | Ubuntu
+        centos) DISTRO_PM="yum" ;;          # CentOS
+        rhel) DISTRO_PM="dnf" ;;            # RHEL
+        arch) DISTRO_PM="pacman" ;;         # Arch
         opensuse* | suse)
           DISTRO_OSTYPE="opensuse"
           DISTRO_PM="zypper" # openSUSE
           ;;
-        arch)
-          DISTRO_PM="pacman" # Arch
-          ;;
-        *)
-          exiterr -i "$INIT_LINUX_UNSUPPORT: $ID ($PRETTY_NAME)"
-          ;;
+        *) exiterr -i "$INIT_LINUX_UNSUPPORT: $ID ($PRETTY_NAME)" ;;
       esac
     else
       exiterr -i "$INIT_LINUX_UNSUPPORT"
@@ -95,10 +85,8 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
               DISTRO_CODENAME=$(sed 's/.*release \([0-9.]*\) .*/\1/' /etc/centos-release)
             fi
             ;;
-          arch)
-            # Arch无代号
-            DISTRO_CODENAME="arch"
-            ;;
+          arch) DISTRO_CODENAME="arch" ;; # Arch无代号
+
         esac
       fi
     elif command -v lsb_release &>/dev/null; then
@@ -108,36 +96,34 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     fi
   }
 
-  # ** 环境变量：包管理器 | 操作系统名称 **
+  # ==============================================================================
+  # Initial environment variables: package manager | operating system name
+  # ==============================================================================
   initial_global() {
     load_global_prop # Load global properties (Step 1)
     check_user_auth  # initial sudo param
     init_os_release  # initial distribution data
-  }
-
-  # Initial language & translations
-  initial_language() {
-    fix_shell_locale  # fix shell language to ensure UTF-8 support
+    echo -e "\n=== $INIT_SYSTEM_START - $PRETTY_NAME ===\n"
+    initial_language  # fix shell language to ensure UTF-8 support
     load_global_prop  # Load global properties (Step 2)
     load_message_prop # load message translations
   }
 
   # ==============================================================================
-  # 函数: initial_env 检查root权限和sudo
-  # @i18n: This function needs internationalization
+  # Initial environment: python 3.10 | install packages
   # ==============================================================================
   initial_env() {
-    # 2. install Python3 virtual environment
+    # 1. install Python3 virtual environment
     create_py_venv
-    # 3. Select and update package manager
+    # 2. Select and update package manager
     sh_update_source
-    # 4. Install various basic packages
+    # 3. Install basic packages
     install_base_pkg "sudo"
     install_base_pkg "wget"
     install_base_pkg "curl"
     install_base_pkg "jq"
     install_base_pkg "make"
-    # 5. 加载json环境变量
+    # 4. 加载json环境变量
     # META_Command=$(json_load_data "cmd_meta") # 命令解析json
   }
 
@@ -244,8 +230,9 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   # --------------------------
   # 功能3: 安装指定软件
   # --------------------------
-  close_env() {
+  close_all() {
     sh_clear_cache
+    echo "=== $INIT_SYSTEM_END - $PRETTY_NAME ==="
   }
 
   # ==============================================================================
@@ -253,14 +240,11 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   # ==============================================================================
   init_main() {
     initial_global # 设置环境变量
-    echo -e "\n=== $INIT_SYSTEM_START - $PRETTY_NAME ===\n"
-    initial_language # 1. inital language & translation
-    initial_env      # 基础值初始化
-    config_sshd      # SSH配置
-    configure_ip     # 静态IP配置
+    initial_env    # 基础值初始化
+    config_sshd    # SSH配置
+    configure_ip   # 静态IP配置
     # docker_compose # 安装软件
-    close_env # close python cache
-    echo "=== $INIT_SYSTEM_END - $PRETTY_NAME ==="
+    close_all # close python cache
   }
 
   if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

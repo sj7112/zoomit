@@ -26,20 +26,6 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
   # ==============================================================================
   # Language Initialize functions
   # ==============================================================================
-  # get default language(C or POSIX is not allowed)
-  get_default_lang() {
-    default_lang=""
-    for file in /etc/locale.conf /etc/default/locale /etc/sysconfig/i18n; do
-      if [ -f "$file" ]; then
-        default_lang=$(grep "^LANG=" "$file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '"')
-        if [ -n "$default_lang" ]; then
-          break
-        fi
-      fi
-    done
-    echo "$default_lang"
-  }
-
   # Check UTF-8 support
   normalize_code_lower() {
     input_lang=$1
@@ -91,7 +77,7 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
       lang_suffix=$(echo "$lang_part" | cut -d_ -f2 | tr '[:lower:]' '[:upper:]')
       norm_lang="${lang_prefix}_${lang_suffix}"
     else
-      echo "Invalid language format. Please re-enter (e.g., en_US | en_US.UTF-8):" >&2
+      string "Invalid language format. Please re-enter (e.g., en_US | en_US.UTF-8)"
       return 1 # Invalid format
     fi
 
@@ -102,7 +88,7 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
     # Check with [ locale -a ]
     locale -a | grep -Fxq "$lang"
     if [[ $? -ne 0 ]]; then
-      echo "Not in the locale list. Please check [ locale -a ] and re-enter:" >&2
+      string "Not in the locale list. Please re-enter (check [ locale -a ])"
       return 1 # Format does not exist
     fi
     echo "set LANG to $lang" >&2
@@ -112,20 +98,29 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
 
   # reset language(C or POSIX is not allowed)
   reset_language() {
-    local lang="$1"
+    # get default language(C or POSIX is not allowed)
+    default_lang=""
+    for file in /etc/locale.conf /etc/default/locale /etc/sysconfig/i18n; do
+      if [ -f "$file" ]; then
+        default_lang=$(grep "^LANG=" "$file" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '"')
+        if [ -n "$default_lang" ]; then
+          break
+        fi
+      fi
+    done
 
+    # reset language
     local input_lang
     while true; do
-      read -rp "Set shell language (Default = ${lang}): " input_lang
+      local prompt=$(_mf "Set shell language (Default = {}): " "$default_lang")
+      read -rp "$prompt" input_lang
 
       # get input language
       if [[ -z "$input_lang" ]]; then
-        input_lang="$lang" # Use current language
+        input_lang="$default_lang" # Use current language
       fi
       input_lang="$(normalize_locale "$input_lang")" # format input
-      if [[ $? -ne 0 ]]; then
-        continue
-      fi
+      [[ $? -ne 0 ]] && continue
 
       # return the value
       echo "$input_lang"
@@ -212,7 +207,8 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
     local profile_file="$HOME/.profile"
 
     if [ "$curr_lang" != "$new_lang" ]; then
-      if confirm_action "Change $USER language from [$curr_lang] to [$new_lang]?"; then
+      local prompt=$(_mf "Change {} language from [{}] to [{}]?" "$USER" "$curr_lang" "$new_lang")
+      if confirm_action "$prompt"; then
         if [ -n "$profile_file" ]; then
           set_user_lang_profile "$new_lang" # 优先设置 ~/.profile
         elif [[ "$SHELL" =~ "bash" ]]; then
@@ -228,14 +224,13 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
   }
 
   # Attempts to fix the locale settings to ensure UTF-8 compatibility
-  fix_shell_locale() {
+  initial_language() {
     local new_lang
     if ! test_terminal_display; then
       new_lang="en_US.UTF-8" # Terminal does not support UTF-8, use default value
       echo "Terminal does not support UTF-8, set LANG to $new_lang" >&2
     else
-      local lang="$(get_default_lang)" # system default LANG value
-      new_lang=$(reset_language "$lang")
+      new_lang=$(reset_language)
     fi
 
     new_lang=$(reset_user_locale "$new_lang") # Permanently change LANG and LANGUAGE
@@ -244,16 +239,6 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
     local base="${new_lang%.*}"
     local short="${base%_*}"
     export LANGUAGE="${base}:${short}" # Set LANGUAGE
-  }
-
-  # ==============================================================================
-  # Language translation functions
-  # ==============================================================================
-  # Initial default message translations
-  load_global_prop() {
-    local prop_file=$(get_lang_prop ".")
-    # shellcheck disable=SC1090
-    source "$prop_file"
   }
 
   # Get the path to the message language file
@@ -273,6 +258,16 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
       # If neither is found, return default file
       echo "$LANG_DIR/${prefix}en.properties"
     fi
+  }
+
+  # ==============================================================================
+  # Language translation functions
+  # ==============================================================================
+  # Initial default message translations
+  load_global_prop() {
+    local prop_file=$(get_lang_prop ".")
+    # shellcheck disable=SC1090
+    source "$prop_file"
   }
 
   # Load message translations
@@ -326,7 +321,8 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
       fi
     done <"$prop_file"
 
-    echo "Loaded ${#LANGUAGE_MSGS[@]} messages from $prop_file"
+    echo "[INFO] Loaded ${#LANGUAGE_MSGS[@]} messages from $prop_file"
+    echo ""
   }
 
   # Translate message
@@ -337,20 +333,20 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
     local current_hash=$(djb2_with_salt_20 "$msg")               # DJB2 hash algorithm
     current_hash=$(padded_number_to_base64 "$current_hash"_6)    # 6-character base64 encoding
     local source_file="${BASH_SOURCE[3]#$(dirname "$LIB_DIR")/}" # Remove root directory
-    local key="${source_file}:$current_hash"
+    local k="${source_file}:$current_hash"
     local result=""
 
     # Check if the key exists
-    if [[ -n "${LANGUAGE_MSGS[$key]+x}" ]]; then
-      result="${LANGUAGE_MSGS[$key]}"
+    if [[ -n "${LANGUAGE_MSGS[$k]+x}" ]]; then
+      result="${LANGUAGE_MSGS[$k]}"
     fi
 
     if [[ -z "$result" ]]; then
       # If translation is not found, try again using MD5
       current_hash=$(md5 "$msg")
-      key="${source_file}:$current_hash"
-      if [[ -n "${LANGUAGE_MSGS[$key]+x}" ]]; then
-        result="${LANGUAGE_MSGS[$key]}"
+      k="${source_file}:$current_hash"
+      if [[ -n "${LANGUAGE_MSGS[$k]+x}" ]]; then
+        result="${LANGUAGE_MSGS[$k]}"
       fi
     fi
 

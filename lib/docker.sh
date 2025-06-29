@@ -19,7 +19,7 @@ if [[ -z "${LOADED_DOCKER:-}" ]]; then
     local BG_BLUE="\033[44m"
     local NC="\033[0m" # 重置颜色
 
-    local str=$(string "多选组件：格式如 1 3 4；再次选择相同项目可取消选择，回车结束")
+    local str=$(_mf "多选组件：格式如 1 3 4；再次选择相同项目可取消选择，回车结束")
     echo
     echo -e "${BG_BLUE} ${str} ${NC}"
     echo

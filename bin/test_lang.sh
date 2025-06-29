@@ -52,7 +52,7 @@ del_lang_files() {
 
   # 嵌套删除文件子程序
   do_del_lang_files() {
-    local delstr=$(string "{0} 语言文件已删除" "$lang_code")
+    local delstr=$(_mf "{0} 语言文件已删除" "$lang_code")
     rm -f "${lang_file[@]}"
     info -i "$delstr" # ignore translation
   }
@@ -64,8 +64,8 @@ del_lang_files() {
   fi
 
   # 文件存在，提示用户是否删除
-  local prompt=$(string "确定要删除 {0} 语言文件吗?" "$lang_code")
-  confirm_action "$prompt" do_del_lang_files msg="$(string "操作已取消，文件未删除")" # 👈 msg="cancel_msg"
+  local prompt=$(_mf "确定要删除 {0} 语言文件吗?" "$lang_code")
+  confirm_action "$prompt" do_del_lang_files msg="$(_mf "操作已取消，文件未删除")" # 👈 msg="cancel_msg"
 }
 
 # ==============================================================================
@@ -78,9 +78,9 @@ add_lang_files() {
   resolve_lang_files lang_file "$lang_code" "1+w"
 
   # 标准模板内容
-  local template="$(string "# {0} 语言包，文档结构：\n\
+  local template="$(_mf "# {0} 语言包，文档结构：\n\
 # 1. 自动处理 bin | lib 目录 sh 文件\n\
-# 2. 解析函数 string | info | exiterr | error | success | warning\n\
+# 2. 解析函数 exiterr | error | success | warning | info | string | _mf\n\
 # 3. key=distinct hash code + position + order\n\
 # 4. value=localized string" "${lang_code}")"
 
