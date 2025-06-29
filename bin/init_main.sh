@@ -168,8 +168,6 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     sh_config_sshd # python adds-on: config /etc/ssh/sshd_config
     if [[ $? -ne 0 ]]; then
       return
-    # else
-    #   init_env_nw "$ENV_NW_PATH"
     fi
     set -e
 
@@ -193,29 +191,11 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     if [[ $? -ne 0 ]]; then
       return
     else
-      init_env_nw "$ENV_NW_PATH"
+      init_env_nw
     fi
     set -e
 
-    if [[ ${ENV_NETWORK["CURR_NM"]} == "NetworkManager" ]]; then
-      info "NetworkManager 正在运行"
-      config_nmcli
-    elif [[ ${ENV_NETWORK["CURR_NM"]} == "networking" ]]; then
-      info "ifupdown 正在运行"
-      ifupdown_to_systemd_networkd
-    elif [[ ${ENV_NETWORK["CURR_NM"]} == "wicked" ]]; then
-      info "wicked 正在运行"
-      # wicked_to_systemd_networkd
-    elif [[ ${ENV_NETWORK["CURR_NM"]} == "network" ]]; then
-      info "network-scripts 正在运行"
-      # network_to_systemd_networkd
-    elif [[ ${ENV_NETWORK["CURR_NM"]} == "systemd-networkd" ]]; then
-      info "systemd-networkd 正在运行"
-      config_default
-    else
-      exiterr "未知网络管理器，无法配置静态IP"
-    fi
-
+    network_config
   }
 
   install_docker() {

@@ -124,18 +124,6 @@ if [[ -z "${LOADED_UPDATE_ENV:-}" ]]; then
     mv "$temp_file" "$env_file"
   }
 
-  # 初始化函数：读取python传入的.env对象并初始化
-  init_env_nw() {
-    local env_file="$1"
-    # 调用Python解析JSON并输出键值对
-    while IFS='=' read -r key value; do
-      [[ -z "$key" || "$key" == '#' ]] && continue
-      # 根据section存入不同数组
-      ENV_NETWORK["$key"]="$value"
-      keys_network+=("$key")
-    done <"$env_file"
-  }
-
   # 保存函数：按项目匹配更新文件
   save_env_docker() {
     local -n env_array="$1"

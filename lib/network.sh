@@ -8,6 +8,16 @@ if [[ -z "${LOADED_NETWORK:-}" ]]; then
 
   LOG_FILE="/var/log/sj_install.log"
 
+  # 初始化函数：读取python传入的.env对象并初始化
+  init_env_nw() {
+    while IFS='=' read -r key value; do
+      [[ -z "$key" || "$key" == '#' ]] && continue
+      # 根据section存入不同数组
+      ENV_NETWORK["$key"]="$value"
+      keys_network+=("$key")
+    done <"$ENV_NW_PATH"
+  }
+
   # ==============================================================================
   # 计数器函数
   # ==============================================================================
@@ -61,9 +71,26 @@ if [[ -z "${LOADED_NETWORK:-}" ]]; then
       connection.autoconnect yes
 
     # 3. 激活连接
-    count_down # 倒计时提醒
+    count_down # Countdown reminder
     $SUDO_CMD nmcli connection up "$CON_NAME" || exiterr "连接激活失败，请检查网络并尝试重新连接"
 
+  }
+
+  # 注释指定接口的配置
+  comment_ifupdown() {
+    IFACE="${ENV_NETWORK["MAIN_IFACE"]}" # 网络接口名
+
+    NET_FILE="/etc/network/interfaces"
+    if [[ -f "$NET_FILE" ]]; then
+      # backup original network file
+      $SUDO_CMD cp "$NET_FILE" "${NET_FILE}.$(date +%Y%m%d_%H%M%S)"
+
+      # comment lines: ^allow-hotplug | ^iface
+      $SUDO_CMD sed -i "/^[[:space:]]*allow-hotplug.*$IFACE/s/^/# /" "$NET_FILE"
+      $SUDO_CMD sed -i "/^[[:space:]]*iface.*$IFACE/s/^/# /" "$NET_FILE"
+
+      info "comment {} in {}" $IFACE $NET_FILE
+    fi
   }
 
   # ==============================================================================
@@ -79,15 +106,15 @@ if [[ -z "${LOADED_NETWORK:-}" ]]; then
 
     # 1. 检查配置文件
     NETDIR="/etc/systemd/network"
-    NETFILE="$NETDIR/10-$IFACE.network"
-    if [ -f "$NETFILE" ]; then
-      $SUDO_CMD cp "$NETFILE" "$NETFILE.$(date +%Y%m%d%H%M%S)"
+    NET_FILE="$NETDIR/10-$IFACE.network"
+    if [ -f "$NET_FILE" ]; then
+      $SUDO_CMD cp "$NET_FILE" "$NET_FILE.$(date +%Y%m%d_%H%M%S)"
     else
       $SUDO_CMD mkdir -p "$NETDIR" # 创建目录
     fi
 
     # 2. 生成配置文件
-    $SUDO_CMD cat >"$NETFILE" <<EOF
+    $SUDO_CMD cat >"$NET_FILE" <<EOF
 [Match]
 Name=$IFACE
 
@@ -98,6 +125,8 @@ Gateway=$GATEWAY
 DNS=$DNS
 EOF
   }
+
+  info "add new config file {}" $NET_FILE
 
   # ==============================================================================
   # 配置切换脚本代码（networking -> systemd-networkd）
@@ -127,13 +156,13 @@ EOF
   # 配置静态IP（ifupdown -> systemd_networkd）
   # ==============================================================================
   ifupdown_to_systemd_networkd() {
-    # 安装systemd-networkd
-    install_base_pkg "systemd" # 安装systemd-networkd
+    install_base_pkg "systemd" # install systemd-networkd
 
-    setup_systemd_networkd # 生成配置文件
+    comment_ifupdown       # comment ifupdown config file
+    setup_systemd_networkd # create systemd-netwrokd config file
     setup_switch_network   # 创建切换脚本
 
-    count_down # 倒计时提醒
+    count_down # Countdown reminder
     $SUDO_CMD setsid /tmp/switch_network.sh </dev/null &
 
   }
@@ -150,11 +179,36 @@ EOF
     setup_systemd_networkd # 生成配置文件
 
     # 重载配置并重启 networkd
-    count_down # 倒计时提醒
+    count_down # Countdown reminder
     if ! $SUDO_CMD systemctl restart systemd-networkd; then
       exiterr "重启 systemd-networkd 失败，请检查配置文件后再试"
     fi
 
+  }
+
+  # ==============================================================================
+  # main function: network configuration
+  # ==============================================================================
+  network_config() {
+    if [[ ${ENV_NETWORK["CURR_NM"]} == "NetworkManager" ]]; then
+      info "NetworkManager is running (systemctl status NetworkManager)"
+      config_nmcli
+    elif [[ ${ENV_NETWORK["CURR_NM"]} == "networking" ]]; then
+      info "ifupdown is running (systemctl status networking)"
+      ifupdown_to_systemd_networkd
+    elif [[ ${ENV_NETWORK["CURR_NM"]} == "wicked" ]]; then
+      info "wicked is running (systemctl status wicked)"
+      # wicked_to_systemd_networkd
+    elif [[ ${ENV_NETWORK["CURR_NM"]} == "network" ]]; then
+      info "network-scripts is running (systemctl status network)"
+      # network_to_systemd_networkd
+    elif [[ ${ENV_NETWORK["CURR_NM"]} == "systemd-networkd" ]]; then
+      # /etc/systemd/network/10-$IFACE.network
+      info "systemd-networkd is running (systemctl status systemd-networkd)"
+      config_default
+    else
+      exiterr "未知网络管理器，无法配置静态IP"
+    fi
   }
 
 fi
