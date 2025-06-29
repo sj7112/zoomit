@@ -348,18 +348,17 @@ def msg_parse_param(options, *args):
     if caller_name in ["exiterr", "error"]:
         print(f"{RED}❌ {MSG_ERROR}: {template}{NC}")
         return 1  # 报错
-
     if caller_name == "success":
         print(f"{GREEN}✅ {MSG_SUCCESS}: {template}{NC}")
         return 0  # 成功
-
-    if caller_name in ["string", "_mf"]:
-        return template  # 转换 normal text (no color)
-
     if caller_name == "warning":
         print(f"{YELLOW}⚠️ {MSG_WARNING}: {template}{NC}")
     elif caller_name == "info":
         print(f"{LIGHT_BLUE}🔷 {MSG_INFO}: {template}{NC}")
+    if caller_name == "string":
+        print(template)  # 转换 normal text (no color)
+    if caller_name == "_mf":
+        return template  # 转换 normal text (no color)
 
     if json_getopt(options, "error"):
         return 1  # 如有需要，返回错误，供调用者使用
@@ -489,7 +488,7 @@ def parse_args(*args, kwargs):
 
 # 用于测试
 if __name__ == "__main__":
-    string("-i", "这是一个普通字符串: {0}", "测试")
+    string("这是一个普通字符串: {0}", "测试", ignore=True)
     info("这是一条信息: {0}", "测试信息")
     warning("这是一条警告: {0}", "测试警告")
     success("这是一条成功消息: {0}", "测试成功")

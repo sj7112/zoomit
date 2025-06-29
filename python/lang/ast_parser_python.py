@@ -32,7 +32,6 @@ class PythonASTParser(ASTParser):
     # Class variables
     DIRS = ["python"]
     EXTS = "py"
-    PATTERNS = "exiterr|error|success|warning|info|string|_mf"
 
     def _set_function_end_flag(self):
         """python set function end flag"""

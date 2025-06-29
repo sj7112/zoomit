@@ -66,6 +66,8 @@ class ASTParser:
     AST parser class
     """
 
+    PATTERNS = "exiterr|error|success|warning|info|string|_mf"
+
     def __init__(self, trim_space=False):
         """
         Initialize the parser

@@ -12,7 +12,7 @@ from typing import Callable, Any, List, Optional
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.path
 
-from python.msg_handler import _mf, error, exiterr, info, warning
+from python.msg_handler import _mf, error, exiterr, info, string, warning
 
 # 全局日志配置（放在文件开头）
 LOG_FILE = "/var/log/sj_install.log"
@@ -92,10 +92,10 @@ def confirm_action(prompt: str, callback: Callable[..., Any] = None, *args: Any,
 
     except KeyboardInterrupt:
         print()
-        print(_mf("操作已取消"))
+        string("操作已取消")
         return 2
     except Exception as e:
-        print(_mf(r"输入处理出错: {}", e))
+        string(r"输入处理出错: {}", e)
         return 3
 
 

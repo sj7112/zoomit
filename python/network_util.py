@@ -138,16 +138,16 @@ class NetworkSetup:
                 new_last_octet = input(prompt).strip() or curr_last_octet  # 默认=当前值
 
                 if not new_last_octet.isdigit():
-                    print(_mf("请输入数字"))
+                    string("请输入数字")
                     continue
 
                 octet_num = int(new_last_octet)
                 if not (1 <= octet_num <= 255):
-                    print(_mf("输入必须在 1~255 之间"))
+                    string("输入必须在 1~255 之间")
                     continue
 
                 if gateway and new_last_octet == gateway.split(".")[-1]:
-                    print(_mf("输入的静态IP地址不能与网关相同，请重新输入"))
+                    string("输入的静态IP地址不能与网关相同，请重新输入")
                     continue
 
                 # 构造新的静态IP地址
@@ -156,7 +156,7 @@ class NetworkSetup:
                 return 0
 
             except KeyboardInterrupt:
-                print(_mf("\n操作已取消"))
+                string("\n操作已取消")
                 return 2
 
     # ==============================================================================

@@ -12,7 +12,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.pat
 
 from python.cmd_handler import cmd_ex_str
 from python.file_util import read_file, write_source_file
-from python.msg_handler import _mf, error
+from python.msg_handler import _mf, error, string
 from python.cache.os_info import OSInfo, OSInfoCache
 from python.system import confirm_action
 from python.debug_tool import print_array
@@ -118,7 +118,7 @@ class SshSetup:
 
                 print(f"✗ 设置SSH端口失败")
             except KeyboardInterrupt:
-                print(_mf("\n操作已取消"))
+                string("\n操作已取消")
                 return 2
 
         # 询问是否允许root登录

@@ -367,11 +367,11 @@ EOF
     if [[ "${FUNCNAME[1]}" == "exiterr" || "${FUNCNAME[1]}" == "error" ]]; then
       echo -e "${RED}❌ ${MSG_ERROR}: $template${NC}" >&2
     elif [[ "${FUNCNAME[1]}" == "success" ]]; then
-      echo -e "${GREEN}✅ ${MSG_SUCCESS}: $template${NC}"
+      echo -e "${GREEN}✅ ${MSG_SUCCESS}: $template${NC}" >&2
     elif [[ "${FUNCNAME[1]}" == "warning" ]]; then
-      echo -e "${YELLOW}⚠️ ${MSG_WARNING}: $template${NC}"
+      echo -e "${YELLOW}⚠️ ${MSG_WARNING}: $template${NC}" >&2
     elif [[ "${FUNCNAME[1]}" == "info" ]]; then
-      echo -e "${LIGHT_BLUE}🔷 ${MSG_INFO}: $template${NC}"
+      echo -e "${LIGHT_BLUE}🔷 ${MSG_INFO}: $template${NC}" >&2
     elif [[ "${FUNCNAME[1]}" == "string" ]]; then
       echo -e "$template" >&2 # normal text (no color)
     elif [[ "${FUNCNAME[1]}" == "_mf" ]]; then

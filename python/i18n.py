@@ -11,7 +11,7 @@ import typer
 sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.path
 
 from python.lang.lang_util import debug_assertion, update_lang_files
-from python.msg_handler import string, info, warning, error, exiterr, get_lang_code
+from python.msg_handler import _mf, string, info, warning, error, exiterr, get_lang_code
 from python.debug_tool import create_app, default_cmd, print_array
 from python.file_util import write_array
 from python.system import confirm_action
@@ -62,14 +62,14 @@ def resolve_lang_files(lang_code: str, mode: str = "", max_files: int = 1) -> Li
     elif "i" in mode:
         func = lambda msg: info(msg, error=True)
     else:
-        exiterr(string("模式参数错误 {0}", mode))
+        exiterr(_mf("模式参数错误 {0}", mode))
 
     # 检查文件存在性
     any_exists = any(os.path.isfile(file) for file in lang_files)
     all_exist = all(os.path.isfile(file) for file in lang_files)
 
-    exist_msg = string("{0} 语言文件已存在", lang_code, ignore=True)
-    notexist_msg = string("{0} 语言文件不存在", lang_code)
+    exist_msg = _mf("{0} 语言文件已存在", lang_code, ignore=True)
+    notexist_msg = _mf("{0} 语言文件不存在", lang_code)
 
     # 执行报错逻辑
     result = 0
@@ -133,7 +133,7 @@ def add_lang_files(langs: List[str], no_prompt: bool = True) -> Tuple[str, List[
     # 新增文件子程序
     def do_add_lang_files(lang_code, lang_files):
         # 标准模板内容
-        template = string(
+        template = _mf(
             "# {0} 语言包，文档结构：\n\
 # 1. 自动处理 bin | lib 目录 sh 文件\n\
 # 2. 解析函数 exiterr | error | success | warning | info | string | _mf\n\
@@ -164,8 +164,8 @@ def add_lang_files(langs: List[str], no_prompt: bool = True) -> Tuple[str, List[
             continue
 
         # 文件存在，提示用户是否删除
-        prompt = string("确定要新增 {0} 语言文件吗?", lang_code)
-        errmsg = string("操作已取消，未增加 {0} 文件文件", lang_code)
+        prompt = _mf("确定要新增 {0} 语言文件吗?", lang_code)
+        errmsg = _mf("操作已取消，未增加 {0} 文件文件", lang_code)
         ret_code = confirm_action(prompt, do_add_lang_files, lang_code, lang_files, msg=errmsg)
         if ret_code == 0:
             ret_lang.append((lang_code, lang_files))
@@ -201,8 +201,8 @@ def del_lang_files(langs: List[str], no_prompt: bool = False) -> None:
             continue
 
         # 文件存在，提示用户是否删除
-        prompt = string("确定要删除 {0} 语言文件吗?", lang_code)
-        confirm_action(prompt, do_del_lang_files, lang_code, lang_files, errmsg=string("操作已取消，文件未删除"))
+        prompt = _mf("确定要删除 {0} 语言文件吗?", lang_code)
+        confirm_action(prompt, do_del_lang_files, lang_code, lang_files, errmsg=_mf("操作已取消，文件未删除"))
 
 
 def upd_lang_files(langs: List[str], files: List[str], test_run: bool) -> None:

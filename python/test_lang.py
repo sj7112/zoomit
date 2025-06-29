@@ -7,7 +7,7 @@ import os
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.path
 
-from python.msg_handler import exiterr, info, string
+from python.msg_handler import _mf, exiterr, info, string
 from python.i18n import resolve_lang_files
 from python.system import confirm_action
 
@@ -51,7 +51,7 @@ def del_lang_files(lang_code: str, no_prompt: bool = False) -> int:
 
     # 嵌套删除文件子程序
     def do_del_lang_files():
-        delstr = string("{0} 语言文件已删除", lang_code)
+        delstr = _mf("{0} 语言文件已删除", lang_code)
         # 删除文件
         for file_path in lang_files:
             try:
@@ -68,8 +68,8 @@ def del_lang_files(lang_code: str, no_prompt: bool = False) -> int:
         return 0
 
     # 文件存在，提示用户是否删除
-    prompt = string("确定要删除 {0} 语言文件吗?", lang_code)
-    cancel_msg = string("操作已取消，文件未删除")
+    prompt = _mf("确定要删除 {0} 语言文件吗?", lang_code)
+    cancel_msg = _mf("操作已取消，文件未删除")
 
     confirm_action(prompt=prompt, action=do_del_lang_files, cancel_msg=cancel_msg)
 
@@ -78,7 +78,7 @@ def del_lang_files(lang_code: str, no_prompt: bool = False) -> int:
 
 def add_lang_files(lang_code: str, lang_files: list[str]):
     # 多行模板字符串
-    template = string(
+    template = _mf(
         """# {0} 语言包，文档结构：
 # 1. 自动处理 bin | lib 目录 sh 文件
 # 2. 解析函数 exiterr | error | success | warning | info | string | _mf
