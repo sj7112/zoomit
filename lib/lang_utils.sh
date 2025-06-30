@@ -145,8 +145,10 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
       echo "LANG=\"$lang\"" | tee -a "$profile_file" >/dev/null
     fi
 
-    # Generate LANGUAGE, e.g. en_US.UTF-8 -> en_US:en
-    local language_value="$LANGUAGE"
+    # LANGUAGE setup, e.g. en_US.UTF-8 -> en_US:en
+    local base="${lang%.*}"  # remove .utf8 / .UTF-8
+    local short="${base%_*}" # language code
+    local language_value="${base}:${short}"
     # Update or add LANGUAGE setting
     if grep -q "^LANGUAGE=" "$profile_file"; then
       sed -i "s|^LANGUAGE=.*|LANGUAGE=\"$language_value\"|" "$profile_file"
@@ -173,10 +175,10 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
     fi
 
     # LANGUAGE setup, e.g. en_US.UTF-8 -> en_US:en
-    local base="${lang%.*}"  # 移除 .utf8 / .UTF-8
-    local short="${base%_*}" # 语言代码
+    local base="${lang%.*}"  # remove .utf8 / .UTF-8
+    local short="${base%_*}" # language code
     local language_value="${base}:${short}"
-    # 更新或添加 LANGUAGE 设置
+    # Update or add LANGUAGE setting
     local export_line="export LANGUAGE=\"$language_value\""
     if grep -q "^export LANGUAGE=" "$config_file"; then
       sed -i "s|^export LANGUAGE=.*|$export_line|" "$config_file"
@@ -203,7 +205,7 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
   # Permanently change LANG and LANGUAGE
   reset_user_locale() {
     local new_lang="$(normalize_code_upper "$1")"
-    local curr_lang="$(normalize_code_upper "${LC_ALL:-${LANG:-C}}")" # Read user language settings
+    local curr_lang="$(normalize_code_upper "$2")" # Read user language settings
     local profile_file="$HOME/.profile"
 
     if [ "$curr_lang" != "$new_lang" ]; then
@@ -232,13 +234,15 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
     else
       new_lang=$(reset_language)
     fi
-
-    new_lang=$(reset_user_locale "$new_lang") # Permanently change LANG and LANGUAGE
-
-    export LANG="$new_lang" # Set LANG
+    curr_lang="${LC_ALL:-${LANG:-C}}" # save the current language
+    export LANG="$new_lang"           # Set LANG
     local base="${new_lang%.*}"
     local short="${base%_*}"
     export LANGUAGE="${base}:${short}" # Set LANGUAGE
+    load_global_prop                   # Load global properties (Step 2)
+
+    new_lang=$(reset_user_locale "$new_lang" "$curr_lang") # Permanently change LANG and LANGUAGE
+
   }
 
   # Get the path to the message language file

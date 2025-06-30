@@ -13,9 +13,9 @@ if [[ -z "${LOADED_PYTHON_BRIDGE:-}" ]]; then
   # PYTHON="$HOME/.venv/bin/python"
   py_exec() {
     if [ -n "$SUDO_CMD" ]; then
-      env LANG="$LANG" LANGUAGE="$LANGUAGE" "$SUDO_CMD" "$VENV_BIN" "$@"
+      "$SUDO_CMD" "$VENV_BIN" "$@"
     else
-      env LANG="$LANG" LANGUAGE="$LANGUAGE" "$VENV_BIN" "$@"
+      "$VENV_BIN" "$@"
     fi
   }
 
