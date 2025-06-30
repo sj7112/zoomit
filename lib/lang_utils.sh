@@ -208,7 +208,7 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
 
     if [ "$curr_lang" != "$new_lang" ]; then
       local prompt=$(_mf "Change {} language from [{}] to [{}]?" "$USER" "$curr_lang" "$new_lang")
-      if confirm_action "$prompt"; then
+      if confirm_action "$prompt" default="N"; then
         if [ -n "$profile_file" ]; then
           set_user_lang_profile "$new_lang" # 优先设置 ~/.profile
         elif [[ "$SHELL" =~ "bash" ]]; then
