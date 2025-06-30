@@ -67,7 +67,7 @@ class PythonASTParser(ASTParser):
             return 0  # 整行注释或空白：跳过
 
         if self._set_function_end_flag():
-            self.line_number -= 1  # 回退一行，先处理函数结束，再重新处理新函数
+            self.line_number -= 1  # 回退一行，先处理函数结束，再重新处理当前行
             return 9  # 函数结束条件：未缩进
 
         # 正则捕获组是函数名称
@@ -86,9 +86,6 @@ class PythonASTParser(ASTParser):
         if "'''" in line_content or '"""' in line_content:
             if self._check_heredoc_block():
                 return 0  # Multi-line ：跳过
-
-        if self._set_function_end_flag():
-            return 9  # 函数结束条件：未缩进
 
         if self.parsers:
             return 1  # 需进一步解析
