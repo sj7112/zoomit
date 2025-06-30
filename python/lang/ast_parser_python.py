@@ -14,13 +14,11 @@ from python.lang.ast_parser import ASTParser, FuncParser
 # ==============================================================================
 # parse_line_preprocess     预处理行：移除注释部分和前后空格
 # check_heredoc_block       检查并处理heredoc块
-# get_function_name         从函数定义行中提取函数名
-# init_brace_count          初始化大括号计数器
 # split_match_type          分割并匹配函数调用
 # extract_quoted_string     提取字符串中第一个未转义双引号之间的内容
 # parse_match_type          解析脚本行中的函数调用信息
 # parse_function            处理函数内容，递归解析函数体
-# parse_code_files         主解析函数：解析代码文件，遇到函数，则进入解析
+# parse_code_files          主解析函数：解析代码文件，遇到函数，则进入解析
 # ==============================================================================
 
 
@@ -49,15 +47,15 @@ class PythonASTParser(ASTParser):
 
     def _parse_line_preprocess(self):
         """
-        预处理行：移除注释部分和前后空格
+        Preprocess the line: remove comments and trim leading/trailing spaces
 
-        返回值:
-        - processed_line: 处理后的行内容
+        Return values:
+        - processed_line: The processed line content
         - status:
-            0: 注释或空行
-            1: 普通非函数行（需进一步解析）
-            2: 是函数定义
-            3: Multi-line 标记
+            0: Skip line: comments, blank line
+            1: Normal content line (requires further parsing)
+            2: Function definition line
+            9: End of function or code file
         """
         if self.line_number >= len(self.lines):
             self.indent = 0
@@ -139,7 +137,8 @@ class PythonASTParser(ASTParser):
         # Add leading space to avoid offset calculation errors
         line = " " + self.line
 
-        # 完整匹配模式
+        # match left : ' ' OR ',' OR ';' OR '=' OR '{' OR '(' OR '['
+        # match right: '(' OR 'SPACES' + '('
         pattern = r"([\s,;={(\[])" + f"({self.PATTERNS})" + r"\s*\("
 
         last_pos = 0

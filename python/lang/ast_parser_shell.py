@@ -14,13 +14,11 @@ from python.debug_tool import print_array
 # ==============================================================================
 # parse_line_preprocess     预处理行：移除注释部分和前后空格
 # check_heredoc_block       检查并处理heredoc块
-# get_function_name         从函数定义行中提取函数名
-# init_brace_count          初始化大括号计数器
 # split_match_type          分割并匹配函数调用
 # extract_quoted_string     提取字符串中第一个未转义双引号之间的内容
 # parse_match_type          解析脚本行中的函数调用信息
 # parse_function            处理函数内容，递归解析函数体
-# parse_code_files         主解析函数：解析代码文件，遇到函数，则进入解析
+# parse_code_files          主解析函数：解析代码文件，遇到函数，则进入解析
 # ==============================================================================
 
 
@@ -45,17 +43,15 @@ class ShellASTParser(ASTParser):
 
     def _parse_line_preprocess(self):
         """
-        预处理行：移除注释部分和前后空格
+        Preprocess the line: remove comments and trim leading/trailing spaces
 
-        返回值:
-        - processed_line: 处理后的行内容
+        Return values:
+        - processed_line: The processed line content
         - status:
-            0: 注释、空行、单行函数
-            1: 普通非函数行（需进一步解析）
-            2: 是函数定义且不是单行函数
-            3: heredoc 标记
-            8: 单个左括号
-            9: 单个右括号
+            0: Skip line: comments, blank line, one-line function
+            1: Normal content line (requires further parsing)
+            2: Function definition line
+            9: End of function or code file
         """
         if self.line_number >= len(self.lines):
             self._set_function_end_flag()
@@ -143,31 +139,22 @@ class ShellASTParser(ASTParser):
         # Add leading space to avoid offset calculation errors
         line = " " + self.line
 
-        # 完整匹配模式
-        pattern = r"([\s;{\(\[]|&&|\|\|)" + f"({self.PATTERNS})" + r"([\s;}\)\]]|&&|\|\||$)"
+        # match left (one character): ' ' OR ';' OR '{' OR '(' OR '['
+        # match left (two character): "&&" OR "||"
+        # match right: ' '
+        pattern = r"([\s;{\(\[]|&&|\|\|)" + f"({self.PATTERNS})" + r"(\s)"
 
         last_pos = 0
-
         for match in re.finditer(pattern, line):
             match_start = match.start(2)  # 函数关键字开始位置
             if last_pos > 0:
                 segment = line[last_pos:match_start]
-                # # 移除前导符号
-                # if segment.startswith("&&") or segment.startswith("||"):
-                #     segment = segment[2:]
-                # elif segment[0] in " ;{([":
-                #     segment = segment[1:]
                 self._parse_match_type(segment)
             last_pos = match_start  # 更新上一个函数关键字的开始位置
 
         # 处理最后一个匹配之后的部分
         if last_pos > 0:
             segment = line[last_pos:]
-            # # 移除前导符号
-            # if segment.startswith("&&") or segment.startswith("||"):
-            #     segment = segment[2:]
-            # elif segment and segment[0] in " ;{([":
-            #     segment = segment[1:]
             self._parse_match_type(segment)
 
     def _extract_quoted_string(self, segment):
@@ -266,9 +253,6 @@ class ShellASTParser(ASTParser):
 
         # 处理函数体内容
         while True:
-            if self.code_file == "lib/msg_handler.sh" and "\?)" in self.line:
-                print(self.line)
-
             status = self._parse_line_preprocess()
             self.line_number += 1
             match status:
