@@ -298,7 +298,7 @@ class PythonASTParser(ASTParser):
 
         # 处理函数体内容
         while True:
-            if self.code_file == "python/mirror/linux_speed.py" and self.line_number == 236:
+            if self.code_file == "python/i18n.py" and self.line_number == 78:
                 print(self.line_number)
             status = self._parse_line_preprocess()
             self.line_number += 1

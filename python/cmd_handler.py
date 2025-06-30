@@ -11,7 +11,7 @@ from typing import Any, List, Tuple, Union
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.path
 
-from python.msg_handler import info
+from python.msg_handler import _mf, info, string
 from python.cache.os_info import OSInfo, OSInfoCache
 
 # Global configuration
@@ -55,13 +55,13 @@ def cmd_exec(cmd, **kwargs) -> Tuple[bool, Any]:
         result = subprocess.run(cmd, **run_args)
         if result.returncode != 0:
             return False, result.stderr
-        return True, result  # 原始对象
+        return True, result  # Original object
     except subprocess.TimeoutExpired:
-        error_msg = f"[ERROR] 命令执行超时: {' '.join(cmd)}"
+        error_msg = _mf(r"[ERROR] Command execution timeout: {}", " ".join(cmd))
         print(error_msg)
         return False, error_msg
     except Exception as e:
-        error_msg = f"[ERROR] 命令执行异常: {e}"
+        error_msg = _mf(r"[ERROR] Command execution error: {}", e)
         print(error_msg)
         return False, str(e)
 
@@ -125,7 +125,7 @@ def cmd_ex_be(*commands):
         combined_cmd = f"({combined_cmd})"
 
     # Execute command (non-quiet mode)
-    print(f"执行: {combined_cmd} ... ", file=sys.stderr)
+    print(f"{_mf('Executing')}: {combined_cmd} ... ", file=sys.stderr)
 
     # Execute command & monitor progress
     return monitor_progress(combined_cmd, LOG_FILE)
@@ -163,7 +163,7 @@ def monitor_progress(cmd, log_file=None):
             print(f"Error: Invalid PID {process.pid}")
             return process.returncode or 1
 
-        print(f"Monitoring process {process.pid}...")
+        string(r"Monitoring process {}...", process.pid)
 
         # Get terminal width
         try:
@@ -209,25 +209,26 @@ def monitor_progress(cmd, log_file=None):
 
         # Display final status
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        print(f"\r\033[K[-] 完成 Completed: {current_time}")
-        print()  # New line
+        print(f"\r\033[K[-] {_mf('Completed')}: {current_time}")
+        print()
 
         return return_code
 
     except KeyboardInterrupt:
         if process and process.poll() is None:
-            print("\n检测到 Ctrl+C，正在终止后台子进程...", file=sys.stderr)
+            print()
+            print(_mf("Ctrl+C detected, terminating background subprocesses..."), file=sys.stderr)
             process.terminate()
             try:
                 process.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 process.kill()
-        print("脚本已中断并清理子进程。")
+        string("Script interrupted and subprocesses cleaned up")
         # sys.exit(130)  # 128 + 2 (SIGINT)
         return 2
 
     except Exception as e:
-        print(f"\r\033[KError: {e}", file=sys.stderr)
+        print(f"\r\033[K[ERROR]: {e}", file=sys.stderr)
         print()
         return 3
 
@@ -245,11 +246,11 @@ def pm_refresh():
         "zypper": ["zypper refresh -f"],
         "pacman": ["pacman -Syy"],
     }
-    info("正在刷新缓存...")
+    string("Refreshing cache...")
     if commands := pm_commands.get(_os_info.package_mgr):
         result = cmd_ex_be(*commands)
         if result == 0:
-            info("缓存刷新完成")
+            info("Cache refresh completed")
         return result
 
 
@@ -263,11 +264,11 @@ def pm_upgrade():
         "zypper": ["zypper update -y"],
         "pacman": ["pacman -Syu --noconfirm"],
     }
-    info("正在更新系统...")
+    string("Updating system...")
     if commands := pm_commands.get(_os_info.package_mgr):
         result = cmd_ex_be(*commands)
         if result == 0:
-            info("更新系统完成")
+            info("System update completed")
         return result
 
 
@@ -284,11 +285,11 @@ def pm_install(lnx_cmds: Union[str, List[str]]):
     if isinstance(lnx_cmds, str):
         lnx_cmds = [lnx_cmds]
 
-    info(r"正在安装{}...", " ".join(lnx_cmds))
+    string(r"Installing {}...", " ".join(lnx_cmds))
     if cmd := pm_commands.get(_os_info.package_mgr):
         result = cmd_ex_be(*[f"{cmd} {lnx_cmd}" for lnx_cmd in lnx_cmds])
         if result == 0:
-            info(r"安装{}完成", " ".join(lnx_cmds))
+            info(r"Installation of {} completed", " ".join(lnx_cmds))
         return result
 
 

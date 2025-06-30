@@ -317,20 +317,22 @@ class MirrorTester:
 
         top_10 = self.test_all_mirrors()
         if not top_10:
-            print("没有找到可用的镜像")
+            string("No available mirrors found")
             return 3
 
         tot_len = len(top_10)
         while True:
-            print(f"\n请选择要使用的镜像 (1-{tot_len})，输入 0 表示不更改:")
-
             try:
                 # Get user input
-                choice = input(f"请输入选择 (0-{tot_len}): ").strip()
+                print()
+                string(r"Please select a mirror to use (1-{}), enter 0 to keep current settings", tot_len)
+                prompt = _mf(r"Please enter your choice (0-{}): ", tot_len)
+                choice = input(prompt).strip()
 
                 # Special case: input is 0
                 if choice == "0":
-                    print("\n已取消配置，保持当前设置")
+                    print()
+                    string("Configuration cancelled, keeping current settings")
                     return 1
 
                 # Convert input to an integer
@@ -339,9 +341,9 @@ class MirrorTester:
                 if 1 <= choice_num <= tot_len:
                     # Get the user-selected mirror
                     selected_mirror = top_10[choice_num - 1]
-
-                    print(f"\n✨ 您选择了: {selected_mirror.url}")
-                    print(f"   下载速度: {selected_mirror.avg_speed:.1f}s")
+                    print()
+                    print(f"✨ {_mf('You selected')}: {selected_mirror.url}")
+                    print(f"   {_mf('Download speed')}: {selected_mirror.avg_speed:.1f}s")
 
                     self.update_pm_file(selected_mirror)  # Update PM configuration file
                     return pm_refresh()  # refresh PM configuration
@@ -362,7 +364,9 @@ class MirrorTester:
     def print_results(self, results: List[MirrorResult]):
         print()
         print("-" * 80)
-        print(f"{'排名':<3} {'速度(KB/s)':<9} {'响应时间(s)':<8} {'成功率':<4} {'国家/地区':<10} {'镜像URL'}")
+        print(
+            f"{_mf('排名'):<3} {_mf('速度(KB/s)'):<9} {_mf('响应时间(s)'):<8} {_mf('成功率'):<4} {_mf('国家/地区'):<10} {_mf('镜像URL')}"
+        )
         print("-" * 80)
 
         for i, result in enumerate(results, 1):

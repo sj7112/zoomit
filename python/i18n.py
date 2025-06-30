@@ -29,19 +29,27 @@ os.makedirs(LANG_DIR, exist_ok=True)
 
 
 def resolve_lang_files(lang_code: str, mode: str = "", max_files: int = 1) -> List[str]:
-    """找到多个语言文件路径，并进行存在性检查
+    """Checks for the existence of multiple language files
 
     Args:
-        lang_code: 语言代码（如 zh_CN）
-        mode: 报错条件（-：文件不存在报错；+：文件存在报错；e:报错；w:警告；i:提示）
-              - "0-e": 一个文件都不存在
-              - "1-e": 至少一个文件不存在
-              - "1+e": 至少一个文件存在
-              - "2+e": 所有文件都存在
-        max_files: 最大文件数量
+        lang_code: Language code (e.g., zh_CN)
+        mode: Error condition mode:
+            - "-" : Error if a file does not exist
+            - "+" : Error if a file already exists
+            - "e": Raise error
+            - "w": Warn only
+            - "i": Info message only
+
+        Mode combinations:
+            - "0-e": Error if no file exists
+            - "1-e": Error if at least one file is missing
+            - "1+e": Error if at least one file exists
+            - "2+e": Error if all files exist
+
+        max_files: Maximum number of files to check
 
     Returns:
-        包含所有语言文件路径的列表, 提示消息的返回值（0=正常；1=出错）
+        A list of language file paths, and a result code (0 = OK, 1 = Error)
     """
     # 生成文件路径列表
     lang_files = []
@@ -62,14 +70,14 @@ def resolve_lang_files(lang_code: str, mode: str = "", max_files: int = 1) -> Li
     elif "i" in mode:
         func = lambda msg: info(msg, error=True)
     else:
-        exiterr(_mf("模式参数错误 {0}", mode))
+        exiterr(r"Invalid mode parameter {}", mode)
 
     # 检查文件存在性
     any_exists = any(os.path.isfile(file) for file in lang_files)
     all_exist = all(os.path.isfile(file) for file in lang_files)
 
-    exist_msg = _mf("{0} 语言文件已存在", lang_code, ignore=True)
-    notexist_msg = _mf("{0} 语言文件不存在", lang_code)
+    exist_msg = _mf("{0} Language file already exists", lang_code)
+    notexist_msg = _mf("{0} Language file does not exist", lang_code)
 
     # 执行报错逻辑
     result = 0
@@ -86,7 +94,7 @@ def resolve_lang_files(lang_code: str, mode: str = "", max_files: int = 1) -> Li
 
 
 def resolve_lang_codes() -> List[str]:
-    """解析语言文件，提取语言代码并返回列表"""
+    """Parse language files, extract language codes, and return them as a list"""
     lang_codes = []
 
     # 查找所有 .properties 文件
@@ -99,13 +107,12 @@ def resolve_lang_codes() -> List[str]:
 
 
 def get_lang_files(langs: List[str] = None) -> Tuple[List[str], List[str]]:
-    """处理语言文件
-
+    """
+    Get language files
     Args:
-        lang_code: 指定语言代码，为空则获取所有
-
+        lang_code: Specific language code to filter. returned all available language codes if empty
     Returns:
-        (lang_codes, lang_files): 语言代码列表和文件路径列表
+        lang_codes: A list of language codes
     """
     lang_codes = []
 
@@ -116,23 +123,15 @@ def get_lang_files(langs: List[str] = None) -> Tuple[List[str], List[str]]:
 
     ret_langs = add_lang_files(lang_codes, False)
     if not ret_langs:
-        exiterr("请先添加语言文件")
+        exiterr("Please add the language file first")
 
-    # 返回语言文件列表
-    # lang_files = [file for _, files in ret_langs for file in files]
     return lang_codes
 
 
 def add_lang_files(langs: List[str], no_prompt: bool = True) -> Tuple[str, List[str]]:
-    """添加语言文件
+    """Add language files, use language code such as 'zh_CN'"""
 
-    Args:
-        lang_code: 语言代码（如 zh_CN）
-    """
-
-    # 新增文件子程序
     def do_add_lang_files(lang_code, lang_files):
-        # 标准模板内容
         template = _mf(
             "# {0} 语言包，文档结构：\n\
 # 1. 自动处理 bin | lib 目录 sh 文件\n\
@@ -149,7 +148,7 @@ def add_lang_files(langs: List[str], no_prompt: bool = True) -> Tuple[str, List[
                     f.write(template)
                 flag = True
         if flag:
-            info("{0} 语言文件已创建", lang_code)  # 新增通知消息
+            info("{0} Language file has been created", lang_code)  # 新增通知消息
 
     ret_lang = []
     for lang_code in langs:
@@ -164,8 +163,8 @@ def add_lang_files(langs: List[str], no_prompt: bool = True) -> Tuple[str, List[
             continue
 
         # 文件存在，提示用户是否删除
-        prompt = _mf("确定要新增 {0} 语言文件吗?", lang_code)
-        errmsg = _mf("操作已取消，未增加 {0} 文件文件", lang_code)
+        prompt = _mf("Are you sure to create the {0} language file?", lang_code)
+        errmsg = _mf("Action cancelled. The {0} file was not created", lang_code)
         ret_code = confirm_action(prompt, do_add_lang_files, lang_code, lang_files, msg=errmsg)
         if ret_code == 0:
             ret_lang.append((lang_code, lang_files))
@@ -189,7 +188,7 @@ def del_lang_files(langs: List[str], no_prompt: bool = False) -> None:
                 os.remove(file)
                 flag = True
         if flag:
-            info("{0} 语言文件已删除", lang_code)  # 删除通知消息
+            info("{0} Language file has been deleted", lang_code)  # 删除通知消息
 
     for lang_code in langs:
         lang_files, flag = resolve_lang_files(lang_code, "0-e")
@@ -201,8 +200,10 @@ def del_lang_files(langs: List[str], no_prompt: bool = False) -> None:
             continue
 
         # 文件存在，提示用户是否删除
-        prompt = _mf("确定要删除 {0} 语言文件吗?", lang_code)
-        confirm_action(prompt, do_del_lang_files, lang_code, lang_files, errmsg=_mf("操作已取消，文件未删除"))
+        prompt = _mf("Are you sure to delete the {0} language file?", lang_code)
+        confirm_action(
+            prompt, do_del_lang_files, lang_code, lang_files, errmsg=_mf("Action cancelled. File deletion aborted")
+        )
 
 
 def upd_lang_files(langs: List[str], files: List[str], test_run: bool) -> None:

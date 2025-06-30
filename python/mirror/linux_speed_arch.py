@@ -12,6 +12,7 @@ from typing import Dict, List
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))  # add root sys.path
 
 from python.mirror.linux_speed import MirrorResult, MirrorTester, get_country_name
+from python.msg_handler import _mf
 from python.file_util import write_source_file
 from python.system import confirm_action
 
@@ -128,8 +129,7 @@ class ArchMirrorTester(MirrorTester):
 
         top_10 = self.test_all_mirrors()
 
-        prompt = f"是否变更为新的镜像列表?"
-        confirm_action(prompt, self.update_pm_file, top_10)
+        confirm_action(_mf("Do you want to switch to the new mirror list?"), self.update_pm_file, top_10)
 
     def update_pm_file(self, top_10):
         # generate custom content
