@@ -19,12 +19,15 @@
         {
             "type": "bashdb",
             "request": "launch",
-            "name": "Bash-Debug (init_debian)",
+            "name": "Bash-Debug (init_main)",
             "terminalKind": "integrated",
             "cwd": "${workspaceFolder}",
-            "program": "${workspaceFolder}/bin/deb/init_debian.sh",
+            "program": "${workspaceFolder}/bin/init_main.sh",
+            // "program": "${workspaceFolder}/bin/deb/init_debian.sh",
             // "program": "${workspaceFolder}/bin/cos/init_centos.sh",
-            "args": [],
+            "args": [
+                "--version"
+            ],
             "env": {
                 "DEBUG": "1"
             }

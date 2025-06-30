@@ -405,22 +405,6 @@ def parse_options(args):
 # stack = s - 显示调用栈(测试)
 # error = e - 返回错误状态
 # ==============================================================================
-def _mf(*args, **kwargs):
-    """
-    格式化字符串，支持参数替换
-    直接返回字符串转换结果
-    """
-    return msg_parse_param(kwargs, *args)
-
-
-def string(*args, **kwargs):
-    """
-    格式化字符串，支持参数替换
-    直接返回字符串转换结果
-    """
-    return msg_parse_param(kwargs, *args)
-
-
 def exiterr(*args, **kwargs):
     """输出错误消息并退出"""
     msg_parse_param(kwargs, *args)
@@ -448,6 +432,22 @@ def warning(*args, **kwargs):
 def info(*args, **kwargs):
     """输出信息消息
     返回消息种类（0=非error；1=error）
+    """
+    return msg_parse_param(kwargs, *args)
+
+
+def string(*args, **kwargs):
+    """
+    格式化字符串，支持参数替换
+    直接返回字符串转换结果
+    """
+    return msg_parse_param(kwargs, *args)
+
+
+def _mf(*args, **kwargs):
+    """
+    格式化字符串，支持参数替换
+    直接返回字符串转换结果
     """
     return msg_parse_param(kwargs, *args)
 

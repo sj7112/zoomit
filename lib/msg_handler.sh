@@ -391,10 +391,6 @@ EOF
   # -s : sequence (手动设置序号)
   # -o : line order (行内序号 - 需手动输入)
   # ==============================================================================
-  _mf() { msg_parse_param "$@"; }
-  string() {
-    echo "$(msg_parse_param "$@")"
-  }
   exiterr() {
     msg_parse_param "$@"
     exit 1
@@ -403,4 +399,6 @@ EOF
   success() { msg_parse_param "$@"; }
   warning() { msg_parse_param "$@"; }
   info() { msg_parse_param "$@"; }
+  string() { msg_parse_param "$@"; }
+  _mf() { msg_parse_param "$@"; }
 fi

@@ -1,4 +1,14 @@
 #!/bin/bash
+#
+# zoomit v1.0 - Copyright (C) 2025 sj7112
+# Licensed under the GNU General Public License v3.0
+# This is free software: you can redistribute it and/or modify
+# it under the terms of the GNU GPL as published by the Free Software Foundation.
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See <https://www.gnu.org/licenses/> for details.
+# Project homepage: https://github.com/sj7112/zoomit
 
 # Load once only
 if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
@@ -247,7 +257,27 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     close_all # close python cache
   }
 
+  show_version() {
+    local version="zoomit v1.0"
+    local year="2005"
+    local author="sj7112"
+    echo ""
+    string -i "$VERSION_CLAIM" "$version" "$year" "$author"
+    echo ""
+  }
+
   if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    # Check for --version or -v argument
+    for arg in "$@"; do
+      case "$arg" in
+        --version | -v)
+          load_global_prop # Load global properties (Step 1)
+          show_version
+          exit 0
+          ;;
+      esac
+    done
+
     init_main "$@" # Execute as root
   fi
 
