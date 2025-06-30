@@ -113,8 +113,8 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     load_global_prop # Load global properties (Step 1)
     check_user_auth  # initial sudo param
     init_os_release  # initial distribution data
+    initial_language # fix shell language to ensure UTF-8 support
     echo -e "\n=== $INIT_SYSTEM_START - $PRETTY_NAME ===\n"
-    initial_language  # fix shell language to ensure UTF-8 support
     load_global_prop  # Load global properties (Step 2)
     load_message_prop # load message translations
   }
