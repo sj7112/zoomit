@@ -21,18 +21,18 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   source "$LIB_DIR/network.sh"
   source "$LIB_DIR/docker.sh"
 
-  # 全局变量
-  DISTRO_PM=""       # 包管理器
-  DISTRO_OSTYPE=""   # 发行版名称
-  DISTRO_CODENAME="" # 发行版代号 | 版本号
-  SUDO_CMD=""        # sudo 默认字符串
+  # Global variables
+  DISTRO_PM=""       # Package manager
+  DISTRO_OSTYPE=""   # Distribution name
+  DISTRO_CODENAME="" # Distribution codename | version number
+  SUDO_CMD=""        # Default sudo command string
 
   LOG_FILE="/var/log/sj_install.log"
   ERR_FILE="/var/log/sj_pkg_err.log"
 
   # ==============================================================================
-  # 兼容：debian | ubuntu | centos | rhel | openSUSE | arch Linux
-  # 功能1: 检查root权限并自动升级
+  # Compatibility: debian | ubuntu | centos | rhel | openSUSE | arch Linux
+  # Feature 1: check root authority and upgrade the system
   # ==============================================================================
   # initial sudo param
   check_user_auth() {
@@ -74,18 +74,18 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     if [ -f /etc/os-release ]; then
       DISTRO_CODENAME=$(grep "^VERSION_CODENAME=" /etc/os-release | cut -d'=' -f2 || true)
 
-      # 部分发行版如没有VERSION_CODENAME
+      # For some distributions, if VERSION_CODENAME is not available
       if [ -z "$DISTRO_CODENAME" ]; then
-        # Rocky Linux、AlmaLinux 等用版本号替代
+        # Use version number as a substitute for distributions like Rocky Linux, AlmaLinux, etc.
         DISTRO_CODENAME=$(grep "^VERSION_ID=" /etc/os-release | cut -d= -f2 | tr -d '"' || true)
         case "$DISTRO_OSTYPE" in
           centos)
-            # CentOS 6/7 特判
+            # Special handling for CentOS 6/7
             if [[ "$DISTRO_CODENAME" = "6" || "$DISTRO_CODENAME" = "7" ]]; then
               DISTRO_CODENAME=$(sed 's/.*release \([0-9.]*\) .*/\1/' /etc/centos-release)
             fi
             ;;
-          arch) DISTRO_CODENAME="arch" ;; # Arch无代号
+          arch) DISTRO_CODENAME="arch" ;; # Arch has no codename
 
         esac
       fi
@@ -123,23 +123,23 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     install_base_pkg "curl"
     install_base_pkg "jq"
     install_base_pkg "make"
-    # 4. 加载json环境变量
-    # META_Command=$(json_load_data "cmd_meta") # 命令解析json
+    # 4. Load JSON environment variables
+    # META_Command=$(json_load_data "cmd_meta") # Parse command JSON
   }
 
   # ==============================================================================
-  # 功能2: 配置SSH（适用于所有发行版本）
-  # 函数: config_sshd
-  # 作用: 检查并安装 sshd，交互式修改 SSH 端口和 root 登录权限
-  # 参数: 无
-  # 返回值: 无 (直接修改 /etc/ssh/sshd_config 并重启 sshd)
+  # Feature 2: Configure SSH (applicable to all distributions)
+  # Function: config_sshd
+  # Purpose: Check and install sshd, interactively modify SSH port and root login permissions
+  # Parameters: None
+  # Return Value: None (directly modifies /etc/ssh/sshd_config and restarts sshd)
   # ==============================================================================
   config_sshd() {
     echo ""
 
     local ssh_service=$([[ $DISTRO_OSTYPE == ubuntu ]] && echo ssh || echo sshd)
 
-    # 检查是否安装 sshd
+    # Check if sshd is installed
     if ! ($SUDO_CMD systemctl is-active ssh &>/dev/null || $SUDO_CMD systemctl is-active sshd &>/dev/null); then
       info "sshd 未安装，正在安装..."
       if [[ "$DISTRO_PM" = "zypper" || "$DISTRO_PM" = "pacman" ]]; then
@@ -157,7 +157,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     fi
     set -e
 
-    # 重启 SSH 服务
+    # Restart SSH service
     $SUDO_CMD systemctl restart "$ssh_service"
     if [[ $? -eq 0 ]]; then
       info "SSH 配置已生效"
@@ -167,7 +167,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   }
 
   # --------------------------
-  # 功能3: 配置静态IP
+  # Feature 3: Configure static IP
   # --------------------------
   configure_ip() {
     echo ""
@@ -219,7 +219,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   }
 
   # --------------------------
-  # 功能2: 安装指定软件
+  # Feature 4: Install docker composer
   # --------------------------
   docker_compose() {
     install_docker
@@ -228,7 +228,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   }
 
   # --------------------------
-  # 功能3: 安装指定软件
+  # Feature 5: Close resources
   # --------------------------
   close_all() {
     sh_clear_cache
@@ -236,14 +236,14 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   }
 
   # ==============================================================================
-  # 公共初始化子函数（兼容：debian | ubuntu | centos | rhel | openSUSE | arch Linux）
+  # Main Function (Compatibility: debian | ubuntu | centos | rhel | openSUSE | arch Linux)
   # ==============================================================================
   init_main() {
-    initial_global # 设置环境变量
-    initial_env    # 基础值初始化
-    config_sshd    # SSH配置
-    configure_ip   # 静态IP配置
-    # docker_compose # 安装软件
+    initial_global # Set environment variables
+    initial_env    # Initialize basic values
+    config_sshd    # Configure SSH
+    configure_ip   # Configure static IP
+    # docker_compose # Install Docker software
     close_all # close python cache
   }
 

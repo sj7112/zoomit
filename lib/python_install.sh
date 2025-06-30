@@ -15,24 +15,24 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
 
   PY_BASE_URL="https://github.com/astral-sh/python-build-standalone/releases/download"
   PY_VERSION="3.10.17"
-  PY_REL_DATE="20250517" # 使用稳定的发布版本
+  PY_REL_DATE="20250517" # Use a stable release version
 
   PY_INST_DIR="$HOME/.local/python-$PY_VERSION"
   PY_GZ_FILE="/tmp/cpython-${PY_VERSION}-standalone.tar.gz"
   VENV_DIR="$HOME/.venv"
   VENV_BIN="$HOME/.venv/bin/python"
 
-  mirror_list=() # 👈 定义为全局数组
+  mirror_list=() # 👈 Define as a global array
   fail_list=()
 
   # ==============================================================================
-  # 安装python虚拟环境
+  # Install Python virtual environment
   # ==============================================================================
-  # 判断是否已有 Python 3.10+
+  # Check if Python 3.10+ is already available
   check_py_version() {
     local py_path=$1
     if [ -n "$py_path" ] && "$py_path" -c 'import sys; exit(0) if sys.version_info >= (3,10) else exit(1)' 2>/dev/null; then
-      # 确保 venv 和 ensurepip 都存在
+      # Ensure both venv and ensurepip are available
       if "$py_path" -m venv --help >/dev/null 2>&1 \
         && "$py_path" -m ensurepip --version >/dev/null 2>&1; then
         return 0
@@ -41,24 +41,24 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     return 1
   }
 
-  # 检测系统架构和发行版
+  # Detect system architecture and distribution
   detect_system() {
-    local arch=$(uname -m) # 检测架构
+    local arch=$(uname -m) # Detect architecture
     case "$arch" in
       x86_64) arch="x86_64" ;;
       aarch64 | arm64) arch="aarch64" ;;
       armv7l) arch="armv7" ;;
-      *) exiterr "不支持的架构: $arch" ;;
+      *) exiterr "Unsupported architecture: {}" "$arch" ;;
     esac
 
-    echo "$arch-linux" # 不考虑linux-musl
+    echo "$arch-linux" # Does not consider linux-musl
   }
 
-  # 获取 Python standalone 下载 URL
+  # Get Python standalone download URL
   get_python_url() {
     local system_type="$1"
 
-    # 根据系统类型选择合适的构建
+    # Select the appropriate build based on the system type
     case "$system_type" in
       x86_64-linux)
         echo "$PY_BASE_URL/$PY_REL_DATE/cpython-$PY_VERSION+$PY_REL_DATE-x86_64-unknown-linux-gnu-install_only.tar.gz"
@@ -66,54 +66,52 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
       aarch64-linux)
         echo "$PY_BASE_URL/$PY_REL_DATE/cpython-$PY_VERSION+$PY_REL_DATE-aarch64-unknown-linux-gnu-install_only.tar.gz"
         ;;
-      *)
-        exiterr "不支持的系统类型: $system_type"
-        ;;
+      *) exiterr "Unsupported system type: {}" "$system_type" ;;
     esac
   }
 
-  # 增强版智能 wget 函数
+  # Enhanced smart wget function
   smart_geturl() {
     local output="$1"
     local url="$2"
 
-    # 检查参数
+    # Check parameters
     if [ -z "$output" ] || [ -z "$url" ]; then
-      echo "错误: 用法 smart_geturl <输出文件> <URL>"
+      error "Usage: smart_geturl <output_file> <URL>"
       return 1
     fi
 
-    # 自动判断是否存在 wget 或 curl
+    # Automatically determine if wget or curl is available
     local downloader=""
     if command -v wget >/dev/null 2>&1; then
       downloader="wget -c -q -O \"$output\" \"$url\""
     elif command -v curl >/dev/null 2>&1; then
       downloader="curl -L -C - -s -o \"$output\" \"$url\""
     else
-      echo "错误: 系统未安装 wget 或 curl，无法下载。"
+      error "Neither wget nor curl is installed on the system, unable to download."
       return 2
     fi
 
-    # 启动后台下载
-    echo "开始下载: $downloader"
-    echo "开始时间: $(date)"
+    # Start background download
+    echo "$(_mf "Starting download"): $downloader"
+    echo "$(_mf "Start time"): $(date)"
     eval "$downloader &"
     local pid=$!
     local start_time=$(date +%s)
 
-    # 定义本地退出清理函数
+    # Define local cleanup function on exit
     SMART_WGET_PID=$pid
     on_exit() {
       local oid="$SMART_WGET_PID"
       if kill -0 "$oid" 2>/dev/null; then
         echo ""
-        warning "检测到中断，正在终止后台下载进程（PID=$oid...）"
+        warning "Interrupt detected, terminating background download process (PID={}...)" "$oid"
         kill "$oid" 2>/dev/null
         wait "$oid" 2>/dev/null
       fi
     }
 
-    # 开始trap（防止影响全局）
+    # Begin trap (to prevent affecting global scope)
     trap on_exit INT TERM EXIT
 
     local counter=0
@@ -123,11 +121,11 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     local elapsed
     local elapsed_formatted
 
-    # 每0.5秒监控循环
+    # Monitor loop every 0.5 seconds
     while kill -0 "$pid" 2>/dev/null; do
       counter=$((counter + 1))
 
-      # 旋转指示器（每0.5秒更新）
+      # Rotating spinner (updates every 0.5 seconds)
       case $((counter % 4)) in
         0) spinner="-" ;;
         1) spinner="\\" ;;
@@ -135,15 +133,15 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
         3) spinner="/" ;;
       esac
 
-      # 计算运行时间
+      # Calculate runtime
       if [ $((counter % 2)) -eq 0 ] || [ $counter -eq 1 ]; then
         elapsed=$(($(date +%s) - start_time))
         elapsed_formatted=$(printf "%02d:%02d:%02d" $((elapsed / 3600)) $((elapsed % 3600 / 60)) $((elapsed % 60)))
       fi
 
-      # 每3秒进行一次完整计算
+      # Perform a full calculation every 3 seconds
       if [ $((counter % 6)) -eq 0 ] || [ $counter -eq 1 ]; then
-        # 获取文件大小（字节）
+        # Get file size (in bytes)
         local current_size
         if [ -f "$output" ]; then
           if stat -c%s "$output" >/dev/null 2>&1; then
@@ -152,7 +150,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
             current_size=0
           fi
 
-          # 人类可读大小 (B, K, M, G)
+          # Human-readable size (B, K, M, G)
           local human_size
           if [ "$current_size" -gt 1073741824 ]; then
             human_size="$(echo "$current_size" | awk '{printf "%.1fG", $1/1073741824}')"
@@ -164,11 +162,11 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
             human_size="${current_size}B"
           fi
 
-          # 计算变化
+          # Calculate size change
           local size_change=$((current_size - prev_size))
 
-          # 计算平均速度
-          local avg_speed_text="计算中..."
+          # Calculate average speed
+          local avg_speed_text="Calculating..."
           if [ "$elapsed" -gt 0 ] && [ "$current_size" -gt 0 ]; then
             local avg_speed=$((current_size / elapsed))
             if [ "$avg_speed" -gt 1048576 ]; then
@@ -180,25 +178,25 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
             fi
           fi
 
-          # 缓存统计信息（除了spinner和时间）
-          cached_stats=$(_mf "大小: $human_size ↑$size_change | 平均: $avg_speed_text")
+          # Cache statistics (excluding spinner and time)
+          cached_stats="$(_mf "Size"): $human_size ↑$size_change | $(_mf "Average"): $avg_speed_text"
           prev_size=$current_size
         else
-          cached_stats="等待文件创建..."
+          cached_stats=$(_mf "Waiting for file creation...")
         fi
       fi
 
-      # 每0.5秒更新显示（只更新spinner和当前时间）
-      display_content=$(_mf "$(date '+%H:%M:%S') | 运行时间: $elapsed_formatted | $cached_stats")
+      # Update display every 0.5 seconds (only update spinner and current time)
+      display_content="$(date '+%H:%M:%S') | $(_mf "Elapsed Time"): $elapsed_formatted | $cached_stats"
       printf "\r\033[K[%s] %s" "${spinner}" "${display_content}"
       sleep 0.5
     done
 
-    # 检查结果
+    # Check the result
     echo ""
     wait "$pid"
 
-    # 取消trap（避免影响其它代码）
+    # Remove trap (to avoid affecting other code)
     trap - INT TERM EXIT
 
     local exit_code=$?
@@ -216,28 +214,28 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
           final_size="$(du -h "$output" 2>/dev/null | cut -f1)"
         fi
       fi
-      echo "✓ 下载完成! 文件大小: $final_size"
+      echo "✓ $(_mf "Download complete! File size"): $final_size"
     else
-      echo "✗ 下载失败"
+      echo "✗ $(_mf "Download failed")"
       return $exit_code
     fi
   }
 
-  # 下载并安装 Python standalone
+  # Download and install Python standalone
   install_py_standalone() {
     local system_type=$(detect_system)
     local python_url=$(get_python_url "$system_type")
 
-    # 下载文件（支持断点续传）
-    info "下载 Python {} standalone..." $PY_VERSION
+    # Download file (supports resuming)
+    info "Downloading Python {} standalone..." $PY_VERSION
 
     smart_geturl "$PY_GZ_FILE" "$python_url"
 
-    # 解压到安装目录
-    info "安装 Python 到 {}..." "$PY_INST_DIR"
-    mkdir -p "$PY_INST_DIR" # 确保安装目录存在
+    # Extract to the installation directory
+    info "Installing Python to {}..." "$PY_INST_DIR"
+    mkdir -p "$PY_INST_DIR" # Ensure the installation directory exists
     if ! tar -zxf "$PY_GZ_FILE" -C "$PY_INST_DIR" --strip-components=1; then
-      exiterr "解压安装失败"
+      exiterr "Extraction and installation failed"
     fi
   }
 
@@ -252,47 +250,47 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
       echo "$local_bin"
     else
       install_py_standalone
-      # 验证是否可用
+      # Verify if it is usable
       if check_py_version "$local_bin"; then
-        info "Python $PY_VERSION 安装完成！"
+        info "Python {} installation completed!" "$PY_VERSION"
         echo "$local_bin"
       else
-        exiterr "Python $PY_VERSION 安装失败: $local_bin 不存在或不可执行"
+        exiterr "Python {} installation failed: {} does not exist or is not executable" "$PY_VERSION" "$local_bin"
       fi
     fi
   }
 
-  # 创建虚拟环境并安装常用包
+  # Create a virtual environment and install common packages
   install_py_venv() {
-    # 删除已存在的虚拟环境
+    # Remove existing virtual environment
     if [[ -d "$VENV_DIR" ]]; then
-      if ! confirm_action "虚拟环境 $VENV_DIR 已存在，是否删除重建？" default="N"; then
+      local prompt=$(_mf "Virtual environment {} already exists. Delete and reinstall it?" "${VENV_DIR}")
+      if ! confirm_action "$prompt" default="N"; then
         echo ""
         local pip_url=$("$VENV_BIN" -m pip config get global.index-url 2>/dev/null)
-        local prompt=""
+        local mirror_str=""
         if [[ -n $pip_url ]]; then
-          prompt=$(_mf "当前pip镜像: {}" "${pip_url}")
-          prompt=${prompt}$'\n'
+          mirror_str="$(_mf "Current pip mirror:") ${pip_url}"$'\n'
         fi
-        prompt="${prompt}是否重建 pip 和所需 python 库？"
-        confirm_action "$prompt" default="N" msg="跳过虚拟环境创建"
+        prompt=$(_mf "{}Reinstall pip and the required Python libraries?" "$mirror_str")
+        confirm_action "$prompt" default="N" msg="$(_mf "Skipping virtual environment creation")"
         return $?
       else
-        info "删除虚拟环境 $VENV_DIR..."
+        info "Deleting virtual environment {}..." "$VENV_DIR"
         $SUDO_CMD rm -rf "$VENV_DIR"
       fi
     fi
 
-    # 找到python系统路径
+    # Find the Python system path
     local py_bin=$(install_py_bin)
 
-    # 创建python虚拟环境
-    info "创建虚拟环境 $VENV_DIR..."
+    # Create Python virtual environment
+    info "Creating virtual environment {}..." "$VENV_DIR"
     if "$py_bin" -m venv "$VENV_DIR"; then
-      success "虚拟环境创建成功！"
-      return 0 # 创建pip
+      success "Virtual environment created successfully"
+      return 0 # Create pip
     else
-      exiterr "创建虚拟环境失败"
+      exiterr "Failed to create virtual environment"
     fi
   }
 
@@ -327,18 +325,18 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
       fi
     fi
     echo ""
-    echo -e "✨ 已配置 pip 使用新的镜像"
-    echo "   镜像: $mirror_url"
-    echo "   信任主机: $host"
+    echo -e "✨ $(_mf "Pip has been configured to use the new mirror")"
+    echo "   $(_mf "Mirror"): $mirror_url"
+    echo "   $(_mf "Trusted Host"): $host"
     echo ""
   }
 
   upgrade_pip() {
     run_with_log "$VENV_BIN" -m pip install --upgrade pip
     if [[ $? -eq 0 ]]; then
-      echo "[INFO] pip ${CMD_UPGRADE}${CMD_SUCCESS}"
+      string "[INFO] pip upgrade success"
     else
-      echo "[ERROR] pip ${CMD_UPGRADE}${CMD_FAILURE}"
+      string "[ERROR] pip upgrade failure"
     fi
   }
 
@@ -355,9 +353,9 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     for pkg in "${packages[@]}"; do
       run_with_log "$VENV_BIN" -m pip install "$pkg"
       if [[ $? -eq 0 ]]; then
-        echo "[INFO] $pkg ${CMD_INSTALL}${CMD_SUCCESS}"
+        string "[INFO] {} install success" "$pkg"
       else
-        echo "[ERROR] $pkg ${CMD_INSTALL}${CMD_FAILURE}"
+        string "[ERROR] {} install failure" "$pkg"
       fi
     done
   }
@@ -366,7 +364,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
   show_pip_mirrors() {
     log_file="/tmp/mypip_mirror_list.log"
 
-    # 读取并分类记录
+    # Read and categorize records
     while IFS="|" read -r status name url time; do
       if [[ "$status" == "success" ]]; then
         mirror_list+=("$name|$url|$time")
@@ -375,9 +373,9 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
       fi
     done <"$log_file"
 
-    # 打印成功记录
+    # Print successful records
     if [[ ${#mirror_list[@]} -gt 0 ]]; then
-      # 计算列宽
+      # Calculate column widths
       max_name=4
       max_url=0
       for item in "${mirror_list[@]}"; do
@@ -388,11 +386,11 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
       ((max_name += 4))
       ((max_url += 4))
 
-      # 打印表头
-      printf "%-9s%-*s%6s%-*s%8s\n" "序号" "$max_name" "镜像名" "" "$max_url" "URL地址" "耗时"
+      # Print header
+      printf "%-9s%-*s%-*s%-8s\n" "$(_mf "Index")" "$max_name" "$(_mf "Mirror Name")" "$max_url" "$(_mf "URL Address")" "$(_mf "Time")"
       printf "%0.s-" $(seq 1 $((max_name + max_url + 16))) && echo
 
-      # 打印数据
+      # Print data
       i=1
       for item in "${mirror_list[@]}"; do
         IFS="|" read -r name url time <<<"$item"
@@ -400,18 +398,18 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
         ((i++))
       done
 
-      # 最快镜像（第一条）
+      # Fastest mirror (first entry)
       IFS="|" read -r fastest_name fastest_url fastest_time <<<"${mirror_list[0]}"
       echo
-      echo "🚀 最快镜像: $fastest_name"
-      echo "   URL地址: $fastest_url"
-      printf "   响应时间: %.2fs\n" "$fastest_time"
+      echo "🚀 $(_mf "Fastest Mirror"): $fastest_name"
+      echo "   $(_mf "URL Address"): $fastest_url"
+      printf "   $(_mf "Response Time"): %.2fs\n" "$fastest_time"
     fi
 
-    # 打印失败记录
+    # Print failed records
     if [[ ${#fail_list[@]} -gt 0 ]]; then
       echo
-      echo "❌ 失败的镜像（${#fail_list[@]} 个）："
+      echo "❌ $(_mf "Failed Mirrors") (${#fail_list[@]}):"
 
       max_name=0
       max_url=0
@@ -423,16 +421,16 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
       ((max_name += 4))
       ((max_url += 4))
 
-      printf "%-*s %-*s %8s\n" $max_name "镜像名" $max_url "URL地址" "状态"
+      printf "%-*s %-*s %8s\n" $max_name "$(_mf "Mirror Name")" $max_url "$(_mf "URL Address")" "$(_mf "Status")"
       printf "%0.s-" $(seq 1 $((max_name + max_url + 8))) && echo
 
       for item in "${fail_list[@]}"; do
         IFS="|" read -r name url status <<<"$item"
-        # 中文状态转换
+        # Translate status to English
         case "$status" in
-          timeout) status_msg="超时" ;;
-          failed) status_msg="失败" ;;
-          error) status_msg="错误" ;;
+          timeout) status_msg="Timeout" ;;
+          failed) status_msg="Failed" ;;
+          error) status_msg="Error" ;;
           *) status_msg="$status" ;;
         esac
         printf "%-*s %-*s %8s\n" $max_name "$name" $max_url "$url" "$status_msg"
@@ -449,46 +447,46 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     local url
 
     if [[ $len -eq 0 ]]; then
-      string "\n⚠️  没有找到可用的镜像，请检查网络连接"
+      string "\n⚠️  No available mirrors found. Please check your network connection."
       return 3
     fi
 
     while true; do
-      local prompt=$(_mf "\n请选择要使用的镜像，输入 0 表示不更改 (0-{}):  " "$len")
+      local prompt="\n$(_mf "Please select a mirror to use. Enter 0 to skip") (0-$len): "
       read -rp "$prompt" choice
-      choice="${choice// /}" # 去除空白字符
+      choice="${choice// /}" # Remove whitespace characters
       if [[ "$choice" == "0" ]]; then
-        string "已取消配置，保持当前设置"
+        string "Configuration canceled. Keeping current settings"
         return 1
       fi
 
-      # 判断是否为整数
+      # Check if input is an integer
       if [[ "$choice" =~ ^[0-9]+$ ]]; then
         choice_num=$((choice))
         if ((choice_num >= 1 && choice_num <= len)); then
           selected_mirror="${mirror_list[choice_num - 1]}"
-          # mirror sample：AARNET (Australia)|https://pypi.aarnet.edu.au/simple/|0.4954190254211426
-          url="${selected_mirror%%|*}" # 取第1段，名字
-          url="${selected_mirror#*|}"  # 去掉第1段及分隔符
-          url="${url%%|*}"             # 取第2段，URL
+          # Mirror sample: AARNET (Australia)|https://pypi.aarnet.edu.au/simple/|0.4954190254211426
+          url="${selected_mirror%%|*}" # Extract the first segment (name)
+          url="${selected_mirror#*|}"  # Remove the first segment and delimiter
+          url="${url%%|*}"             # Extract the second segment (URL)
           echo "$url"
           return 0
         fi
       fi
 
-      string "[ERROR] 输入错误！请输入 0-$len 之间的数字"
+      string "[ERROR] Invalid input! Please enter a number between 0 and {}." "$len"
     done
   }
 
   # ==============================================================================
-  # 函数: create venv, install pip
+  # Main function: create venv, install pip
   # ==============================================================================
   create_py_venv() {
     # create ~/.venv; install pip; install third party packages
     if install_py_venv; then
       echo ""
       echo "=================================================="
-      echo "🌍 测试全球 pip 可用镜像速度..."
+      echo "🌍 $(_mf "Testing global pip mirror speeds...")"
       echo "=================================================="
 
       set +e

@@ -266,6 +266,9 @@ class ShellASTParser(ASTParser):
 
         # 处理函数体内容
         while True:
+            if self.code_file == "lib/msg_handler.sh" and "\?)" in self.line:
+                print(self.line)
+
             status = self._parse_line_preprocess()
             self.line_number += 1
             match status:

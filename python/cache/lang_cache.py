@@ -117,8 +117,11 @@ def load_message_prop() -> Dict[str, str]:
         print(f"[ERROR] Error loading properties file {lang_file}: {e}")
         return {}
 
+    # message for debug
     time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print(f"[INFO] Loaded {len(language_msgs)} messages from {lang_file} on {time}")
+    print(f"[INFO] Loaded {len(language_msgs)} py messages from {lang_file} on {time}")
+    print()
+
     return language_msgs
 
 

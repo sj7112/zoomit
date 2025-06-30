@@ -4,7 +4,6 @@
 global pip speed tester, automatically selects the fastest pip mirror
 """
 
-import pprint
 import time
 import subprocess
 import sys
@@ -106,99 +105,12 @@ def test_pip_mirrors(max_workers=5):
     successful_results.sort(key=lambda x: x["time"])
     return successful_results, failed_results
 
-    # if successful_results:
-    #     # max width of each column
-    #     name_width = max(len(r["name"]) for r in successful_results) + 4
-    #     url_width = max(len(r["url"]) for r in successful_results) + 4
-
-    #     # print title
-    #     print(f"{'序号':<4} {'镜像名':<{name_width}} {'URL地址':<{url_width - 4}} 耗时")
-    #     print("-" * (4 + name_width + url_width + 12))
-
-    #     # print data line
-    #     for i, result in enumerate(successful_results, 1):
-    #         time_str = f"{result['time']:.2f}s"
-    #         print(f"{i:<4} {result['name']:<{name_width}} {result['url']:<{url_width}} {time_str:>8}")
-
-    #     fastest = successful_results[0]
-    #     print()
-    #     print(f"🚀 最快镜像: {fastest['name']}")
-    #     print(f"   URL地址: {fastest['url']}")
-    #     print(f"   响应时间: {fastest['time']:.2f}s")
-
-    # if failed_results:
-    #     print(f"\n❌ 失败的镜像 ({len(failed_results)}个):")
-
-    #     # max width of each column
-    #     name_width = max(len(r["name"]) for r in failed_results) + 4
-    #     url_width = max(len(r["url"]) for r in failed_results) + 4
-
-    #     # print title
-    #     print(f"{'镜像名':<{name_width}} {'URL地址':<{url_width}} {'状态':>8}")
-    #     print("-" * (name_width + url_width + 8))
-
-    #     for result in failed_results:
-    #         status_msg = {"timeout": "超时", "failed": "失败", "error": "错误"}.get(result["status"], result["status"])
-    #         print(f"{result['name']:<{name_width}} {result['url']:<{url_width}} {status_msg:>8}")
-
-    # return None
-
-
-def choose_pip_mirror():
-    """
-    Select a mirror from the list of available mirrors.
-    Parameters:
-        mirror_list: A list of available mirrors, each containing name, url, time, etc.
-    Returns:
-        The selected mirror dictionary, or None if the user chooses not to change.
-    """
-    try:
-        mirror_list = test_pip_mirrors()
-        if not mirror_list:
-            print("\n⚠️  没有找到可用的镜像，请检查网络连接")
-            return 3, None
-
-        while True:  # 无限循环直到用户输入正确
-            try:
-                # 获取用户输入并去除首尾空格
-                choice = input(
-                    f"\n请选择要使用的镜像，输入 0 表示不更改 (0-{len(mirror_list)}): ".format(len(mirror_list))
-                ).strip()
-
-                # 处理输入为 0 的情况（不更改配置）
-                if choice == "0":
-                    print("\n已取消配置，保持当前设置")
-                    return 1, None
-
-                # 将输入转换为整数
-                choice_num = int(choice)
-
-                # 检查输入是否在有效范围内
-                if 1 <= choice_num <= len(mirror_list):
-                    # 获取用户选择的镜像（注意索引从0开始，所以要减1）
-                    selected_mirror = mirror_list[choice_num - 1]
-                    return 0, selected_mirror["url"]
-                else:
-                    print(f"[ERROR] 输入错误！请输入 0-{len(mirror_list)} 之间的数字")
-
-            except ValueError:
-                print(f"[ERROR] 输入错误！请输入 0-{len(mirror_list)} 之间的数字")
-
-    except KeyboardInterrupt:
-        # 用户按 Ctrl+C 中断
-        print()
-        print("已取消操作")
-        return 2, None
-
 
 def main():
-    """主函数"""
-
-    # Test all mirrors and return the result
+    """Test all mirrors and return the result"""
     mirror_list, failed_list = test_pip_mirrors()
     if mirror_list:
         with open("/tmp/mypip_mirror_list.log", "w", encoding="utf-8") as fh:
-            # 如果是列表，写入索引和值
             for value in mirror_list:
                 line = f"{value['status']}|{value['name']}|{value['url']}|{value['time']}"
                 fh.write(f"{line}\n")
@@ -208,13 +120,6 @@ def main():
         sys.exit(0)
 
     sys.exit(1)
-    # Test mirror speed and select a mirror
-    status, url = choose_pip_mirror()
-    if url:
-        with open("/tmp/mypip_result.log", "w") as f:
-            f.write(url)
-
-    sys.exit(status)
 
 
 if __name__ == "__main__":

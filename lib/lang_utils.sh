@@ -300,15 +300,15 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
 
       # Match key-value pairs KEY=VALUE
       if [[ "$line" =~ ^([A-Za-z0-9_-]+)=(.*)$ ]]; then
-        local key="${BASH_REMATCH[1]}"
-        local value="${BASH_REMATCH[2]}"
+        local k="${BASH_REMATCH[1]}"
+        local v="${BASH_REMATCH[2]}"
 
         # Handle multi-line values ending with "\"
-        while [[ "$value" =~ \\[[:space:]]*$ ]]; do
-          value="${value%\\*}" # Remove trailing \ and spaces
+        while [[ "$v" =~ \\[[:space:]]*$ ]]; do
+          v="${v%\\*}" # Remove trailing \ and spaces
           if IFS= read -r next_line; then
             next_line="${next_line#"${next_line%%[![:space:]]*}"}" # Trim leading spaces
-            value="${value}${next_line}"
+            v="${v}${next_line}"
           else
             break
           fi
@@ -316,12 +316,13 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
 
         # Store in array with file prefix
         if [[ -n "$current_file" ]]; then
-          LANGUAGE_MSGS["${current_file}:${key}"]="$value"
+          LANGUAGE_MSGS["${current_file}:${k}"]="$v"
         fi
       fi
     done <"$prop_file"
 
-    echo "[INFO] Loaded ${#LANGUAGE_MSGS[@]} messages from $prop_file"
+    # message for debug
+    echo "[INFO] Loaded ${#LANGUAGE_MSGS[@]} sh messages from $prop_file" on "$(date '+%F %T')"
     echo ""
   }
 

@@ -9,7 +9,7 @@
 config:
   project: zoomit-2025
   created: 2025/4/25 09:19:01
-  changed: '2025-06-28 22:50:52'
+  changed: '2025-06-30 11:18:53'
   djb2_len: 20
   djb2_coll: FILE # 目前仅在文件内处理hash冲突(暂未启用)
   del_mode: 2 # 0=保留；1=注释；2=删除
@@ -27,14 +27,14 @@ config:
     python: py
   stats: # auto-generated, DO NOT UPDATE
     file_nos: 51
-    zh: {count: 148}
-    en: {count: 148}
+    zh: {count: 186}
+    en: {count: 186}
 file:
   bin/cmd_help.sh:
     type: shell
     djb2_len: 20
     created: '2025-04-30 19:08:34'
-    changed: '2025-06-28 22:50:52'
+    changed: '2025-06-30 11:18:56'
     stats:
       zh: {count: 4, start: 8, end: 15}
       en: {count: 4, start: 8, end: 15}
@@ -42,7 +42,7 @@ file:
     type: shell
     djb2_len: 20
     created: '2025-04-30 19:08:34'
-    changed: '2025-06-28 22:50:52'
+    changed: '2025-06-30 11:18:56'
     stats:
       zh: {count: 1, start: 17, end: 19}
       en: {count: 1, start: 17, end: 19}
@@ -50,7 +50,7 @@ file:
     type: shell
     djb2_len: 20
     created: '2025-04-29 16:56:55'
-    changed: '2025-06-28 22:50:52'
+    changed: '2025-06-30 11:18:56'
     stats: #  auto-generated, DO NOT UPDATE
       zh: {count: 17, start: 21, end: 51}
       en: {count: 17, start: 21, end: 51}
@@ -58,106 +58,114 @@ file:
     type: shell
     djb2_len: 20
     created: '2025-04-29 16:56:55'
-    changed: '2025-06-28 22:50:52'
+    changed: '2025-06-30 11:18:56'
     stats: #  auto-generated, DO NOT UPDATE
-      zh: {count: 10, start: 53, end: 66}
-      en: {count: 10, start: 53, end: 66}
+      zh: {count: 4, start: 53, end: 59}
+      en: {count: 4, start: 53, end: 59}
   bin/test_lang.sh:
     type: shell
     djb2_len: 20
     created: '2025-06-23 14:49:57'
-    changed: '2025-06-28 22:50:52'
+    changed: '2025-06-30 11:18:56'
     stats:
-      zh: {count: 7, start: 68, end: 84}
-      en: {count: 7, start: 68, end: 84}
+      zh: {count: 7, start: 61, end: 77}
+      en: {count: 7, start: 61, end: 77}
   lib/bash_utils.sh:
     type: shell
     djb2_len: 20
     created: '2025-05-08 23:37:21'
-    changed: '2025-06-28 22:50:52'
+    changed: '2025-06-30 11:18:56'
     stats:
-      zh: {count: 9, start: 86, end: 98}
-      en: {count: 9, start: 86, end: 98}
+      zh: {count: 9, start: 79, end: 91}
+      en: {count: 9, start: 79, end: 91}
   lib/cmd_handler.sh:
     type: shell
     djb2_len: 20
     created: '2025-05-08 23:37:21'
-    changed: '2025-06-28 22:50:52'
+    changed: '2025-06-30 11:18:56'
     stats:
-      zh: {count: 3, start: 100, end: 104}
-      en: {count: 3, start: 100, end: 104}
+      zh: {count: 3, start: 93, end: 97}
+      en: {count: 3, start: 93, end: 97}
   lib/docker.sh:
     type: shell
     djb2_len: 20
     created: '2025-06-12 18:10:50'
-    changed: '2025-06-28 22:50:52'
+    changed: '2025-06-30 11:18:56'
     stats:
-      zh: {count: 2, start: 106, end: 110}
-      en: {count: 2, start: 106, end: 110}
+      zh: {count: 2, start: 99, end: 103}
+      en: {count: 2, start: 99, end: 103}
   lib/json_handler.sh:
     type: shell
     djb2_len: 20
     created: '2025-05-08 23:37:21'
-    changed: '2025-06-28 22:50:52'
+    changed: '2025-06-30 11:18:56'
     stats:
-      zh: {count: 1, start: 112, end: 114}
-      en: {count: 1, start: 112, end: 114}
+      zh: {count: 1, start: 105, end: 107}
+      en: {count: 1, start: 105, end: 107}
+  lib/lang_utils.sh:
+    type: shell
+    djb2_len: 20
+    created: '2025-06-29 20:42:17'
+    changed: '2025-06-30 11:18:56'
+    stats:
+      zh: {count: 4, start: 109, end: 116}
+      en: {count: 4, start: 109, end: 116}
   lib/msg_handler.sh:
     type: shell
     djb2_len: 20
     created: '2025-06-12 18:10:50'
-    changed: '2025-06-28 22:50:52'
+    changed: '2025-06-30 11:18:56'
     stats:
-      zh: {count: 1, start: 116, end: 118}
-      en: {count: 1, start: 116, end: 118}
+      zh: {count: 1, start: 118, end: 120}
+      en: {count: 1, start: 118, end: 120}
   lib/network.sh:
     type: shell
     djb2_len: 20
     created: '2025-06-12 18:10:50'
-    changed: '2025-06-28 22:50:52'
+    changed: '2025-06-30 11:18:56'
     stats:
-      zh: {count: 5, start: 120, end: 128}
-      en: {count: 5, start: 120, end: 128}
+      zh: {count: 13, start: 122, end: 141}
+      en: {count: 13, start: 122, end: 141}
   lib/python_install.sh:
     type: shell
     djb2_len: 20
     created: '2025-06-12 18:10:50'
-    changed: '2025-06-28 22:50:52'
+    changed: '2025-06-30 11:18:56'
     stats:
-      zh: {count: 16, start: 130, end: 154}
-      en: {count: 16, start: 130, end: 154}
+      zh: {count: 48, start: 143, end: 205}
+      en: {count: 48, start: 143, end: 205}
   python/cmd_handler.py:
     type: python
     djb2_len: 20
     created: '2025-06-24 19:02:02'
-    changed: '2025-06-28 22:50:52'
+    changed: '2025-06-30 11:18:56'
     stats:
-      zh: {count: 6, start: 156, end: 165}
-      en: {count: 6, start: 156, end: 165}
+      zh: {count: 6, start: 207, end: 216}
+      en: {count: 6, start: 207, end: 216}
   python/config_sshd.py:
     type: python
     djb2_len: 20
     created: '2025-06-27 19:16:58'
-    changed: '2025-06-28 22:50:52'
+    changed: '2025-06-30 11:18:56'
     stats:
-      zh: {count: 4, start: 167, end: 172}
-      en: {count: 4, start: 167, end: 172}
+      zh: {count: 4, start: 218, end: 223}
+      en: {count: 4, start: 218, end: 223}
   python/file_util.py:
     type: python
     djb2_len: 20
     created: '2025-06-23 14:40:10'
-    changed: '2025-06-28 22:50:52'
+    changed: '2025-06-30 11:18:56'
     stats:
-      zh: {count: 13, start: 174, end: 190}
-      en: {count: 13, start: 174, end: 190}
+      zh: {count: 13, start: 225, end: 241}
+      en: {count: 13, start: 225, end: 241}
   python/i18n.py:
     type: python
     djb2_len: 20
     created: '2025-06-23 14:40:10'
-    changed: '2025-06-28 22:50:52'
+    changed: '2025-06-30 11:18:56'
     stats:
-      zh: {count: 8, start: 192, end: 206}
-      en: {count: 8, start: 192, end: 206}
+      zh: {count: 8, start: 243, end: 257}
+      en: {count: 8, start: 243, end: 257}
   python/lang_server.py:
     type: python
     djb2_len: 20
@@ -178,31 +186,31 @@ file:
     type: python
     djb2_len: 20
     created: '2025-06-27 11:29:05'
-    changed: '2025-06-28 22:50:52'
+    changed: '2025-06-30 11:18:56'
     stats:
-      zh: {count: 2, start: 208, end: 211}
-      en: {count: 2, start: 208, end: 211}
+      zh: {count: 2, start: 259, end: 262}
+      en: {count: 2, start: 259, end: 262}
   python/network_util.py:
     type: python
     djb2_len: 20
     created: '2025-06-23 18:20:21'
-    changed: '2025-06-28 22:50:52'
+    changed: '2025-06-30 11:18:56'
     stats:
-      zh: {count: 10, start: 213, end: 225}
-      en: {count: 10, start: 213, end: 225}
+      zh: {count: 10, start: 264, end: 276}
+      en: {count: 10, start: 264, end: 276}
   python/system.py:
     type: python
     djb2_len: 20
     created: '2025-06-23 14:40:10'
-    changed: '2025-06-28 22:50:52'
+    changed: '2025-06-30 11:18:56'
     stats:
-      zh: {count: 6, start: 227, end: 235}
-      en: {count: 6, start: 227, end: 235}
+      zh: {count: 6, start: 278, end: 286}
+      en: {count: 6, start: 278, end: 286}
   python/test_lang.py:
     type: python
     djb2_len: 20
     created: '2025-06-23 14:49:57'
-    changed: '2025-06-28 22:50:52'
+    changed: '2025-06-30 11:18:56'
     stats:
-      zh: {count: 2, start: 237, end: 242}
-      en: {count: 2, start: 237, end: 242}
+      zh: {count: 2, start: 288, end: 293}
+      en: {count: 2, start: 288, end: 293}
