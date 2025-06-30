@@ -437,11 +437,11 @@ def handle_yml_data(lang_code, prop_data, file_yml):
         file_lang_inline_format(file_yml[file_name][YML_STAT], lang_code, file_data[MSG_STATS])
 
 
-def update_lang_properties(lang_code, lang_data, file_yml, test_run):
+def update_lang_properties(lang_code, msg_detail, file_yml, test_run):
     """
     主函数：处理语言文件(指定语言)
     1) 读取原有properties数据
-    2) 合并重新计算的lang_data数据
+    2) 合并重新计算的msg_detail数据
     3) _lang.properties的特殊处理：
          - merge时候，始终采用新数据
          - 执行完毕，清除备注字段
@@ -451,11 +451,11 @@ def update_lang_properties(lang_code, lang_data, file_yml, test_run):
     """
     # 从语言文件中读取原始数据
     prop_data = parse_lang_prop(lang_code)
-    # 如果 FULL_OPERATE 为 True，从 prop_data 中移除 lang_data 中没有的记录
+    # 如果 FULL_OPERATE 为 True，从 prop_data 中移除 msg_detail 中没有的记录
     if FULL_OPERATE:
-        prop_data = {k: v for k, v in prop_data.items() if k in lang_data or k == FILE_HEAD}
+        prop_data = {k: v for k, v in prop_data.items() if k in msg_detail or k == FILE_HEAD}
 
-    for file_name, file_data in lang_data.items():
+    for file_name, file_data in msg_detail.items():
         if not (file_name in prop_data):
             prop_data[file_name] = parse_lang_data(file_data)  # 补充：新添加的文件
         else:
@@ -469,7 +469,7 @@ def update_lang_properties(lang_code, lang_data, file_yml, test_run):
         write_lang_prop(lang_code, new_lines)
 
     if lang_code == BASE_LANG:
-        clean_lang_data(lang_data)  # 清除：备注字段（只在_lang文件中使用一次！）
+        clean_lang_data(msg_detail)  # 清除：备注字段（只在_lang文件中使用一次！）
     else:
         handle_yml_data(lang_code, prop_data, file_yml)  # 改写file_yml
 
@@ -525,21 +525,21 @@ def yaml_file_interceptor():
 def update_lang_files(lang_codes, files, test_run=False, file_yml=None):
     """
     处理语言文件(元数据)
-    :param lang_files: 语言文件列表
-    :param lang_data: 语言数据
+    :param lang_codes: 语言
+    :param files: 语言文件列表
     :param test_run: 是否测试运行
-    :param data: 由拦截器注入的YAML数据
+    :param file_yml: 由拦截器注入的YAML数据
     """
     global FULL_OPERATE  # 是否完整操作(处理所有文件)
     FULL_OPERATE = not files
 
     # 解析语言消息
-    lang_data_sh = ShellASTParser(TRIM_SPACE).parse_code_files(files)  # 语言消息 - shell
-    lang_data_py = PythonASTParser(TRIM_SPACE).parse_code_files(files)  # 语言消息 - python
-    lang_data = {**lang_data_sh, **lang_data_py}
+    msg_detail_sh = ShellASTParser(TRIM_SPACE).parse_code_files(files)  # 语言消息 - shell
+    msg_detail_py = PythonASTParser(TRIM_SPACE).parse_code_files(files)  # 语言消息 - python
+    msg_detail = {**msg_detail_sh, **msg_detail_py}
     # 写入yml和properties配置
     for lang_code in (BASE_LANG, *lang_codes):
-        update_lang_properties(lang_code, lang_data, file_yml, test_run)
+        update_lang_properties(lang_code, msg_detail, file_yml, test_run)
 
 
 # =============================================================================

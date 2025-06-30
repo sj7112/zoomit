@@ -22,7 +22,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent.parent))  # add root 
 from python.cache.os_info import OSInfoCache
 from python.system import confirm_action, setup_logging
 from python.cmd_handler import cmd_ex_be, pm_refresh, pm_upgrade
-from python.msg_handler import error, info, warning
+from python.msg_handler import _mf, error, info, string, warning
 from python.file_util import write_array
 
 setup_logging()
@@ -94,7 +94,7 @@ class MirrorTester:
         self.is_debug = os.environ.get("DEBUG") == "1"  # debug flag
 
     def fetch_mirror_list(self, limit: int = None) -> None:
-        print(f"{self.os_info.ostype}镜像速度测试工具")
+        string(r"{} Mirror Speed Testing Tool", self.os_info.ostype)
         print("=" * 50)
         try:
             response = requests.get(self.mirror_list, timeout=10)
@@ -105,12 +105,12 @@ class MirrorTester:
             if limit:
                 self.mirrors = self.mirrors[:limit]  # mirrors limitation(for testing)
         except requests.RequestException as e:
-            print(f"获取镜像列表失败: {e}")
+            string(r"Failed to fetch the mirror list: {}", e)
 
     def url_exists(self, mirrors: List[Dict], url: str) -> bool:
         """
-        检查URL是否已存在（去重）
-        如果是https协议，且已存在相同域名的http镜像，则予以替换
+        Check if the URL already exists (deduplication).
+        If the protocol is HTTPS and an HTTP mirror with the same domain already exists, replace it.
         """
         parsed_new = urlparse(url)
         new_scheme = parsed_new.scheme
@@ -129,11 +129,8 @@ class MirrorTester:
         return False
 
     def test_mirror_speed(self, mirror: dict, limit_cap: float = None, test_count: int = 3) -> MirrorResult:
-
         url = mirror.get("url")
-
         test_files = files_map.get(self.os_info.ostype)  # medium size files, usually 100k ~ 10m
-
         speeds = []
         max_speed = 0
         response_times = []
@@ -211,7 +208,11 @@ class MirrorTester:
     def test_all_mirrors(self, max_workers: int = 20, top_n: int = 10) -> List[MirrorResult]:
         """Test speed for all mirrors, only keep top_10"""
 
-        print(f"开始测试 {len(self.mirrors)} 个镜像，筛选前 {top_n} 个最快镜像，请稍候...")
+        string(
+            r"Starting to test {} mirrors, filtering the top {} fastest mirrors, please wait...",
+            len(self.mirrors),
+            top_n,
+        )
 
         start_time = time.time()
 
@@ -233,12 +234,14 @@ class MirrorTester:
             if len(results) > top_n:  # The list length <= top_n
                 results.pop(-1)  # Remove the slowest mirror
 
+        progress = _mf("Progress")
+
         def update_progress():
             """Update progress bar"""
             nonlocal completed
             completed += 1
             print(
-                f"\r进度: {completed}/{len(self.mirrors)} ({completed / len(self.mirrors) * 100:.1f}%)",
+                f"\r{progress}: {completed}/{len(self.mirrors)} ({completed / len(self.mirrors) * 100:.1f}%)",
                 end="",
                 flush=True,
             )
@@ -266,7 +269,8 @@ class MirrorTester:
                     future.result(timeout=1)  # Set timeout to avoid long waits
 
         except KeyboardInterrupt:
-            print("\n检测到 Ctrl+C，停止剩余任务...")
+            print()
+            string("Ctrl+C detected, stopping remaining tasks...")
             # Immediately shut down the thread pool without waiting for unfinished tasks
             executor.shutdown(wait=False)
             self.cancelled.set()
@@ -284,8 +288,9 @@ class MirrorTester:
         # 3 print the result
         self.print_results(top_10)
         end_time = time.time()
-        tot_time = end_time - start_time
-        print(f"\n找到前{len(top_10)}个最快的{self.os_info.ostype}镜像 (共耗时{tot_time:.2f}秒)")
+        tot_time = f"{end_time - start_time:.2f}"
+        print()
+        string(r"Found top {} fastest {} mirrors (total time: {} seconds)", len(top_10), self.os_info.ostype, tot_time)
 
         return top_10
 
@@ -342,7 +347,7 @@ class MirrorTester:
                     return pm_refresh()  # refresh PM configuration
                 else:
                     # Input number is out of range
-                    error(f"Invalid input! Please enter a number between 0-{tot_len}")
+                    error(r"Invalid input! Please enter a number between 0-{}", tot_len)
 
             except ValueError:
                 # Input is not a number
@@ -367,31 +372,33 @@ class MirrorTester:
             )
 
     def run(self):
-        """主函数：运行完整的测试流程"""
+        """Main function: Run the complete testing process"""
         try:
             # 1. get source file with mirror list
             self.find_mirror_source()
             if not self.path:
-                print(f"没有找到{self.os_info.package_mgr}源配置文件")
+                string(r"Could not find the {} source configuration file", self.os_info.package_mgr)
                 return
 
+            default = True
+            prompt = _mf("Would you like to reselect a mirror?")
             if self.curr_mirror:
-                prompt = f"{'已选镜像: ' + self.curr_mirror}\n是否重新选择镜像?"
-                default = "N"
-            else:
-                prompt = f"是否重新选择镜像?"
-                default = "Y"
+                choose = _mf("Currently selected mirror")
+                prompt = f"{choose}: {self.curr_mirror}\n{prompt}"
+                default = False
 
             # 2. update mirrors
             ret_code = confirm_action(prompt, self.choose_mirror, default=default)
-            default = "N" if ret_code != 0 else "Y"
+            default = ret_code != 0
         except Exception as e:
-            print(f"\n程序运行出错: {e}")
+            print()
+            string(r"An error occurred during program execution: {}", e)
             import traceback
 
             traceback.print_exc()
 
         finally:
             # 3. upgrade PM configuration
-            prompt = "\n是否立刻升级软件包?"
-            confirm_action(prompt, pm_upgrade, default=f"{default}")
+            print()
+            prompt = _mf("Would you like to upgrade the packages immediately?")
+            confirm_action(prompt, pm_upgrade, default=default)

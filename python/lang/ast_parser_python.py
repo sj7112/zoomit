@@ -66,14 +66,14 @@ class PythonASTParser(ASTParser):
         if not line_content:
             return 0  # 整行注释或空白：跳过
 
+        if self._set_function_end_flag():
+            self.line_number -= 1  # 回退一行，先处理函数结束，再重新处理新函数
+            return 9  # 函数结束条件：未缩进
+
         # 正则捕获组是函数名称
         func_match = re.match(r"^def\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(", line_content)
         if func_match:
             func_name = func_match.group(1)  # 函数名
-
-            if self._set_function_end_flag():
-                self.line_number -= 1  # 回退一行，先处理函数结束，再重新处理新函数
-                return 9  # 函数结束条件：未缩进
 
             # add new function parser
             self.parsers.insert(0, FuncParser.py(func_name, self.line_number, self.indent))
@@ -301,6 +301,8 @@ class PythonASTParser(ASTParser):
 
         # 处理函数体内容
         while True:
+            if self.code_file == "python/mirror/linux_speed.py" and self.line_number == 236:
+                print(self.line_number)
             status = self._parse_line_preprocess()
             self.line_number += 1
             match status:

@@ -61,11 +61,11 @@ def confirm_action(prompt: str, callback: Callable[..., Any] = None, *args: Any,
         err_msg = kwargs.pop("errmsg", kwargs.pop("msg", _mf("输入错误，请输入 Y 或 N")))
 
         # Get default and exit parameters
-        default = kwargs.pop("default", "Y")  # default value = Y
+        default = kwargs.pop("default", True)  # default value = Y
         exit = kwargs.pop("exit", True)  # default = exit immediately
 
         # Set prompt suffix based on default value
-        if default.upper() == "Y" or default.upper() == "YES":
+        if default:
             prompt_suffix = "[Y/n]"
             default_choice = "y"
         else:

@@ -303,34 +303,6 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     return ${PIPESTATUS[0]}
   }
 
-  configure_pip() {
-    local mirror_url="$1"
-
-    # 提取主机名作为 trusted-host
-    host=$(echo "$mirror_url" | awk -F/ '{print $3}')
-
-    # 设置 index-url
-    run_with_log "$VENV_BIN" -m pip config set global.index-url "$mirror_url"
-    if [[ $? -ne 0 ]]; then
-      echo "Config index-url failure"
-      return 1
-    fi
-
-    # 设置 trusted-host
-    if [[ "$mirror_url" =~ ^http:// ]]; then
-      run_with_log "$VENV_BIN" -m pip config set global.trusted-host "$host"
-      if [[ $? -ne 0 ]]; then
-        echo "Config trusted-host failure"
-        return 1
-      fi
-    fi
-    echo ""
-    echo -e "✨ $(_mf "Pip has been configured to use the new mirror")"
-    echo "   $(_mf "Mirror"): $mirror_url"
-    echo "   $(_mf "Trusted Host"): $host"
-    echo ""
-  }
-
   upgrade_pip() {
     run_with_log "$VENV_BIN" -m pip install --upgrade pip
     if [[ $? -eq 0 ]]; then
@@ -409,7 +381,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     # Print failed records
     if [[ ${#fail_list[@]} -gt 0 ]]; then
       echo
-      echo "❌ $(_mf "Failed Mirrors") (${#fail_list[@]}):"
+      echo "$ERROR_ICON $(_mf "Failed Mirrors") (${#fail_list[@]}):"
 
       max_name=0
       max_url=0
@@ -436,6 +408,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
         printf "%-*s %-*s %8s\n" $max_name "$name" $max_url "$url" "$status_msg"
       done
     fi
+    echo
   }
 
   # Select a mirror from the list of available mirrors
@@ -447,12 +420,12 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     local url
 
     if [[ $len -eq 0 ]]; then
-      string "\n⚠️  No available mirrors found. Please check your network connection."
+      warning "No available mirrors found. Please check your network connection."
       return 3
     fi
 
     while true; do
-      local prompt="\n$(_mf "Please select a mirror to use. Enter 0 to skip") (0-$len): "
+      local prompt="$(_mf "Please select a mirror to use. Enter 0 to skip") (0-$len): "
       read -rp "$prompt" choice
       choice="${choice// /}" # Remove whitespace characters
       if [[ "$choice" == "0" ]]; then
@@ -464,18 +437,36 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
       if [[ "$choice" =~ ^[0-9]+$ ]]; then
         choice_num=$((choice))
         if ((choice_num >= 1 && choice_num <= len)); then
-          selected_mirror="${mirror_list[choice_num - 1]}"
           # Mirror sample: AARNET (Australia)|https://pypi.aarnet.edu.au/simple/|0.4954190254211426
-          url="${selected_mirror%%|*}" # Extract the first segment (name)
-          url="${selected_mirror#*|}"  # Remove the first segment and delimiter
-          url="${url%%|*}"             # Extract the second segment (URL)
-          echo "$url"
+          # Setup index-url
+          url=$(echo "${mirror_list[choice_num - 1]}" | cut -d'|' -f2)
+          run_with_log "$VENV_BIN" -m pip config set global.index-url "$url"
+          if [[ $? -ne 0 ]]; then
+            echo "Config index-url failure"
+            return 3
+          fi
+          # Setup trusted-host
+          host=$(echo "$url" | cut -d'/' -f3)
+          if [[ "$url" =~ ^http:// ]]; then
+            run_with_log "$VENV_BIN" -m pip config set global.trusted-host "$host"
+            if [[ $? -ne 0 ]]; then
+              echo "Config trusted-host failure"
+              return 3
+            fi
+          fi
+
+          echo ""
+          echo -e "✨ $(_mf "Pip has been configured to use the new mirror")"
+          echo "   $(_mf "Mirror"): $url"
+          echo "   $(_mf "Trusted Host"): $host"
+          echo ""
           return 0
         fi
       fi
 
       string "[ERROR] Invalid input! Please enter a number between 0 and {}." "$len"
     done
+
   }
 
   # ==============================================================================
@@ -493,14 +484,13 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
       set +e
       sh_install_pip # python adds-on: test and pick up a faster mirror
       local status=$?
+      set -e
+
       if [[ $status -eq 0 ]]; then # use sys.exit() to return code
         show_pip_mirrors
         url=$(choose_pip_mirror)
         status=$?
-        # url=$(cat /tmp/mypip_result.log) # use temp file to return value
-        [[ $status -eq 0 ]] && configure_pip "$url"
       fi
-      set -e
 
       if [[ $status -eq 0 || $status -eq 1 ]]; then
         upgrade_pip
