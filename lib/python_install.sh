@@ -484,9 +484,10 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
   create_py_venv() {
     # create ~/.venv; install pip; install third party packages
     if install_py_venv; then
+      INFO_ICON=$([ "$TERM_SUPPORT_UTF8" -eq 0 ] && echo "🌍" || echo "[INFO]")
       echo ""
       echo "=================================================="
-      echo "🌍 $(_mf "Testing global pip mirror speeds...")"
+      echo "${INFO_ICON} $(_mf "Testing global pip mirror speeds...")"
       echo "=================================================="
 
       set +e

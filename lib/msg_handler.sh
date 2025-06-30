@@ -8,6 +8,7 @@ if [[ -z "${LOADED_MSG_HANDLER:-}" ]]; then
   : "${LIB_DIR:=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}" # lib direcotry
   : "${LANG_DIR:=$(dirname "$LIB_DIR")/config/lang}"            # lang directory
   source "$LIB_DIR/json_handler.sh"
+  source "$LIB_DIR/lang_utils.sh"
 
   # 颜色定义
   RED='\033[0;31m'
@@ -18,6 +19,16 @@ if [[ -z "${LOADED_MSG_HANDLER:-}" ]]; then
   CYAN='\033[0;36m'       # 青色 (Cyan)
   RED_BG='\033[41m'       # 红色背景
   NC='\033[0m'            # No Color
+
+  # 终端是否支持utf8
+  if test_terminal_display; then
+    export TERM_SUPPORT_UTF8=0
+  else
+    export TERM_SUPPORT_UTF8=1
+  fi
+  ERROR_ICON=$([ $TERM_SUPPORT_UTF8 -eq 0 ] && echo "❌" || echo "[ERROR]")
+  SUCC_ICON=$([ $TERM_SUPPORT_UTF8 -eq 0 ] && echo "✅" || echo "[SUCCESS]")
+  WARN_ICON=$([ $TERM_SUPPORT_UTF8 -eq 0 ] && echo "⚠️" || echo "[WARNING]")
 
   # 返回所有输入参数中的最小值
   min() {
@@ -365,11 +376,11 @@ EOF
     fi
 
     if [[ "${FUNCNAME[1]}" == "exiterr" || "${FUNCNAME[1]}" == "error" ]]; then
-      echo -e "${RED}❌ ${MSG_ERROR}: $template${NC}" >&2
+      echo -e "${RED}${ERROR_ICON} ${MSG_ERROR}: $template${NC}" >&2
     elif [[ "${FUNCNAME[1]}" == "success" ]]; then
-      echo -e "${GREEN}✅ ${MSG_SUCCESS}: $template${NC}" >&2
+      echo -e "${GREEN}${SUCC_ICON} ${MSG_SUCCESS}: $template${NC}" >&2
     elif [[ "${FUNCNAME[1]}" == "warning" ]]; then
-      echo -e "${YELLOW}⚠️ ${MSG_WARNING}: $template${NC}" >&2
+      echo -e "${YELLOW}${WARN_ICON} ${MSG_WARNING}: $template${NC}" >&2
     elif [[ "${FUNCNAME[1]}" == "info" ]]; then
       echo -e "${LIGHT_BLUE}🔷 ${MSG_INFO}: $template${NC}" >&2
     elif [[ "${FUNCNAME[1]}" == "string" ]]; then

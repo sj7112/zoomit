@@ -4,6 +4,7 @@
 global pip speed tester, automatically selects the fastest pip mirror
 """
 
+import os
 import time
 import subprocess
 import sys

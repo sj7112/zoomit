@@ -33,6 +33,11 @@ LANG_CACHE = LangCache.get_instance()
 PARENT_DIR = Path(__file__).resolve().parent.parent
 LIB_DIR = (PARENT_DIR / "lib").resolve()
 
+TERM_SUPPORT_UTF8 = os.environ.get("TERM_SUPPORT_UTF8", "0")
+ERROR_ICON = "❌" if TERM_SUPPORT_UTF8 == "0" else "[ERROR]"
+SUCC_ICON = "✅" if TERM_SUPPORT_UTF8 == "0" else "[SUCCESS]"
+WARN_ICON = "⚠️" if TERM_SUPPORT_UTF8 == "0" else "[WARNING]"
+
 
 # =============================================================================
 # 自动检测语言代码
@@ -346,13 +351,13 @@ def msg_parse_param(options, *args):
     caller_name = inspect.currentframe().f_back.f_code.co_name
 
     if caller_name in ["exiterr", "error"]:
-        print(f"{RED}❌ {MSG_ERROR}: {template}{NC}")
+        print(f"{RED}{ERROR_ICON} {MSG_ERROR}: {template}{NC}")
         return 1  # 报错
     if caller_name == "success":
-        print(f"{GREEN}✅ {MSG_SUCCESS}: {template}{NC}")
+        print(f"{GREEN}{ERROR_ICON} {MSG_SUCCESS}: {template}{NC}")
         return 0  # 成功
     if caller_name == "warning":
-        print(f"{YELLOW}⚠️ {MSG_WARNING}: {template}{NC}")
+        print(f"{YELLOW}{ERROR_ICON} {MSG_WARNING}: {template}{NC}")
     elif caller_name == "info":
         print(f"{LIGHT_BLUE}🔷 {MSG_INFO}: {template}{NC}")
     if caller_name == "string":
