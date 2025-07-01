@@ -56,9 +56,9 @@ def confirm_action(prompt: str, callback: Callable[..., Any] = None, *args: Any,
 
     try:
         # Priority: nomsg > msg > default value
-        no_msg = kwargs.pop("nomsg", kwargs.pop("msg", _mf("操作已取消")))
+        no_msg = kwargs.pop("nomsg", kwargs.pop("msg", _mf("Operation cancelled")))
         # Priority: errmsg > msg > default value
-        err_msg = kwargs.pop("errmsg", kwargs.pop("msg", _mf("输入错误，请输入 Y 或 N")))
+        err_msg = kwargs.pop("errmsg", kwargs.pop("msg", _mf("Invalid input. Please enter Y or N")))
 
         # Get default and exit parameters
         default = kwargs.pop("default", True)  # default value = Y
@@ -92,10 +92,10 @@ def confirm_action(prompt: str, callback: Callable[..., Any] = None, *args: Any,
 
     except KeyboardInterrupt:
         print()
-        string("操作已取消")
+        string("Operation cancelled")
         return 2
     except Exception as e:
-        string(r"输入处理出错: {}", e)
+        string(r"Input processing error: {}", e)
         return 3
 
 
@@ -235,106 +235,6 @@ def check_dns():
         logging.error(f"check_dns() failed: {e}")
 
     return ""
-
-
-def install_packages():
-    """安装所需软件包"""
-
-    packages = [
-        "typer",  # CLI 框架
-        "ruamel.yaml",  # YAML 处理
-        "requests",  # HTTP 库
-        "iso3166",  # 查国家名称
-        # "pydantic",   # 数据验证
-        # "pathlib"     # 路径处理（Python 3.4+ 内置，但确保可用）
-    ]
-
-    info("安装所需 Python 包...")
-
-    # 安装每个包
-    for package in packages:
-        try:
-            subprocess.run(
-                [sys.executable, "-m", "pip", "install", package],
-                check=True,
-                capture_output=True,
-            )
-            info(f"{package} 安装成功")
-        except subprocess.CalledProcessError as e:
-            warning(f"{package} 安装失败")
-            print(f"错误详情: {e}")
-
-    def install_base_pkg(self, lnx_cmd: str, package_name: Optional[str] = None) -> bool:
-        """
-        安装基础包
-
-        Args:
-            lnx_cmd: 要检查的命令名
-            package_name: 包名（如果与命令名不同）
-
-        Returns:
-            bool: 安装是否成功
-        """
-        # 检查命令是否存在
-        if shutil.which(lnx_cmd):
-            self.info(f"'{lnx_cmd}' 已安装")
-            return True
-
-        # 如果没有指定包名，则使用命令名
-        if package_name is None:
-            package_name = lnx_cmd
-
-        self.info(f"自动安装 '{lnx_cmd}' (包名: {package_name})...")
-
-        # 检查包管理器是否可用
-        if self.distro_pm == "unknown":
-            self.exiterr("无法检测到支持的包管理器")
-
-        # 更新包缓存（某些发行版需要）
-        self._update_package_cache()
-
-        # 获取安装命令
-        cmd = self._get_install_command(package_name)
-
-        # 执行安装命令
-        success, output = self.cmd_exec(cmd)
-
-        # 记录时间
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-        # 再次检查是否安装成功
-        if not success or not shutil.which(lnx_cmd):
-            error_msg = f"{lnx_cmd} 安装失败，请手动安装，日志: {self.log_file} [{current_time}]"
-            self.exiterr(error_msg)
-            return False
-        else:
-            success_msg = f"{lnx_cmd} 安装成功，日志: {self.log_file} [{current_time}]"
-            self.success(success_msg)
-            return True
-
-    def install_multiple_packages(self, packages: List[str]) -> bool:
-        """
-        批量安装多个包
-
-        Args:
-            packages: 包列表，可以是字符串或元组(命令名, 包名)
-
-        Returns:
-            bool: 所有包是否都安装成功
-        """
-        all_success = True
-
-        for pkg in packages:
-            if isinstance(pkg, tuple):
-                cmd_name, pkg_name = pkg
-                success = self.install_base_pkg(cmd_name, pkg_name)
-            else:
-                success = self.install_base_pkg(pkg)
-
-            if not success:
-                all_success = False
-
-        return all_success
 
 
 # 在程序启动时调用
