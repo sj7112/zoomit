@@ -282,7 +282,7 @@ class PythonASTParser(ASTParser):
         match = re.match(rf"^({self.PATTERNS})", segment)
         cmd = match.group(1)
         ln_no = self.line_number
-        # 提取双引号之间内容
+        # 提取单引号/双引号之间内容
         content = self._extract_quoted_string(segment)
         if not content:
             return
@@ -298,8 +298,6 @@ class PythonASTParser(ASTParser):
 
         # 处理函数体内容
         while True:
-            if self.code_file == "python/i18n.py" and self.line_number == 78:
-                print(self.line_number)
             status = self._parse_line_preprocess()
             self.line_number += 1
             match status:

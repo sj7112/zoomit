@@ -149,7 +149,7 @@ class CentosMirrorTester(MirrorTester):
             self.mirrors = self.mirrors[:limit]  # mirrors limitation(for testing)
 
         print("Centos镜像速度测试工具")
-        print("=" * 50)
+        print("=" * 80)
 
     # ==============================================================================
     # (3) Update PM File

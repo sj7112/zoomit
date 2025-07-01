@@ -95,7 +95,7 @@ class MirrorTester:
 
     def fetch_mirror_list(self, limit: int = None) -> None:
         string(r"{} Mirror Speed Testing Tool", self.os_info.ostype)
-        print("=" * 50)
+        print("=" * 80)
         try:
             response = requests.get(self.mirror_list, timeout=10)
             response.raise_for_status()
@@ -365,14 +365,13 @@ class MirrorTester:
         print()
         print("-" * 80)
         print(
-            f"{_mf('排名'):<3} {_mf('速度(KB/s)'):<9} {_mf('响应时间(s)'):<8} {_mf('成功率'):<4} {_mf('国家/地区'):<10} {_mf('镜像URL')}"
+            f"{_mf('Rank'):<4} {_mf('Speed(KB/s)'):<8} {_mf('Resp Time(s)'):<6} {_mf('Succ Rate'):<6} {_mf('Country/Region'):<16} {_mf('Mirror URL')}"
         )
         print("-" * 80)
 
         for i, result in enumerate(results, 1):
             print(
-                f"{i:<4} {result.avg_speed:>8.1f} {result.response_time:>10.2f} "
-                f"{result.success_rate:>10.1%} {result.country:^14} {result.url}"
+                f"{i:<4}{result.avg_speed:>9.1f}{result.response_time:>11.2f}{result.success_rate:>11.1%}{result.country:^18}{result.url}"
             )
 
     def run(self):

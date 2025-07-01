@@ -10,7 +10,7 @@ import sys
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.path
 
-from python.msg_handler import error, exiterr, info, warning
+from python.msg_handler import _mf, error, exiterr, info, warning
 
 # 获取当前文件的绝对路径的父目录
 PARENT_DIR = Path(__file__).resolve().parent.parent
@@ -18,9 +18,9 @@ PROP_PATH = PARENT_DIR / "config" / "lang"
 
 
 def _path_resolve(path_str):
-    """根据是否为绝对路径，返回一个标准化后的 Path 对象：
-    - 绝对路径：直接返回
-    - 相对路径：以当前脚本目录为基准拼接
+    """Resolve and normalize a path string to a Path object:
+    - Absolute path: resolve and return directly
+    - Relative path: resolve relative to PARENT_DIR
     """
     path = Path(path_str)
     if path.is_absolute():
@@ -29,44 +29,44 @@ def _path_resolve(path_str):
         return (PARENT_DIR / path).resolve()
 
 
-def path_resolved(path_str, errMsg="文件不存在"):
-    """根据是否为绝对路径，返回一个标准化后的 Path 对象：
-    - 绝对路径：直接返回
-    - 相对路径：以当前脚本目录为基准拼接
+def path_resolved(path_str, errMsg=_mf("File does not exist")):
+    """Resolve path and verify file existence:
+    - Returns resolved Path object if file exists
+    - Returns None and prints error if file doesn't exist
     """
     src = _path_resolve(path_str)
-    # 检查源文件是否存在
+    # Check if source file exists
     if not src.is_file():
-        print(f"❌ {errMsg}: {src}")
+        print(f"[ERROR] {errMsg}: {src}")
         return None
     return src
 
 
 def write_array(arr, filename="./tests/data.tmp"):
     """
-    将字典或列表的内容写入到指定文件中
+    Write dictionary or list content to specified file
 
-    参数:
-        arr: 要写入的数组、字典或对象
-        filename: 输出文件路径，默认为"./tests/data.tmp"
+    Args:
+        arr: Array, dictionary or object to write
+        filename: Output file path, defaults to "./tests/data.tmp"
 
-    如果是字典，使用pprint格式化输出
-    如果是列表，写入索引和对应的值
+    If it's a dictionary, use pprint for formatted output
+    If it's a list, write each value on a new line
     """
-    # 确保目录存在
+    # Ensure directory exists
     fn = path_resolved(filename)
-    # 打开文件进行写入
+    # Open file for writing
     with open(fn, "w", encoding="utf-8") as fh:
         if isinstance(arr, dict):
-            # 如果是字典，使用pprint格式化输出
+            # If it's a dictionary, use pprint for formatted output
             pprint.pprint(arr, stream=fh)
 
         elif hasattr(arr, "__dict__"):
-            # 如果是具有__dict__属性的对象（如Namespace）
+            # If it's an object with __dict__ attribute (like Namespace)
             pprint.pprint(arr.__dict__, stream=fh)
 
         else:
-            # 如果是列表，写入索引和值
+            # If it's a list, write each value on a new line
             for value in arr:
                 fh.write(f"{value}\n")
 
@@ -75,7 +75,7 @@ def copy_file(filepath1, filepath2):
     """复制文件 - 用于测试"""
     try:
         dst = _path_resolve(filepath2)
-        src = path_resolved(filepath1, "源文件不存在")
+        src = path_resolved(filepath1, _mf("Source file does not exist"))
         if src is None:  # 检查源文件是否存在
             return None
 
@@ -86,129 +86,127 @@ def copy_file(filepath1, filepath2):
         return str(dst)  # 或者直接 return dst
 
     except Exception as e:
-        print(f"❌ 复制失败: {e}")
+        print(f"[ERROR] {_mf('Copy failed')}: {e}")
         return None
 
 
 def file_backup_sj(*patterns: str, postfix: str = "bak") -> None:
     """
-    生成 .bak 后缀的备份文件（智能防重复备份）
+    Generate backup files with .bak suffix (smart duplicate backup prevention)
 
-    特性：
-      1. 支持通配符匹配和多文件备份（如 *.conf）
-      2. 自动检查源文件是否存在
-      3. 自动跳过已存在的备份文件
-      4. 保留原文件权限
+    Features:
+      1. Support wildcard matching and multi-file backup (e.g., *.conf)
+      2. Automatically check if source files exist
+      3. Automatically skip existing backup files
+      4. Preserve original file permissions
 
-    参数：
-      *patterns - 需要备份的源文件路径（支持通配符）
+    Args:
+      *patterns - Source file paths to backup (supports wildcards)
 
-    异常：
-      有文件备份失败则退出程序
+    Raises:
+      Exits program if any file backup fails
 
-    示例:
-      file_backup_sj("/etc/apt/sources.list")          # 备份单个文件
-      file_backup_sj("/etc/nginx/*.conf")              # 备份所有匹配文件
-      file_backup_sj("/etc/*.conf", "/etc/*.repo")     # 批量备份多类文件
+    Examples:
+      file_backup_sj("/etc/apt/sources.list")          # Backup single file
+      file_backup_sj("/etc/nginx/*.conf")              # Backup all matching files
+      file_backup_sj("/etc/*.conf", "/etc/*.repo")     # Batch backup multiple file types
     """
-    # 参数检查
+    # Parameter validation
     if not patterns:
-        exiterr("未指定需要备份的文件")
+        exiterr("No files specified for backup")
 
     backup_count = 0
     skip_count = 0
     error_count = 0
 
-    # 处理每个参数（可能包含通配符）
+    # Process each pattern (may contain wildcards)
     for pattern in patterns:
-        # 使用glob查找匹配的文件
+        # Use glob to find matching files
         matched_files = glob.glob(pattern)
 
         if not matched_files:
-            warning(f"未找到匹配 '{pattern}' 的文件")
+            warning(r"No files found matching {}", pattern)
             continue
 
-        # 处理每个匹配的文件
+        # Process each matching file
         for src_file in matched_files:
-            # 确保是普通文件
+            # Ensure it's a regular file
             if not os.path.isfile(src_file):
                 continue
 
             backup_file = f"{src_file}.{postfix}"
 
-            # 检查备份文件是否已存在
+            # Check if backup file already exists
             if os.path.exists(backup_file):
-                warning(f"备份文件 {backup_file} 已存在，跳过")
+                warning(r"Backup file {} already exists, skipping", backup_file)
                 skip_count += 1
                 continue
 
-            # 执行备份
+            # Perform backup
             try:
-                # 使用shutil.copy2保留文件属性和权限
+                # Use shutil.copy2 to preserve file attributes and permissions
                 shutil.copy2(src_file, backup_file)
-                info(f"已创建备份: {src_file} -> {backup_file}")
+                print(f"{_mf('Backup created')}: {src_file} -> {backup_file}")
                 backup_count += 1
             except (IOError, OSError, PermissionError) as e:
-                error(f"无法创建备份文件 {backup_file}: {e}")
+                print(f"{_mf('Unable to create backup file')} {backup_file}: {e}")
                 error_count += 1
 
-    # 输出统计信息
+    # Output statistics
     if error_count > 0:
-        exiterr("重要文件无法备份")
+        exiterr("Important files cannot be backed up")
     elif (backup_count + skip_count + error_count) > 1:
-        info(f"备份完成：成功 {backup_count} 个，跳过 {skip_count} 个，失败 {error_count} 个")
+        info(r"Backup completed: {} succeeded, {} skipped, {} failed", backup_count, skip_count, error_count)
 
 
 def file_restore_sj(src_file: str, postfix: str = "bak") -> None:
     """
-    .bak 后缀的备份文件还原
+    Restore files from .bak suffix backup files
 
-    特性：
-      1. 自动检查源文件是否存在
-      2. 保留原文件权限
+    Features:
+      1. Automatically check if source file exists
+      2. Preserve original file permissions
 
-    参数：
-      src_file - 需要还原的源文件路径
+    Args:
+      src_file - Source file path to restore
 
-    异常：
-      文件还原失败则退出程序
+    Raises:
+      Exits program if file restoration fails
     """
-    # 检查备份文件是否已存在
+    # Check if backup file exists
     backup_file = f"{src_file}.{postfix}"
     if not os.path.exists(backup_file):
-        exiterr(f"备份文件 {backup_file} 不存在，还原失败")
+        exiterr(r"Backup file {} does not exist, restoration failed", backup_file)
 
-    # 执行还原
+    # Perform restoration
     try:
-        # 使用shutil.copy2保留文件属性和权限
+        # Use shutil.copy2 to preserve file attributes and permissions
         shutil.copy2(backup_file, src_file)
-        info(f"已还原文件: {backup_file} -> {src_file}")
+        print(f"{_mf('File restored')}: {backup_file} -> {src_file}")
     except (IOError, OSError, PermissionError) as e:
-        exiterr(f"无法创建备份文件 {src_file}: {e}")
-
-    info(f"还原文件：{src_file}")
+        print(f"{_mf('Unable to create backup file')} {src_file}: {e}")
 
 
 def read_file(fn):
-    """读取文件内容为数组"""
+    """Read file content as array"""
     with open(fn, "r", encoding="utf-8") as f:
         return f.read().splitlines()  # Removes newline characters (compatible with Windows/macOS)
 
 
 def write_source_file(path, lines):
-    """写入配置文件内容"""
+    """Write configuration file content"""
     file_backup_sj(str(path))  # backup file before writing
 
     try:
         with open(path, "w", encoding="utf-8") as f:
             f.write("\n".join(lines))
-        info(f"已更新 source list: {path}")
+        info(r"source file updated: {}", path)
     except Exception as e:
-        error(f"写入失败: {e}")
+        print(f"{_mf('Write failed')}: {e}")
 
 
 def read_lang_prop(lang_code):
-    """读取配置文件为数组"""
+    """Read configuration file as array"""
     fn = PROP_PATH / f"{lang_code}.properties"
     with open(fn, "r", encoding="utf-8") as fh:
         lines = fh.readlines()
@@ -216,29 +214,29 @@ def read_lang_prop(lang_code):
 
 
 def write_lang_prop(lang_code, content_list):
-    """写入配置文件内容"""
+    """Write configuration file content"""
     fn = PROP_PATH / f"{lang_code}.properties"
     with open(fn, "w", encoding="utf-8") as fh:
         fh.writelines(f"{line}\n" for line in content_list)
 
 
 def get_filename(file_args):
-    """从参数中获取文件名，转为列表形式"""
+    """Get filename from parameters and convert to list format"""
     return file_args.split() if isinstance(file_args, str) else file_args
 
 
 def get_code_files(dir_args, file_ext, file_args=None):
     """
-    获取shell文件列表
+    Get shell file list
 
     Args:
-        file_args: 可以是以下形式之一：
-                  - None（默认搜索bin/lib目录）
-                  - 单个文件路径字符串（如"bin/init.sh"）
-                  - 文件路径列表（如["bin/a.sh", "lib/b.sh"]）
+        file_args: Can be one of the following forms:
+                - None (default search bin/lib directories)
+                - Single file path string (e.g., "bin/init.sh")
+                - List of file paths (e.g., ["bin/a.sh", "lib/b.sh"])
 
     Returns:
-        list: 有效的shell文件路径列表
+        list: List of valid shell file paths
     """
     ret_files = []
 
@@ -251,7 +249,7 @@ def get_code_files(dir_args, file_ext, file_args=None):
             if path.is_file():
                 ret_files.append(str(path))
             else:
-                print(f"警告: 文件不存在: {file}", file=sys.stderr)
+                print(f"{_mf('[Warning]: File does not exist')}: {file}", file=sys.stderr)
 
     # 如果没有指定文件，则搜索默认目录（结果按文件名字母排序）
     else:
@@ -262,7 +260,7 @@ def get_code_files(dir_args, file_ext, file_args=None):
                 ret_files.extend(str(path.resolve()) for path in dir_path.glob(pattern) if path.is_file())
 
     if not ret_files:
-        print("错误: 没有找到任何shell脚本文件", file=sys.stderr)
+        print(_mf("[Error]: No shell script files found"), file=sys.stderr)
         sys.exit(1)
 
     return ret_files
