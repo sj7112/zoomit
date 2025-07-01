@@ -10,7 +10,7 @@ import sys
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.path
 
-from python.msg_handler import _mf, error, exiterr, info, warning
+from python.msg_handler import MSG_ERROR, MSG_WARNING, _mf, error, exiterr, info, warning
 
 # 获取当前文件的绝对路径的父目录
 PARENT_DIR = Path(__file__).resolve().parent.parent
@@ -37,7 +37,7 @@ def path_resolved(path_str, errMsg=_mf("File does not exist")):
     src = _path_resolve(path_str)
     # Check if source file exists
     if not src.is_file():
-        print(f"[ERROR] {errMsg}: {src}")
+        print(f"[{MSG_ERROR}] {errMsg}: {src}")
         return None
     return src
 
@@ -86,7 +86,7 @@ def copy_file(filepath1, filepath2):
         return str(dst)  # 或者直接 return dst
 
     except Exception as e:
-        print(f"[ERROR] {_mf('Copy failed')}: {e}")
+        print(f"[{MSG_ERROR}] {_mf('Copy failed')}: {e}")
         return None
 
 
@@ -249,7 +249,7 @@ def get_code_files(dir_args, file_ext, file_args=None):
             if path.is_file():
                 ret_files.append(str(path))
             else:
-                print(f"{_mf('[Warning]: File does not exist')}: {file}", file=sys.stderr)
+                print(f"{_mf(r'[{}]: Code file does not exist', MSG_WARNING)}: {file}", file=sys.stderr)
 
     # 如果没有指定文件，则搜索默认目录（结果按文件名字母排序）
     else:
@@ -260,7 +260,7 @@ def get_code_files(dir_args, file_ext, file_args=None):
                 ret_files.extend(str(path.resolve()) for path in dir_path.glob(pattern) if path.is_file())
 
     if not ret_files:
-        print(_mf("[Error]: No shell script files found"), file=sys.stderr)
+        print(_mf(r"[{}]: No code files found", MSG_ERROR), file=sys.stderr)
         sys.exit(1)
 
     return ret_files

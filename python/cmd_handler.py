@@ -11,7 +11,7 @@ from typing import Any, List, Tuple, Union
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.path
 
-from python.msg_handler import _mf, info, string
+from python.msg_handler import MSG_ERROR, _mf, info, string
 from python.cache.os_info import OSInfo, OSInfoCache
 
 # Global configuration
@@ -57,11 +57,11 @@ def cmd_exec(cmd, **kwargs) -> Tuple[bool, Any]:
             return False, result.stderr
         return True, result  # Original object
     except subprocess.TimeoutExpired:
-        error_msg = _mf(r"[ERROR] Command execution timeout: {}", " ".join(cmd))
+        error_msg = _mf(r"[{}] Command execution timeout: {}", MSG_ERROR, " ".join(cmd))
         print(error_msg)
         return False, error_msg
     except Exception as e:
-        error_msg = _mf(r"[ERROR] Command execution error: {}", e)
+        error_msg = _mf(r"[{}] Command execution error: {}", MSG_ERROR, e)
         print(error_msg)
         return False, str(e)
 
@@ -228,7 +228,7 @@ def monitor_progress(cmd, log_file=None):
         return 2
 
     except Exception as e:
-        print(f"\r\033[K[ERROR]: {e}", file=sys.stderr)
+        print(f"\r\033[K[{MSG_ERROR}]: {e}", file=sys.stderr)
         print()
         return 3
 

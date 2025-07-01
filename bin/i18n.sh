@@ -29,7 +29,7 @@ if [[ -z "${LOADED_I18N:-}" ]]; then
   load_lang_files() {
     declare -gA LANG_FILES # 创建全局关联数组
 
-    info "查找可用语言..."
+    info "Searching for available languages..."
     local count=0
     for lang_file in "$LANG_DIR"/*.properties; do
       echo "$count" "$lang_file"
@@ -38,7 +38,7 @@ if [[ -z "${LOADED_I18N:-}" ]]; then
         local lang_name
         lang_name=$(basename "$lang_file" .properties)
         LANG_FILES["$lang_name"]="$lang_file"
-        info "找到语言: $lang_name ($lang_file)"
+        info "Languages found: {} ({})" "$lang_name" "$lang_file"
       fi
     done
   }

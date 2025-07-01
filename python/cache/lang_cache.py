@@ -202,8 +202,8 @@ class LangCache:
 if __name__ == "__main__":
     lang_cache = LangCache.get_instance()
 
-    print_array(lang_cache.get())  # 全部条目
-    print(lang_cache.get("python/i18n.py:A7XPUC"))  # 单条
+    print_array(lang_cache.get())  # all items
+    print(lang_cache.get("python/i18n.py:A7XPUC"))  # single line
     print_array(
         lang_cache.get(
             [
@@ -213,6 +213,6 @@ if __name__ == "__main__":
                 "python/i18n.py:Aw30Tu",
             ]
         )
-    )  # 多条
+    )  # multiline
 
     lang_cache.close_cache()

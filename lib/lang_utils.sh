@@ -326,7 +326,7 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
     done <"$prop_file"
 
     # message for debug
-    echo "[INFO] Loaded ${#LANGUAGE_MSGS[@]} sh messages from $prop_file" on "$(date '+%F %T')"
+    echo "[${MSG_INFO}] Loaded ${#LANGUAGE_MSGS[@]} sh messages from $prop_file" on "$(date '+%F %T')"
     echo ""
   }
 
