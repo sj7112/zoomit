@@ -26,9 +26,10 @@ if [[ -z "${LOADED_MSG_HANDLER:-}" ]]; then
   else
     export TERM_SUPPORT_UTF8=1
   fi
-  ERROR_ICON=$([ $TERM_SUPPORT_UTF8 -eq 0 ] && echo "❌" || echo "[ERROR]")
-  SUCC_ICON=$([ $TERM_SUPPORT_UTF8 -eq 0 ] && echo "✅" || echo "[SUCCESS]")
-  WARN_ICON=$([ $TERM_SUPPORT_UTF8 -eq 0 ] && echo "⚠️" || echo "[WARNING]")
+  SUCC_ICON=$([ $TERM_SUPPORT_UTF8 -eq 0 ] && echo "✔" || echo "[OK]")
+  ERROR_ICON=$([ $TERM_SUPPORT_UTF8 -eq 0 ] && echo "✖" || echo "[x]")
+  WARN_ICON=$([ $TERM_SUPPORT_UTF8 -eq 0 ] && echo "⚠" || echo "[!]")
+  INFO_ICON=$([ $TERM_SUPPORT_UTF8 -eq 0 ] && echo "◆" || echo "[i]")
 
   # 返回所有输入参数中的最小值
   min() {
@@ -352,7 +353,7 @@ EOF
         s) show_stack=true ;;
         e) error_exit=true ;;
         \?)
-          echo "[error]: Unknown parameters -$OPTARG" >&2
+          echo "[${MSG_ERROR}]: Unknown parameters -$OPTARG" >&2
           _show_usage
           return 1
           ;;
@@ -382,7 +383,7 @@ EOF
     elif [[ "${FUNCNAME[1]}" == "warning" ]]; then
       echo -e "${YELLOW}${WARN_ICON} ${MSG_WARNING}: $template${NC}" >&2
     elif [[ "${FUNCNAME[1]}" == "info" ]]; then
-      echo -e "${LIGHT_BLUE}🔷 ${MSG_INFO}: $template${NC}" >&2
+      echo -e "${LIGHT_BLUE}${INFO_ICON} ${MSG_INFO}: $template${NC}" >&2
     elif [[ "${FUNCNAME[1]}" == "string" ]]; then
       echo -e "$template" >&2 # normal text (no color)
     elif [[ "${FUNCNAME[1]}" == "_mf" ]]; then

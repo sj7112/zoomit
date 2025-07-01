@@ -4,7 +4,6 @@ import argparse
 import os
 from pathlib import Path
 import sys
-import locale
 import inspect
 
 
@@ -31,49 +30,77 @@ NC = "\033[0m"  # No Color
 # global parameter
 LANG_CACHE = LangCache.get_instance()
 PARENT_DIR = Path(__file__).resolve().parent.parent
+PROP_PATH = PARENT_DIR / "config" / "lang"
+DEFAULT_LANG = "en"
 LIB_DIR = (PARENT_DIR / "lib").resolve()
 
 TERM_SUPPORT_UTF8 = os.environ.get("TERM_SUPPORT_UTF8", "0")
-ERROR_ICON = "❌" if TERM_SUPPORT_UTF8 == "0" else "[ERROR]"
-SUCC_ICON = "✅" if TERM_SUPPORT_UTF8 == "0" else "[SUCCESS]"
-WARN_ICON = "⚠️" if TERM_SUPPORT_UTF8 == "0" else "[WARNING]"
+SUCC_ICON = "✔" if TERM_SUPPORT_UTF8 == "0" else "[OK]"
+ERROR_ICON = "✖" if TERM_SUPPORT_UTF8 == "0" else "[x]"
+WARN_ICON = "⚠" if TERM_SUPPORT_UTF8 == "0" else "[!]"
+INFO_ICON = "◆" if TERM_SUPPORT_UTF8 == "0" else "[i]"
 
 
 # =============================================================================
-# 自动检测语言代码
+# 自动检测语言代码文件
 # =============================================================================
-def get_lang_code():
-    lang_env = os.environ.get("LANG", "")
-    if lang_env:
-        return lang_env[:2]
-    try:
-        return locale.getdefaultlocale()[0][:2]
-    except (TypeError, IndexError):
-        return "en"
+def get_lang_file():
+    """查找语言文件路径"""
+    lang_format = os.environ.get("LANGUAGE")  # e.g. zh_CN:zh
+    if ":" in lang_format:
+        primary_lang = lang_format.split(":")[0]  # zh_CN
+        fallback_lang = lang_format.split(":")[1]  # zh
+    else:
+        primary_lang = lang_format
+        fallback_lang = None
+
+    # First, look for the complete language file
+    primary_file = os.path.join(PROP_PATH, f".{primary_lang}.properties")
+    if os.path.isfile(primary_file):
+        return primary_file
+
+    # Next, look for the simplified language file
+    if fallback_lang:
+        fallback_file = os.path.join(PROP_PATH, f".{fallback_lang}.properties")
+        if os.path.isfile(fallback_file):
+            return fallback_file
+
+    # If neither is found, return default file
+    return os.path.join(PROP_PATH, f".{DEFAULT_LANG}.properties")
+
+
+def load_properties_to_env():
+    """多语言提示文本写入环境变量"""
+    lang_file = get_lang_file()
+    prop_begin = False  # only read after "# msg_handler"
+
+    with open(lang_file, "r") as f:
+        for line in f:
+            line = line.strip()
+            if line.startswith("#") and "msg_handler" in line:
+                prop_begin = True
+            if not line or line.startswith("#"):
+                continue
+            if not prop_begin:
+                continue
+            if "=" not in line:
+                continue
+            key, val = line.split("=", 1)
+            key = key.strip()
+            val = val.strip().strip('"').strip("'")  # 去除引号
+            os.environ[key] = val
 
 
 # =============================================================================
 # 多语言提示文本
 # =============================================================================
-LANG_MESSAGES = {
-    "zh": {"error": "错误", "success": "成功", "warning": "警告", "info": "信息"},
-    "de": {"error": "Fehler", "success": "Erfolg", "warning": "Warnung", "info": "Information"},
-    "es": {"error": "Error", "success": "Éxito", "warning": "Advertencia", "info": "Información"},
-    "fr": {"error": "Erreur", "success": "Succès", "warning": "Avertissement", "info": "Info"},
-    "ja": {"error": "エラー", "success": "成功", "warning": "警告", "info": "情報"},
-    "ko": {"error": "오류", "success": "성공", "warning": "경고", "info": "정보"},
-}
+if not os.environ.get("MSG_ERROR"):
+    load_properties_to_env()  # if env has been setup, skip the function call
 
-DEFAULT_MESSAGES = {"error": "ERROR", "success": "SUCCESS", "warning": "WARNING", "info": "INFO"}
-
-# 根据系统语言设置消息文本
-LANG_CODE = get_lang_code()
-messages = LANG_MESSAGES.get(LANG_CODE, DEFAULT_MESSAGES)
-
-MSG_ERROR = messages["error"]
-MSG_SUCCESS = messages["success"]
-MSG_WARNING = messages["warning"]
-MSG_INFO = messages["info"]
+MSG_ERROR = os.environ.get("MSG_ERROR")
+MSG_SUCCESS = os.environ.get("MSG_SUCCESS")
+MSG_WARNING = os.environ.get("MSG_WARNING")
+MSG_INFO = os.environ.get("MSG_INFO")
 
 
 # ==============================================================================
@@ -354,12 +381,12 @@ def msg_parse_param(options, *args):
         print(f"{RED}{ERROR_ICON} {MSG_ERROR}: {template}{NC}")
         return 1  # 报错
     if caller_name == "success":
-        print(f"{GREEN}{ERROR_ICON} {MSG_SUCCESS}: {template}{NC}")
+        print(f"{GREEN}{SUCC_ICON} {MSG_SUCCESS}: {template}{NC}")
         return 0  # 成功
     if caller_name == "warning":
-        print(f"{YELLOW}{ERROR_ICON} {MSG_WARNING}: {template}{NC}")
+        print(f"{YELLOW}{WARN_ICON} {MSG_WARNING}: {template}{NC}")
     elif caller_name == "info":
-        print(f"{LIGHT_BLUE}🔷 {MSG_INFO}: {template}{NC}")
+        print(f"{LIGHT_BLUE}{INFO_ICON} {MSG_INFO}: {template}{NC}")
     if caller_name == "string":
         print(template)  # 转换 normal text (no color)
     if caller_name == "_mf":
