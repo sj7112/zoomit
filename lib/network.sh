@@ -45,7 +45,7 @@ if [[ -z "${LOADED_NETWORK:-}" ]]; then
   config_nmcli() {
     # 检查 nmcli 是否存在
     if ! command -v nmcli &>/dev/null; then
-      exiterr "nmcli is not installed or unavailable. Please install the NetworkManager command-line tool first"
+      exiterr "nmcli is not installed or unavailable. Please install it and try again"
     fi
 
     # 设置环境变量
@@ -71,13 +71,14 @@ if [[ -z "${LOADED_NETWORK:-}" ]]; then
 
     # 3. 激活连接
     count_down # Countdown reminder
-    $SUDO_CMD nmcli connection up "$CON_NAME" || exiterr "Connection activation failed. Please check the network and try reconnecting"
+    $SUDO_CMD nmcli connection up "$CON_NAME" || exiterr "Failed to restart NetworkManager. Please check and try again"
 
   }
 
   # Comment out network configuration
   comment_ifupdown() {
     IFACE="${ENV_NETWORK["MAIN_IFACE"]}" # Network interface name
+
     local NET_FILE="/etc/network/interfaces"
 
     if [[ -f "$NET_FILE" ]]; then
@@ -99,16 +100,17 @@ if [[ -z "${LOADED_NETWORK:-}" ]]; then
     IFACE="${ENV_NETWORK["MAIN_IFACE"]}"  # Network interface name
     IP_ADDR="${ENV_NETWORK["STATIC_IP"]}" # IP 地址（不含掩码）
     PREFIX="${ENV_NETWORK["PREFIX"]:-24}" # 子网掩码长度，默认24
-    GATEWAY="${ENV_NETWORK["GATEWAY"]}"   # 网关
-    DNS="${ENV_NETWORK["DNS_SERVERS"]}"   # DNS，多个用空格分隔
+    GATEWAY="${ENV_NETWORK["GATEWAY"]}"   # Gateway
+    DNS="${ENV_NETWORK["DNS_SERVERS"]}"   # DNS server，多个用空格分隔
+
+    local NETDIR="/etc/systemd/network"
 
     # 1. 检查配置文件
-    local NETDIR="/etc/systemd/network"
     local NET_FILE="$NETDIR/10-$IFACE.network"
     if [ -f "$NET_FILE" ]; then
       $SUDO_CMD cp "$NET_FILE" "$NET_FILE.$(date +%Y%m%d_%H%M%S)"
     else
-      $SUDO_CMD mkdir -p "$NETDIR" # 创建目录
+      $SUDO_CMD mkdir -p "$NETDIR" # Create directory
     fi
 
     # 2. 生成配置文件
