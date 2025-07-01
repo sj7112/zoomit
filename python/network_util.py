@@ -16,7 +16,7 @@ from python.debug_tool import print_array
 
 
 def is_cloud_manufacturer(manufacturer):
-    # 常见云厂商关键词列表（可扩展）
+    # Common Cloud Provider Keywords List (Extensible)
     cloud_keywords = [
         "Amazon",
         "Google",
@@ -41,7 +41,7 @@ class NetworkSetup:
     Network Setup class
     """
 
-    # 设置默认路径
+    # Set the default path
     PARENT_DIR = Path(__file__).resolve().parent.parent
     CONF_DIR = (PARENT_DIR / "config/network").resolve()
     env_nw = {}
@@ -61,7 +61,7 @@ class NetworkSetup:
         # write to config file
         with open(evn_file, "w", encoding="utf-8") as f:
             f.write("#=network\n\n")
-            # 写入网络参数
+            # Write network parameters
             for key, value in self.env_nw.items():
                 f.write(f"{key}={value}\n")
 
@@ -70,47 +70,45 @@ class NetworkSetup:
     # ==============================================================================
     def check_env_nw(self):
         """
-        检查服务器是否使用静态IP，并提供交互式选项：
-            - 如果用户选择将网络改为静态IP，要求输入静态IP地址（最后一段 1-255，且不能与网关相同）
-            - env_nw (dict): 包含网络配置信息的字典
+        Check whether the server is using a static IP
         """
         ENV_NW = os.path.join(self.CONF_DIR, ".env")
         self.env_nw = read_env_file(ENV_NW, "network")
 
-        # 提取主要网络接口
+        # Extract the primary network interface
         main_interface = cmd_ex_pat("ip -o route get 1", r"dev (\S+)")
         self.env_nw["MAIN_IFACE"] = main_interface
 
-        # 提取当前IP地址
+        # current IP Address
         curr_ip = cmd_ex_pat(f"ip -4 addr show {main_interface}", r"inet (\d+\.\d+\.\d+\.\d+)/")
         self.env_nw["CURR_IP"] = curr_ip
 
-        # 提取网关
         gateway = cmd_ex_pat("ip route show default", r"default via (\d+\.\d+\.\d+\.\d+)")
         self.env_nw["GATEWAY"] = gateway
 
-        # 检查是否有DHCP客户端运行
+        # Check if a DHCP client is running
         # pgrep -f "dhclient|dhcpcd|nm-dhcp|NetworkManager.*dhcp"
         dhcp_client = bool(cmd_ex_str(["pgrep", "-f", "dhclient|dhcpcd|nm-dhcp|NetworkManager.*dhcp"]))
         self.env_nw["DHCP_CLIENT"] = dhcp_client
 
-        # 调用 dmidecode 获取 system-manufacturer
+        # call dmidecode for system-manufacturer
         manufacturer = is_cloud_manufacturer(cmd_ex_str("dmidecode -s system-manufacturer"))
         if manufacturer:
             self.env_nw["IS_CLOUD"] = manufacturer.strip()
 
-        # 新安装系统，是这几种之一：systemd-networkd、NetworkManager、networking[ifupdown]、wicked、network[network-scripts]
+        # New installation must have：
+        # systemd-networkd、NetworkManager、networking[ifupdown]、wicked、network[network-scripts]
         nm_type = get_network_service()
         self.env_nw["CURR_NM"] = nm_type
         if not dhcp_client:
             self.env_nw["STATIC_IP"] = get_static_ip(nm_type)
             if self.env_nw["STATIC_IP"]:
                 if curr_ip == self.env_nw["STATIC_IP"]:
-                    self.env_nw["HAS_STATIC"] = "active"  # 已生效
+                    self.env_nw["HAS_STATIC"] = "active"  # IP is fixed already
                 else:
-                    self.env_nw["HAS_STATIC"] = "pending"  # 待生效
+                    self.env_nw["HAS_STATIC"] = "pending"  # IP is not fixed
 
-        # 获取DNS服务器(为空时，采取默认值)
+        # Retrieve DNS server (use default if empty)
         if dns_servers := check_dns():
             self.env_nw["DNS_SERVERS"] = dns_servers
 
@@ -122,79 +120,77 @@ class NetworkSetup:
         Interactive setup for static IP
         """
         env_nw = self.env_nw
-        # 提示用户输入静态IP地址的最后一段
+        # Prompt the user to enter the last octet of the static IP address
         curr_ip = env_nw.get("CURR_IP", "")
         gateway = env_nw.get("GATEWAY", "")
         curr_last_octet = curr_ip.split(".")[-1] if curr_ip else "1"
 
         ip_parts = curr_ip.split(".") if curr_ip else []
         if len(ip_parts) < 3:
-            print("当前 IP 地址无效")
+            string("The current IP address is invalid")
             return 3
 
         while True:
             try:
-                prompt = _mf(r"请输入静态IP地址的最后一段 (1-255) [默认: {}]: ", curr_last_octet)
-                new_last_octet = input(prompt).strip() or curr_last_octet  # 默认=当前值
+                prompt = _mf(
+                    r"Please enter the last octet of the static IP address (1–255) [default: {}]: ", curr_last_octet
+                )
+                new_last_octet = input(prompt).strip() or curr_last_octet  # default=current value
 
                 if not new_last_octet.isdigit():
-                    string("请输入数字")
+                    string("Please enter a number")
                     continue
 
                 octet_num = int(new_last_octet)
                 if not (1 <= octet_num <= 255):
-                    string("输入必须在 1~255 之间")
+                    string("The input must be between 1 and 255")
                     continue
 
                 if gateway and new_last_octet == gateway.split(".")[-1]:
-                    string("输入的静态IP地址不能与网关相同，请重新输入")
+                    string("The static IP address cannot be the same as the gateway")
                     continue
 
-                # 构造新的静态IP地址
+                # Build a new static IP address
                 env_nw["STATIC_IP"] = f"{ip_parts[0]}.{ip_parts[1]}.{ip_parts[2]}.{new_last_octet}"
-                env_nw["HAS_STATIC"] = "pending"  # 待生效
+                env_nw["HAS_STATIC"] = "pending"  # IP is not fixed
                 return 0
 
             except KeyboardInterrupt:
-                string("\n操作已取消")
+                string("\nOperation cancelled")
                 return 2
 
     # ==============================================================================
-    # 主程序
+    # Main Program
     # ==============================================================================
     def fix_ip(self):
         """
-        是否需要固定IP
-        返回值：
-            0: 需要改固定IP
-            1: 不需要改固定IP
-            2: 用户终止操作
-            3: 异常终止
+        Do you need a static IP?
+        Return values:
+            0: Static IP modification is required
+            1: Static IP modification is not required
+            2: Operation cancelled by user
+            3: Abnormal termination
         """
-        # 初始化全局变量
+        # Initialize global variables
         self.check_env_nw()
 
-        # 云服务器无需设置固定IP
+        # Cloud servers do not require a static IP
         env_nw = self.env_nw
         if env_nw.get("IS_CLOUD"):
-            info(f"{env_nw['IS_CLOUD']} 云服务器无需设置固定IP")
+            info(r"{} Cloud servers do not require a static IP", env_nw["IS_CLOUD"])
             return 1
 
-        # 根据不同情况设置提示信息
+        # Prompt the user to see if they want to modify the IP configuration
         default = True
         if env_nw.get("STATIC_IP"):
-            # 检测到服务器已配置静态IP，是否调整IP？
             prompt = _mf("A static IP is already configured on the server. Would you like to adjust it?")
             default = False
         elif env_nw.get("DHCP_CLIENT") == True:
-            # 检测到服务器使用动态IP，是否改为静态IP？
             prompt = _mf("Detected that the server is using a dynamic IP. Would you like to change it to a static IP?")
         else:
-            # 检测到服务器可能使用静态IP，是否调整IP？
             prompt = _mf("Detected that the server might be using a static IP. Would you like to adjust it?")
 
-        # 提示用户是否要改IP配置
-        no_msg = _mf("User chose not to modify the network configuration")  # 用户选择不修改网络配置
+        no_msg = _mf("User chose not to modify the network configuration")
         retVal = confirm_action(prompt, self.setup_octet, nomsg=no_msg, default=default)
 
         self.save_env_nw()

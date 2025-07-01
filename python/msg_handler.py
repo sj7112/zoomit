@@ -17,7 +17,7 @@ from python.json_handler import json_getopt
 from python.debug_tool import print_array
 
 
-# 颜色定义
+# color setup
 RED = "\033[0;31m"
 YELLOW = "\033[0;33m"
 GREEN = "\033[0;32m"

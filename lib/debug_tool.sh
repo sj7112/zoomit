@@ -233,7 +233,7 @@ if [[ -z "${LOADED_DEBUGTOOL:-}" ]]; then
     local func_name="$1"
     shift
 
-    # 颜色设置
+    # color setup
     RED='\033[0;31m'
     YELLOW='\033[0;33m'
     GREEN='\033[0;32m'

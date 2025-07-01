@@ -358,7 +358,7 @@ class MirrorTester:
             except KeyboardInterrupt:
                 # User interrupted with Ctrl+C
                 print()
-                print("Operation canceled")
+                string("Operation canceled")
                 return 2
 
     def print_results(self, results: List[MirrorResult]):

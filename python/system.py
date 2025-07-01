@@ -82,7 +82,7 @@ def confirm_action(prompt: str, callback: Callable[..., Any] = None, *args: Any,
                     return callback(*args)  # Execute callback function
                 return 0
             elif response in ("n", "no"):
-                print(no_msg)  # Output message for 'no' choice
+                warning(no_msg)  # Output message for 'no' choice
                 return 1
             else:
                 print(err_msg)  # Output error message

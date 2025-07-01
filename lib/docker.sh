@@ -15,9 +15,9 @@ if [[ -z "${LOADED_DOCKER:-}" ]]; then
   # 计数器函数
   # ==============================================================================
   show_notice() {
-    # ANSI 颜色
+    # ANSI color
     local BG_BLUE="\033[44m"
-    local NC="\033[0m" # 重置颜色
+    local NC="\033[0m" # reset color
 
     local str=$(_mf "多选组件：格式如 1 3 4；再次选择相同项目可取消选择，回车结束")
     echo

@@ -10,7 +10,7 @@ if [[ -z "${LOADED_MSG_HANDLER:-}" ]]; then
   source "$LIB_DIR/json_handler.sh"
   source "$LIB_DIR/lang_utils.sh"
 
-  # 颜色定义
+  # color setup
   RED='\033[0;31m'
   YELLOW='\033[0;33m'
   GREEN='\033[0;32m'

@@ -194,7 +194,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   }
 
   install_docker() {
-    info "在 $DISTRO 上安装 Docker 与 Docker Compose..."
+    info "在 {} 上安装 Docker 与 Docker Compose..." "$DISTRO"
 
     # 安装依赖
     install_base_pkg "ca-certificates"
