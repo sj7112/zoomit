@@ -104,7 +104,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     on_exit() {
       local oid="$SMART_WGET_PID"
       if kill -0 "$oid" 2>/dev/null; then
-        echo ""
+        echo
         warning "Interrupt detected, terminating background download process (PID={}...)" "$oid"
         kill "$oid" 2>/dev/null
         wait "$oid" 2>/dev/null
@@ -193,7 +193,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     done
 
     # Check the result
-    echo ""
+    echo
     wait "$pid"
 
     # Remove trap (to avoid affecting other code)
@@ -214,9 +214,9 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
           final_size="$(du -h "$output" 2>/dev/null | cut -f1)"
         fi
       fi
-      echo "✓ $(_mf "Download complete! File size"): $final_size"
+      string "[{}] Download complete! File size: {}" "$MSG_SUCCESS" "$final_size"
     else
-      echo "✗ $(_mf "Download failed")"
+      string "[{}] Download failed" "$MSG_ERROR"
       return $exit_code
     fi
   }
@@ -266,7 +266,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     if [[ -d "$VENV_DIR" ]]; then
       local prompt=$(_mf "Virtual environment {} already exists. Delete and reinstall it?" "${VENV_DIR}")
       if ! confirm_action "$prompt" default="N"; then
-        echo ""
+        echo
         local pip_url=$("$VENV_BIN" -m pip config get global.index-url 2>/dev/null)
         local mirror_str=""
         if [[ -n $pip_url ]]; then
@@ -306,9 +306,9 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
   upgrade_pip() {
     run_with_log "$VENV_BIN" -m pip install --upgrade pip
     if [[ $? -eq 0 ]]; then
-      string "[INFO] pip upgrade success"
+      string "[{}] pip upgrade success" "$MSG_INFO"
     else
-      string "[ERROR] pip upgrade failure"
+      string "[{}] pip upgrade failure" "$MSG_ERROR"
     fi
   }
 
@@ -325,9 +325,9 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     for pkg in "${packages[@]}"; do
       run_with_log "$VENV_BIN" -m pip install "$pkg"
       if [[ $? -eq 0 ]]; then
-        string "[INFO] {} install success" "$pkg"
+        string "[{}] {} install success" "$MSG_INFO" "$pkg"
       else
-        string "[ERROR] {} install failure" "$pkg"
+        string "[{}] {} install failure" "$MSG_ERROR" "$pkg"
       fi
     done
   }
@@ -455,16 +455,16 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
             fi
           fi
 
-          echo ""
+          echo
           echo -e "✨ $(_mf "Pip has been configured to use the new mirror")"
           echo "   $(_mf "Mirror"): $url"
           echo "   $(_mf "Trusted Host"): $host"
-          echo ""
+          echo
           return 0
         fi
       fi
 
-      string "[ERROR] Invalid input! Please enter a number between 0 and {}." "$len"
+      string "[{}] Invalid input! Please enter a number between 0 and {}" "$MSG_ERROR" "$len"
     done
 
   }
@@ -475,8 +475,8 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
   create_py_venv() {
     # create ~/.venv; install pip; install third party packages
     if install_py_venv; then
-      INFO_ICON=$([ "$TERM_SUPPORT_UTF8" -eq 0 ] && echo "🌍" || echo "[INFO]")
-      echo ""
+      local INFO_ICON=$([ "$TERM_SUPPORT_UTF8" -eq 0 ] && echo "🌍" || echo "[${MSG_INFO}]")
+      echo
       echo "=================================================="
       echo "${INFO_ICON} $(_mf "Testing global pip mirror speeds...")"
       echo "=================================================="
@@ -496,7 +496,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
         upgrade_pip
         install_packages
       fi
-      echo ""
+      echo
     fi
   }
 

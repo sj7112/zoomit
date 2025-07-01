@@ -12,7 +12,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.pat
 
 from python.cmd_handler import cmd_ex_str
 from python.file_util import read_file, write_source_file
-from python.msg_handler import _mf, error, string
+from python.msg_handler import MSG_ERROR, MSG_SUCCESS, _mf, error, string
 from python.cache.os_info import OSInfo, OSInfoCache
 from python.system import confirm_action
 from python.debug_tool import print_array
@@ -117,10 +117,10 @@ class SshSetup:
 
                 if ssh_port.isdigit() and 1 <= int(ssh_port) <= 65535:
                     self.modify_config_line("Port", f"Port {ssh_port}")
-                    string(r"✓ SSH port set to: {}", ssh_port)
+                    string(r"[{}] SSH port set to: {}", MSG_SUCCESS, ssh_port)
                     break
 
-                string(r"✗ Failed to set SSH port")
+                string(r"[{}] Failed to set SSH port", MSG_ERROR)
             except KeyboardInterrupt:
                 string("\nOperation cancelled")
                 return 2
@@ -130,11 +130,11 @@ class SshSetup:
         if allow_root == 0:
             if not curr_root_permit:
                 self.modify_config_line("PermitRootLogin", "PermitRootLogin yes")
-            string("✓ Root login allowed")
+            string("[{}] Root login allowed", MSG_SUCCESS)
         elif allow_root == 1:
             if curr_root_permit:
                 self.modify_config_line("PermitRootLogin", "PermitRootLogin no")
-            string("✓ Root login disabled")
+            string("[{}] Root login disabled", MSG_SUCCESS)
         else:
             return 2
 
