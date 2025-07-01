@@ -34,22 +34,25 @@ class SshSetup:
     """
 
     lines: List[str]
+    modified: False
 
     def modify_config_line(self, key, new_line):
         """Find and modify the matching line"""
+        self.modified = True
+
         lines = self.lines
-        modified = False
+        modify = False
         for i, line in enumerate(lines):
             if re.match(rf"^\s*#?\s*({key})\s+(\S+)", line):
-                if not modified:  # modify the first match
+                if not modify:  # modify the first match
                     lines[i] = new_line
-                    modified = True
+                    modify = True
                 else:  # delete other matches
                     del lines[i]
                     i -= 1
 
         # If no matching line is found, add a new line
-        if not modified:
+        if not modify:
             lines.append(new_line)
 
     def is_service_active(self, service_name):
@@ -86,7 +89,7 @@ class SshSetup:
 
         # get configuration data
         if not os.path.exists(sshd_config):
-            error(r"[Error]: SSH configuration file {} does not exist", sshd_config)
+            error(r"SSH configuration file {} does not exist", sshd_config)
             return 3
 
         # read file
@@ -94,13 +97,13 @@ class SshSetup:
 
         # get current port and root permission
         curr_ssh_port = self.get_config_port()
-        curr_root_permit = "Y" if self.get_config_root_permit().lower() == "yes" else "N"
+        curr_root_permit = self.get_config_root_permit().lower() == "yes"
 
         # check SSH service status
         ssh_service = "ssh" if _os_info.ostype == "ubuntu" else "sshd"  # get service name
         if self.is_service_active(ssh_service):
             prompt = _mf(r"SSH is running (current port: {}). Do you want to reconfigure it?", curr_ssh_port)
-            ret_code = confirm_action(prompt, default="N")
+            ret_code = confirm_action(prompt, default=False)
             if ret_code != 0:
                 return 1
 
@@ -115,6 +118,7 @@ class SshSetup:
                 if ssh_port.isdigit() and 1 <= int(ssh_port) <= 65535:
                     self.modify_config_line("Port", f"Port {ssh_port}")
                     string(r"✓ SSH port set to: {}", ssh_port)
+                    break
 
                 string(r"✗ Failed to set SSH port")
             except KeyboardInterrupt:
@@ -124,16 +128,19 @@ class SshSetup:
         # 询问是否允许root登录
         allow_root = confirm_action(_mf("Allow root login via SSH?:"), default=curr_root_permit)
         if allow_root == 0:
-            self.modify_config_line("PermitRootLogin", "PermitRootLogin yes")
+            if not curr_root_permit:
+                self.modify_config_line("PermitRootLogin", "PermitRootLogin yes")
             string("✓ Root login allowed")
         elif allow_root == 1:
-            self.modify_config_line("PermitRootLogin", "PermitRootLogin no")
+            if curr_root_permit:
+                self.modify_config_line("PermitRootLogin", "PermitRootLogin no")
             string("✓ Root login disabled")
         else:
             return 2
 
         # write file
-        write_source_file(sshd_config, self.lines)
+        if self.modified:
+            write_source_file(sshd_config, self.lines)
         return 0
 
 

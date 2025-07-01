@@ -181,11 +181,11 @@ class NetworkSetup:
             return 1
 
         # 根据不同情况设置提示信息
-        default = "Y"
+        default = True
         if env_nw.get("STATIC_IP"):
             # 检测到服务器已配置静态IP，是否调整IP？
             prompt = _mf("A static IP is already configured on the server. Would you like to adjust it?")
-            default = "N"
+            default = False
         elif env_nw.get("DHCP_CLIENT") == True:
             # 检测到服务器使用动态IP，是否改为静态IP？
             prompt = _mf("Detected that the server is using a dynamic IP. Would you like to change it to a static IP?")
@@ -195,7 +195,7 @@ class NetworkSetup:
 
         # 提示用户是否要改IP配置
         no_msg = _mf("User chose not to modify the network configuration")  # 用户选择不修改网络配置
-        retVal = confirm_action(prompt, self.setup_octet, nomsg=no_msg, default=f"{default}")
+        retVal = confirm_action(prompt, self.setup_octet, nomsg=no_msg, default=default)
 
         self.save_env_nw()
         return retVal
