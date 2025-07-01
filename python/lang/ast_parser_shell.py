@@ -41,6 +41,36 @@ class ShellASTParser(ASTParser):
 
         return True
 
+    # ==============================================================================
+    # Check single curly brace
+    # SPECIAL CASES 1:
+    #   {
+    #       ...
+    #   }
+    # SPECIAL CASES 2:
+    #   [[ -z "$pid" ]] && {
+    #       echo "Error: ...
+    #   }
+    # SPECIAL CASES 3:
+    #   ((${#name} > max_name)) && max_name=${#name}
+    # ==============================================================================
+    def _check_function_end(self, line_content):
+        parser = self.parsers[0]
+        if line_content == "{":
+            parser.brace_count += 1  # left brace, counter++
+        elif line_content == "}":
+            parser.brace_count -= 1  # right brace, counter++
+        else:
+            left_count = line_content.count("{")
+            right_count = line_content.count("}")
+            count = left_count - right_count
+            if count > 0 and (line_content.startswith("{") or line_content.endswith("{")):
+                parser.brace_count += count  # no of left brace > no of right brace
+            elif count < 0 and (line_content.startswith("}") or line_content.endswith("}")):
+                parser.brace_count += count  # no of left brace < no of right brace
+
+        return parser.brace_count <= 0  # end of function
+
     def _parse_line_preprocess(self):
         """
         Preprocess the line: remove comments and trim leading/trailing spaces
@@ -81,16 +111,11 @@ class ShellASTParser(ASTParser):
             if self._check_heredoc_block():
                 return 0  # heredoc 标记：跳过
 
-        # 检查单个括号
+        # Check if function ended
         if self.parsers:
-            parser = self.parsers[0]
-            if line_content == "{":
-                parser.brace_count += 1  # 出现左括号，计数器+1
-            elif line_content == "}":
-                parser.brace_count -= 1  # 出现右括号，计数器-1
-                if parser.brace_count <= 0:
-                    self._set_function_end_flag()
-                    return 9  # 函数结束条件：单个右括号
+            if self._check_function_end(line_content):  # setup left/right brace count, check if function ended
+                self._set_function_end_flag()
+                return 9  # 函数结束条件：单个右括号
 
             return 1  # 需进一步解析
 
