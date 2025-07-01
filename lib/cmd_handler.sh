@@ -15,7 +15,7 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
     local lnx_cmd="$1"
     # 检查命令是否存在
     if ! command -v "$lnx_cmd" &>/dev/null; then
-      info "自动安装 '$lnx_cmd' ..."
+      info "Automatically installing {} ..." "$lnx_cmd"
 
       # 根据不同 Linux 发行版安装命令
       if [ "$DISTRO_PM" = "pacman" ]; then # arch Linux
@@ -30,9 +30,9 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
       # 再次检查是否安装成功
       local date=$(date "+%Y-%m-%d %H:%M:%S")
       if [ -z "$result" ] || ! command -v "$lnx_cmd" &>/dev/null; then
-        exiterr "$lnx_cmd 安装失败，请手动安装，日志: {0} [{1}]" "$LOG_FILE" "$date"
+        exiterr "{} installation failed, please install manually. Log: {} [{}]" "$lnx_cmd" "$LOG_FILE" "$date"
       else
-        success "$lnx_cmd 安装成功，日志: {0} [{1}]" "$LOG_FILE" "$date"
+        success "{} installation successful, Log: {} [{}]" "$lnx_cmd" "$LOG_FILE" "$date"
       fi
     fi
   }
@@ -154,7 +154,7 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
       return 1
     fi
 
-    printf "Monitoring process %d...\n" "$pid"
+    string "Monitoring process {}..." "$pid"
 
     local max_width=$(tput cols)
     [[ $max_width -gt 80 ]] && max_width=80
@@ -182,7 +182,7 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
     done
 
     # 显示最终状态
-    printf "\r\033[K[%s] %s" "-" "完成 Completed: $(date "+%Y-%m-%d %H:%M:%S")"
+    printf "\r\033[K[%s] %s" "-" "$(_mf "Completed"): $(date "+%Y-%m-%d %H:%M:%S")"
     printf "\n"
     wait "$pid" 2>/dev/null
     return $?

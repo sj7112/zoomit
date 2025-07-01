@@ -150,7 +150,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
 
     # Check if sshd is installed
     if ! ($SUDO_CMD systemctl is-active ssh &>/dev/null || $SUDO_CMD systemctl is-active sshd &>/dev/null); then
-      info "sshd 未安装，正在安装..."
+      info "sshd is not installed, installing now..."
       if [[ "$DISTRO_PM" = "zypper" || "$DISTRO_PM" = "pacman" ]]; then
         install_base_pkg "openssh"
       else
@@ -169,9 +169,9 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     # Restart SSH service
     $SUDO_CMD systemctl restart "$ssh_service"
     if [[ $? -eq 0 ]]; then
-      info "SSH 配置已生效"
+      info "SSH configuration has been applied"
     else
-      warning "systemctl restart $ssh_service 失败，请手动执行"
+      warning "systemctl restart {} failed, please execute manually" "$ssh_service"
     fi
   }
 

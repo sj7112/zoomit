@@ -24,7 +24,7 @@ def run_command(cmd, shell=True, capture_output=True, text=True):
         result = subprocess.run(cmd, shell=shell, capture_output=capture_output, text=text)
         return result
     except Exception as e:
-        print(f"执行命令失败: {e}")
+        string(r"Failed to execute command: {}", e)
         return None
 
 
@@ -86,7 +86,7 @@ class SshSetup:
 
         # get configuration data
         if not os.path.exists(sshd_config):
-            error(r"错误: SSH配置文件 {} 不存在", sshd_config)
+            error(r"[Error]: SSH configuration file {} does not exist", sshd_config)
             return 3
 
         # read file
@@ -99,7 +99,7 @@ class SshSetup:
         # check SSH service status
         ssh_service = "ssh" if _os_info.ostype == "ubuntu" else "sshd"  # get service name
         if self.is_service_active(ssh_service):
-            prompt = _mf(r"已启动SSH (当前端口 {})，是否重新设置?", curr_ssh_port)
+            prompt = _mf(r"SSH is running (current port: {}). Do you want to reconfigure it?", curr_ssh_port)
             ret_code = confirm_action(prompt, default="N")
             if ret_code != 0:
                 return 1
@@ -107,28 +107,28 @@ class SshSetup:
         # Prompt for SSH port
         while True:
             try:
-                ssh_port = input(_mf(r"输入新的SSH端口 (当前: {}): ", curr_ssh_port)).strip()
+                ssh_port = input(_mf(r"Enter new SSH port (current: {}): ", curr_ssh_port)).strip()
                 if not ssh_port:
-                    print(f"保持端口: {curr_ssh_port}")
+                    string(r"Keep current port: {}", curr_ssh_port)
                     break
 
                 if ssh_port.isdigit() and 1 <= int(ssh_port) <= 65535:
                     self.modify_config_line("Port", f"Port {ssh_port}")
-                    print(f"✓ 设置SSH端口: {ssh_port}")
+                    string(r"✓ SSH port set to: {}", ssh_port)
 
-                print(f"✗ 设置SSH端口失败")
+                string(r"✗ Failed to set SSH port")
             except KeyboardInterrupt:
-                string("\n操作已取消")
+                string("\nOperation cancelled")
                 return 2
 
         # 询问是否允许root登录
-        allow_root = confirm_action("允许 root 远程登录？: ", default=curr_root_permit)
+        allow_root = confirm_action(_mf("Allow root login via SSH?:"), default=curr_root_permit)
         if allow_root == 0:
             self.modify_config_line("PermitRootLogin", "PermitRootLogin yes")
-            print("✓ 允许 root 登录")
+            string("✓ Root login allowed")
         elif allow_root == 1:
             self.modify_config_line("PermitRootLogin", "PermitRootLogin no")
-            print("✓ 禁止 root 登录")
+            string("✓ Root login disabled")
         else:
             return 2
 
