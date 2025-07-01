@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import locale
 import os
 import re
 import sys
@@ -11,7 +12,7 @@ import typer
 sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.path
 
 from python.lang.lang_util import debug_assertion, update_lang_files
-from python.msg_handler import _mf, string, info, warning, error, exiterr, get_lang_code
+from python.msg_handler import _mf, string, info, warning, error, exiterr
 from python.debug_tool import create_app, default_cmd, print_array
 from python.file_util import write_array
 from python.system import confirm_action
@@ -26,6 +27,19 @@ LANG_DIR = (CONF_DIR / "lang").resolve()
 
 # 确保目录存在
 os.makedirs(LANG_DIR, exist_ok=True)
+
+
+# =============================================================================
+# 自动检测语言代码
+# =============================================================================
+def get_lang_code():
+    lang_env = os.environ.get("LANG", "en_US:en")
+    if lang_env:
+        return lang_env[:2]
+    try:
+        return locale.getdefaultlocale()[0][:2]
+    except (TypeError, IndexError):
+        return "en"
 
 
 def resolve_lang_files(lang_code: str, mode: str = "", max_files: int = 1) -> List[str]:
