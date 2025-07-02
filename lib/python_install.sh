@@ -264,16 +264,19 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
   install_py_venv() {
     # Remove existing virtual environment
     if [[ -d "$VENV_DIR" ]]; then
+      local default="N"
       local prompt=$(_mf "Virtual environment {} already exists. Delete and reinstall it?" "${VENV_DIR}")
-      if ! confirm_action "$prompt" default="N"; then
+      if ! confirm_action "$prompt" default="$default"; then
         echo
         local pip_url=$("$VENV_BIN" -m pip config get global.index-url 2>/dev/null)
         local mirror_str=""
         if [[ -n $pip_url ]]; then
           mirror_str="$(_mf "Current pip mirror:") ${pip_url}"$'\n'
+        else
+          default="Y"
         fi
         prompt=$(_mf "{}Reinstall pip and the required Python libraries?" "$mirror_str")
-        confirm_action "$prompt" default="N" msg="$(_mf "Skipping virtual environment creation")"
+        confirm_action "$prompt" default="$default" msg="$(_mf "Skipping virtual environment creation")"
         return $?
       else
         info "Deleting virtual environment {}..." "$VENV_DIR"
