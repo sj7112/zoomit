@@ -57,11 +57,11 @@ def cmd_exec(cmd, **kwargs) -> Tuple[bool, Any]:
             return False, result.stderr
         return True, result  # Original object
     except subprocess.TimeoutExpired:
-        error_msg = _mf(r"[{}] Command execution timeout: {}", MSG_ERROR, " ".join(cmd))
+        error_msg = f"[{MSG_ERROR}] {_mf('Command execution timeout')} : {' '.join(cmd)}"
         print(error_msg)
         return False, error_msg
     except Exception as e:
-        error_msg = _mf(r"[{}] Command execution error: {}", MSG_ERROR, e)
+        error_msg = f"[{MSG_ERROR}] {_mf('Command execution error')} : {e}"
         print(error_msg)
         return False, str(e)
 

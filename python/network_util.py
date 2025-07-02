@@ -164,7 +164,7 @@ class NetworkSetup:
     # ==============================================================================
     def fix_ip(self):
         """
-        Do you need a static IP?
+        need a static IP?
         Return values:
             0: Static IP modification is required
             1: Static IP modification is not required

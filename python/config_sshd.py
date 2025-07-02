@@ -73,15 +73,16 @@ class SshSetup:
                 return match.group(1)
         return 22
 
-    def get_config_root_permit(self):
-        """Read the uncommented root permission"""
+    def check_root_login(self):
+        """Read the uncommented root login permission"""
+        permit = False
         for line in self.lines:
             if line.strip().startswith("#"):
                 continue
             match = re.match(r"^\s*PermitRootLogin\s+(\S+)", line)
             if match:
-                return match.group(1)
-        return None
+                return match.group(1).lower() == "yes"
+        return permit
 
     def config_sshd(self):
         """
@@ -100,13 +101,15 @@ class SshSetup:
         self.lines = read_file(sshd_config)
 
         # get current port and root permission
-        curr_ssh_port = self.get_config_port()
-        curr_root_permit = self.get_config_root_permit().lower() == "yes"
+        ssh_port = self.get_config_port()
+        root_login = self.check_root_login()
 
         # check SSH service status
         ssh_service = "ssh" if _os_info.ostype == "ubuntu" else "sshd"  # get service name
         if self.is_service_active(ssh_service):
-            prompt = _mf(r"SSH is running (current port: {}). Do you want to configure it?", curr_ssh_port)
+            login_permit = _mf("Root login allowed") if root_login else _mf("Root login disabled")
+            string(r"Current SSH is running on Port {}, {}", ssh_port, login_permit)
+            prompt = _mf("Would you like to reconfigure it?")
             ret_code = confirm_action(prompt, default=False)
             if ret_code != 0:
                 return 1
@@ -114,29 +117,29 @@ class SshSetup:
         # Prompt for SSH port
         while True:
             try:
-                ssh_port = input(_mf(r"Enter new SSH port (current: {}): ", curr_ssh_port)).strip()
-                if not ssh_port:
-                    string(r"Keep current port: {}", curr_ssh_port)
+                new_port = input(_mf(r"Enter new SSH port (current: {}): ", ssh_port)).strip()
+                if not new_port:
+                    print(f"[{MSG_SUCCESS}] {_mf('SSH port set to')}: {ssh_port}")
                     break
 
-                if ssh_port.isdigit() and 1 <= int(ssh_port) <= 65535:
-                    self.modify_config_line("Port", f"Port {ssh_port}")
-                    string(r"[{}] SSH port set to: {}", MSG_SUCCESS, ssh_port)
+                if new_port.isdigit() and 1 <= int(new_port) <= 65535:
+                    self.modify_config_line("Port", f"Port {new_port}")
+                    print(f"[{MSG_SUCCESS}] {_mf('SSH port set to')}: {new_port}")
                     break
 
-                string(r"[{}] Failed to set SSH port", MSG_ERROR)
+                print(f"[{MSG_ERROR}] {_mf('Failed to set SSH port')}")
             except KeyboardInterrupt:
                 string("\nOperation cancelled")
                 return 2
 
         # 询问是否允许root登录
-        allow_root = confirm_action(_mf("Allow root login via SSH?:"), default=curr_root_permit)
+        allow_root = confirm_action(_mf("Allow root login via SSH?"), default=root_login)
         if allow_root == 0:
             self.modify_config_line("PermitRootLogin", "PermitRootLogin yes")
-            string("[{}] Root login allowed", MSG_SUCCESS)
+            print(f"[{MSG_SUCCESS}] {_mf('Root login allowed')}")
         elif allow_root == 1:
             self.modify_config_line("PermitRootLogin", "PermitRootLogin no")
-            string("[{}] Root login disabled", MSG_SUCCESS)
+            print(f"[{MSG_SUCCESS}] {_mf('Root login disabled')}")
         else:
             return 2
 
