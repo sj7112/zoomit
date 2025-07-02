@@ -135,9 +135,9 @@ EOF
     # 创建切换脚本并在后台执行
     $SUDO_CMD cat >/tmp/switch_network.sh <<EOF
 #!/bin/bash
-exec >> "$LOG_FILE" 2>&1  # add to log data
 
 set -x  # show all commands
+
 echo "=== Switch Network start - \$(date) ==="
 $SUDO_CMD systemctl stop networking
 $SUDO_CMD systemctl disable networking
@@ -145,13 +145,14 @@ $SUDO_CMD pkill dhclient || true
 $SUDO_CMD pkill dhcpcd || true
 $SUDO_CMD systemctl enable --now systemd-networkd
 $SUDO_CMD systemctl enable --now systemd-resolved
+sleep 3 # ensure the new service has stabilized
 # redo pkill, in case dhcp is not stopped
 $SUDO_CMD pkill dhclient || true
 $SUDO_CMD pkill dhcpcd || true
 echo "=== Switch Network end - \$(date) ==="
 
 # clean up
-$SUDO_CMD rm -f /tmp/switch_network.sh
+# $SUDO_CMD rm -f /tmp/switch_network.sh
 EOF
 
     $SUDO_CMD chmod +x /tmp/switch_network.sh
@@ -168,7 +169,7 @@ EOF
     setup_switch_network   # 创建切换脚本
 
     count_down # Countdown reminder
-    $SUDO_CMD setsid /tmp/switch_network.sh </dev/null &
+    $SUDO_CMD nohup /tmp/switch_network.sh >>"$LOG_FILE" 2>&1 &
 
   }
 
