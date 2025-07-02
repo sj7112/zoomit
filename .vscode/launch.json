@@ -158,8 +158,8 @@
             "request": "launch",
             "program": "${workspaceFolder}/myshell.py",
             "args": [
-                // "sh_fix_ip",
-                "sh_config_sshd",
+                "sh_fix_ip",
+                // "sh_config_sshd",
                 // ""
                 // "sh_update_source",
                 "debian",

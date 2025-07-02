@@ -88,7 +88,8 @@ class NetworkSetup:
 
         # Check if a DHCP client is running
         # pgrep -f "dhclient|dhcpcd|nm-dhcp|NetworkManager.*dhcp"
-        dhcp_client = bool(cmd_ex_str(["pgrep", "-f", "dhclient|dhcpcd|nm-dhcp|NetworkManager.*dhcp"]))
+        # dhcp_client = bool(cmd_ex_str(["pgrep", "-f", "dhclient|dhcpcd|nm-dhcp|NetworkManager.*dhcp"]))
+        dhcp_client = "proto dhcp" in (cmd_ex_str(["ip", "route", "show", "default"]))
         self.env_nw["DHCP_CLIENT"] = dhcp_client
 
         # call dmidecode for system-manufacturer
