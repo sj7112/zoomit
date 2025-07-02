@@ -133,7 +133,7 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
     if [[ "$cmd" == *"&&"* ]]; then
       $SUDO_CMD bash -c "($cmd) >> \"$log_file\" 2>&1" & # 命令组加上括号
     else
-      $SUDO_CMD bash -c "$cmd >>\"$log_file\" 2>&1" & # 单个命令直接执行
+      $SUDO_CMD bash -c "($cmd) >>\"$log_file\" 2>&1" & # 单个命令同样加上($cmd)防信号丢失
     fi
 
     # 启动命令并获取 PID

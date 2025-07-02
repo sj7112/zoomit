@@ -87,21 +87,18 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     fi
 
     # Automatically determine if wget or curl is available
-    local downloader=""
-    if command -v wget >/dev/null 2>&1; then
-      downloader="wget -c -q -O \"$output\" \"$url\""
-    elif command -v curl >/dev/null 2>&1; then
-      downloader="curl -L -C - -s -o \"$output\" \"$url\""
+    echo "$(_mf "File size"): ~= 42M"
+    echo "$(_mf "Start time"): $(date)"
+    if command -v curl >/dev/null 2>&1; then
+      ($SUDO_CMD curl -L -C - -s -o "$output" "$url") &
+    elif command -v wget >/dev/null 2>&1; then
+      ($SUDO_CMD wget -c -q -O "$output" "$url") &
     else
       error "Neither wget nor curl is installed on the system, unable to download."
       return 2
     fi
 
     # Start background download
-    echo "$downloader"
-    echo "$(_mf "Download file size"): ~= 42M"
-    echo "$(_mf "Start time"): $(date)"
-    eval "$SUDO_CMD $downloader &"
     local pid=$!
     local start_time=$(date +%s)
 
@@ -491,6 +488,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
   # Main function: create venv, install pip
   # ==============================================================================
   create_py_venv() {
+    install_py_standalone
     # create ~/.venv; install pip; install third party packages
     if install_py_venv; then
       local INFO_ICON=$([ "$TERM_SUPPORT_UTF8" -eq 0 ] && echo "🌍" || echo "[${MSG_INFO}]")

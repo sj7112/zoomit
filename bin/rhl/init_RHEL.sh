@@ -24,8 +24,8 @@ init_sources_list() {
   if grep -q "cdrom" /etc/yum.repos.d/*.repo; then
     info "$1" $DISTRO_OSTYPE
 
-    # 备份所有repo文件
-    file_backup_sj "/etc/yum.repos.d/*.repo"
+    # # 备份所有repo文件
+    # file_backup_sj "/etc/yum.repos.d/*.repo"
 
     # 修改 repo 配置文件，将 cdrom 源替换为官方源
     for repo_file in /etc/yum.repos.d/*.repo; do
