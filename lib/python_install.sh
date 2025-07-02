@@ -96,7 +96,8 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     fi
 
     # Start background download
-    echo "$(_mf "Starting download"): $downloader"
+    echo "$downloader"
+    echo "$(_mf "Download file size"): ~= 42M"
     echo "$(_mf "Start time"): $(date)"
     eval "$SUDO_CMD $downloader &"
     local pid=$!
@@ -192,6 +193,12 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
       # Update display every 0.5 seconds (only update spinner and current time)
       display_content="$(date '+%H:%M:%S') | $(_mf "Elapsed Time"): $elapsed_formatted | $cached_stats"
       printf "\r\033[K[%s] %s" "${spinner}" "${display_content}"
+
+      # Every 5 minutes, print a warning
+      if [ $((counter % 600)) -eq 0 ]; then
+        warning "If your network is slow, please download or install Python 3.10+ manually"
+      fi
+
       sleep 0.5
     done
 
@@ -230,7 +237,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     local python_url=$(get_python_url "$system_type")
 
     # Download file (supports resuming)
-    info "Downloading Python {} standalone to {} ..." "$PY_VERSION" "$PY_GZ_FILE"
+    info "Downloading Python {} standalone..." "$PY_VERSION"
 
     smart_geturl "$PY_GZ_FILE" "$python_url"
 
