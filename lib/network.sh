@@ -23,7 +23,7 @@ if [[ -z "${LOADED_NETWORK:-}" ]]; then
   # ==============================================================================
   count_down() {
     # 设置环境变量
-    local count=6
+    local count=5
     local IFACE="${ENV_NETWORK["MAIN_IFACE"]}"
     local IP_ADDR="${ENV_NETWORK["STATIC_IP"]}"
 
@@ -135,16 +135,20 @@ EOF
     # 创建切换脚本并在后台执行
     $SUDO_CMD cat >/tmp/switch_network.sh <<EOF
 #!/bin/bash
+
 exec >> "$LOG_FILE" 2>&1  # add to log data
 
 set -x  # show all commands
 echo "=== Switch Network start - \$(date) ==="
 $SUDO_CMD systemctl stop networking
 $SUDO_CMD systemctl disable networking
-$SUDO_CMD pkill dhclient
-$SUDO_CMD pkill dhcpcd
-$SUDO_CMD systemctl enable --now systemd-networkd
-$SUDO_CMD systemctl enable --now systemd-resolved
+$SUDO_CMD pkill dhclient || true
+$SUDO_CMD pkill dhcpcd || true
+$SUDO_CMD systemctl enable systemd-networkd
+$SUDO_CMD systemctl start systemd-networkd
+$SUDO_CMD systemctl enable systemd-resolved
+$SUDO_CMD systemctl start systemd-resolved
+$SUDO_CMD systemctl restart systemd-networkd
 echo "=== Switch Network end - \$(date) ==="
 
 # clean up

@@ -129,7 +129,7 @@ class ArchMirrorTester(MirrorTester):
 
         top_10 = self.test_all_mirrors()
 
-        confirm_action(_mf("Do you want to switch to the new mirror list?"), self.update_pm_file, top_10)
+        confirm_action(_mf("Would you like to switch to the new mirror list?"), self.update_pm_file, top_10)
 
     def update_pm_file(self, top_10):
         # generate custom content

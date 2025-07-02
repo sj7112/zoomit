@@ -309,9 +309,9 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
   upgrade_pip() {
     run_with_log "$VENV_BIN" -m pip install --upgrade pip
     if [[ $? -eq 0 ]]; then
-      string "[{}] pip upgrade success" "$MSG_INFO"
+      echo "[$MSG_INFO] pip $(_mf "upgrade success")"
     else
-      string "[{}] pip upgrade failure" "$MSG_ERROR"
+      echo "[$MSG_ERROR] pip $(_mf "upgrade failure")"
     fi
   }
 
@@ -328,9 +328,9 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     for pkg in "${packages[@]}"; do
       run_with_log "$VENV_BIN" -m pip install "$pkg"
       if [[ $? -eq 0 ]]; then
-        string "[{}] {} install success" "$MSG_INFO" "$pkg"
+        echo "[$MSG_INFO] $pkg $(_mf "install success")"
       else
-        string "[{}] {} install failure" "$MSG_ERROR" "$pkg"
+        echo "[$MSG_ERROR] $pkg $(_mf "install failure")"
       fi
     done
   }

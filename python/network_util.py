@@ -97,7 +97,7 @@ class NetworkSetup:
             self.env_nw["IS_CLOUD"] = manufacturer.strip()
 
         # New installation must have：
-        # systemd-networkd、NetworkManager、networking[ifupdown]、wicked、network[network-scripts]
+        # NetworkManager、networking[ifupdown]、wicked、network[network-scripts]、systemd-networkd
         nm_type = get_network_service()
         self.env_nw["CURR_NM"] = nm_type
         if not dhcp_client:
@@ -164,7 +164,7 @@ class NetworkSetup:
     # ==============================================================================
     def fix_ip(self):
         """
-        Do you need a static IP?
+        need a static IP?
         Return values:
             0: Static IP modification is required
             1: Static IP modification is not required

@@ -139,7 +139,7 @@ def get_network_service():
         str: 当前活动的网络服务名称
     """
     # 定义可能的网络服务名称
-    services = ["systemd-networkd", "NetworkManager", "networking", "wicked", "network"]
+    services = ["NetworkManager", "networking", "wicked", "network", "systemd-networkd"]
     for service in services:
         if check_network_service(service):
             return service

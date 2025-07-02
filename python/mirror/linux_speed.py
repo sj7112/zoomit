@@ -386,7 +386,7 @@ class MirrorTester:
             default = True
             prompt = _mf("Would you like to reselect a mirror?")
             if self.curr_mirror:
-                choose = _mf("Currently selected mirror")
+                choose = _mf(r"Current {} mirror", self.os_info.package_mgr)
                 prompt = f"{choose}: {self.curr_mirror}\n{prompt}"
                 default = False
 
