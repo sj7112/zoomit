@@ -139,16 +139,17 @@ EOF
 set -x  # show all commands
 
 echo "=== Switch Network start - \$(date) ==="
-$SUDO_CMD systemctl stop networking
-$SUDO_CMD systemctl disable networking
-$SUDO_CMD pkill dhclient || true
-$SUDO_CMD pkill dhcpcd || true
-$SUDO_CMD systemctl enable --now systemd-networkd
-$SUDO_CMD systemctl enable --now systemd-resolved
+systemctl stop networking
+systemctl disable networking
+pkill dhclient || true
+pkill dhcpcd || true
+systemctl enable --now systemd-networkd
+systemctl enable --now systemd-resolved
+systemctl restart systemd-networkd
 echo "=== Switch Network end - \$(date) ==="
 
 # clean up
-$SUDO_CMD rm -f /tmp/switch_network.sh
+rm -f /tmp/switch_network.sh
 EOF
 
     $SUDO_CMD chmod +x /tmp/switch_network.sh
