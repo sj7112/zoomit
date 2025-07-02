@@ -23,7 +23,7 @@ if [[ -z "${LOADED_NETWORK:-}" ]]; then
   # ==============================================================================
   count_down() {
     # 设置环境变量
-    local count=6
+    local count=5
     local IFACE="${ENV_NETWORK["MAIN_IFACE"]}"
     local IP_ADDR="${ENV_NETWORK["STATIC_IP"]}"
 
@@ -148,6 +148,7 @@ $SUDO_CMD systemctl enable systemd-networkd
 $SUDO_CMD systemctl start systemd-networkd
 $SUDO_CMD systemctl enable systemd-resolved
 $SUDO_CMD systemctl start systemd-resolved
+$SUDO_CMD systemctl restart systemd-networkd
 echo "=== Switch Network end - \$(date) ==="
 
 # clean up
