@@ -34,7 +34,7 @@ class SshSetup:
     """
 
     lines: List[str]
-    modified: False
+    modified: bool = False
 
     def modify_config_line(self, key, new_line):
         """Find and modify the matching line"""
@@ -102,7 +102,7 @@ class SshSetup:
         # check SSH service status
         ssh_service = "ssh" if _os_info.ostype == "ubuntu" else "sshd"  # get service name
         if self.is_service_active(ssh_service):
-            prompt = _mf(r"SSH is running (current port: {}). Do you want to reconfigure it?", curr_ssh_port)
+            prompt = _mf(r"SSH is running (current port: {}). Do you want to configure it?", curr_ssh_port)
             ret_code = confirm_action(prompt, default=False)
             if ret_code != 0:
                 return 1
