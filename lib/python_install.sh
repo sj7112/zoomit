@@ -31,12 +31,15 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
   # Check if Python 3.10+ is already available
   check_py_version() {
     local py_path=$1
-    if [ -n "$py_path" ] && "$py_path" -c 'import sys; exit(0) if sys.version_info >= (3,10) else exit(1)' 2>/dev/null; then
-      # Ensure both venv and ensurepip are available
-      if "$py_path" -m venv --help >/dev/null 2>&1 \
-        && "$py_path" -m ensurepip --version >/dev/null 2>&1; then
-        return 0
-      fi
+    # Check if python3 binary exists
+    [ ! -x "$py_bin" ] || return 1
+    # check if python3 version is 3.10+
+    "$py_path" -c 'import sys; exit(0) if sys.version_info >= (3,10) else exit(1)' >/dev/null 2>&1 || return 1
+
+    # Ensure both venv and ensurepip are available
+    if "$py_path" -m venv --help >/dev/null 2>&1 \
+      && "$py_path" -m ensurepip --version >/dev/null 2>&1; then
+      return 0
     fi
     return 1
   }
@@ -227,13 +230,19 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     local python_url=$(get_python_url "$system_type")
 
     # Download file (supports resuming)
-    info "Downloading Python {} standalone to {} ..." $PY_VERSION "$PY_GZ_FILE"
+    info "Downloading Python {} standalone to {} ..." "$PY_VERSION" "$PY_GZ_FILE"
 
     smart_geturl "$PY_GZ_FILE" "$python_url"
 
+    # clean up old Python installation
+    if [ -d "$PY_INST_DIR" ] && [ "$(ls -A "$PY_INST_DIR")" ]; then
+      warn "Cleaning up existing Python install at {}..." "$PY_INST_DIR"
+      rm -rf "$PY_INST_DIR"
+    fi
+    mkdir -p "$PY_INST_DIR"
+
     # Extract to the installation directory
     info "Installing Python to {}..." "$PY_INST_DIR"
-    mkdir -p "$PY_INST_DIR" # Ensure the installation directory exists
     if ! tar -zxf "$PY_GZ_FILE" -C "$PY_INST_DIR" --strip-components=1; then
       exiterr "Extraction and installation failed"
     fi
@@ -277,7 +286,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
       install_py_standalone
       # Verify if it is usable
       if check_py_version "$local_bin"; then
-        info "Python {} installation completed!" "$PY_VERSION"
+        info "Python {} installation completed" "$PY_VERSION"
         py_bin="$local_bin"
       else
         exiterr "Python {} installation failed: {} does not exist or is not executable" "$PY_VERSION" "$local_bin"
