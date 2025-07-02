@@ -10,7 +10,7 @@ import sys
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.path
 
-from python.msg_handler import MSG_ERROR, MSG_WARNING, _mf, error, exiterr, info, warning
+from python.msg_handler import MSG_ERROR, MSG_WARNING, _mf, exiterr, string, warning
 
 # 获取当前文件的绝对路径的父目录
 PARENT_DIR = Path(__file__).resolve().parent.parent
@@ -156,7 +156,7 @@ def file_backup_sj(*patterns: str, postfix: str = "bak") -> None:
     if error_count > 0:
         exiterr("Important files cannot be backed up")
     elif (backup_count + skip_count + error_count) > 1:
-        info(r"Backup completed: {} succeeded, {} skipped, {} failed", backup_count, skip_count, error_count)
+        string(r"Backup completed: {} succeeded, {} skipped, {} failed", backup_count, skip_count, error_count)
 
 
 def file_restore_sj(src_file: str, postfix: str = "bak") -> None:
@@ -200,7 +200,7 @@ def write_source_file(path, lines):
     try:
         with open(path, "w", encoding="utf-8") as f:
             f.write("\n".join(lines))
-        info(r"source file updated: {}", path)
+        string(r"source file updated: {}", path)
     except Exception as e:
         print(f"{_mf('Write failed')}: {e}")
 

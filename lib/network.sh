@@ -141,10 +141,13 @@ set -x  # show all commands
 echo "=== Switch Network start - \$(date) ==="
 $SUDO_CMD systemctl stop networking
 $SUDO_CMD systemctl disable networking
-$SUDO_CMD pkill dhclient
-$SUDO_CMD pkill dhcpcd
+$SUDO_CMD pkill dhclient || true
+$SUDO_CMD pkill dhcpcd || true
 $SUDO_CMD systemctl enable --now systemd-networkd
 $SUDO_CMD systemctl enable --now systemd-resolved
+# redo pkill, in case dhcp is not stopped
+$SUDO_CMD pkill dhclient || true
+$SUDO_CMD pkill dhcpcd || true
 echo "=== Switch Network end - \$(date) ==="
 
 # clean up
