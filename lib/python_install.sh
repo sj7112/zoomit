@@ -95,7 +95,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     # Start background download
     echo "$(_mf "Starting download"): $downloader"
     echo "$(_mf "Start time"): $(date)"
-    eval "$downloader &"
+    eval "$SUDO_CMD $downloader &"
     local pid=$!
     local start_time=$(date +%s)
 
@@ -227,7 +227,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     local python_url=$(get_python_url "$system_type")
 
     # Download file (supports resuming)
-    info "Downloading Python {} standalone..." $PY_VERSION
+    info "Downloading Python {} standalone to {} ..." $PY_VERSION "$PY_GZ_FILE"
 
     smart_geturl "$PY_GZ_FILE" "$python_url"
 
@@ -236,27 +236,6 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     mkdir -p "$PY_INST_DIR" # Ensure the installation directory exists
     if ! tar -zxf "$PY_GZ_FILE" -C "$PY_INST_DIR" --strip-components=1; then
       exiterr "Extraction and installation failed"
-    fi
-  }
-
-  install_py_bin() {
-    local default_bin="$(command -v python3 2>/dev/null || true)"
-    local local_bin="${PY_INST_DIR}/bin/python3"
-
-    # Check if Python needs to be reinstalled
-    if check_py_version "$default_bin"; then
-      echo "$default_bin"
-    elif check_py_version "$local_bin"; then
-      echo "$local_bin"
-    else
-      install_py_standalone
-      # Verify if it is usable
-      if check_py_version "$local_bin"; then
-        info "Python {} installation completed!" "$PY_VERSION"
-        echo "$local_bin"
-      else
-        exiterr "Python {} installation failed: {} does not exist or is not executable" "$PY_VERSION" "$local_bin"
-      fi
     fi
   }
 
@@ -285,7 +264,25 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     fi
 
     # Find the Python system path
-    local py_bin=$(install_py_bin)
+    local default_bin="$(command -v python3 2>/dev/null || true)"
+    local local_bin="${PY_INST_DIR}/bin/python3"
+    local py_bin=""
+
+    if check_py_version "$default_bin"; then
+      py_bin="$default_bin"
+    elif check_py_version "$local_bin"; then
+      py_bin="$local_bin"
+    else
+      # reinstalled python binary version
+      install_py_standalone
+      # Verify if it is usable
+      if check_py_version "$local_bin"; then
+        info "Python {} installation completed!" "$PY_VERSION"
+        py_bin="$local_bin"
+      else
+        exiterr "Python {} installation failed: {} does not exist or is not executable" "$PY_VERSION" "$local_bin"
+      fi
+    fi
 
     # Create Python virtual environment
     info "Creating virtual environment {}..." "$VENV_DIR"

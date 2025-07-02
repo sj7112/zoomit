@@ -33,7 +33,6 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
     encoding=$3
 
     if [ -z "$encoding" ]; then
-      echo "change to ${normalize}.utf8" >&2
       echo "${normalize}.utf8" # add utf8 as default
       return
     fi
