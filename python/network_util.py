@@ -97,7 +97,7 @@ class NetworkSetup:
             self.env_nw["IS_CLOUD"] = manufacturer.strip()
 
         # New installation must have：
-        # systemd-networkd、NetworkManager、networking[ifupdown]、wicked、network[network-scripts]
+        # NetworkManager、networking[ifupdown]、wicked、network[network-scripts]、systemd-networkd
         nm_type = get_network_service()
         self.env_nw["CURR_NM"] = nm_type
         if not dhcp_client:
