@@ -163,7 +163,8 @@ def monitor_progress(cmd, log_file=None):
             print(f"Error: Invalid PID {process.pid}")
             return process.returncode or 1
 
-        string(r"Monitoring process {}...", process.pid)
+        if DEBUG:
+            string(r"Monitoring process {}...", process.pid)
 
         # Get terminal width
         try:

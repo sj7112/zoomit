@@ -32,9 +32,11 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
   check_py_version() {
     local py_path=$1
     # Check if python3 binary exists
-    [ ! -x "$py_bin" ] || return 1
+    [ ! -x "$py_path" ] || return 1
     # check if python3 version is 3.10+
-    "$py_path" -c 'import sys; exit(0) if sys.version_info >= (3,10) else exit(1)' >/dev/null 2>&1 || return 1
+    py_code='import sys; exit(0) if sys.version_info >= (3,10) else exit(1)'
+    timeout 3s bash -c "exec >/dev/null 2>&1; \"$py_path\" -c '$py_code'" || return 1
+    # "$py_path" -c "$py_code" >/dev/null 2>&1 || return 1
 
     # Ensure both venv and ensurepip are available
     if "$py_path" -m venv --help >/dev/null 2>&1 \
@@ -196,7 +198,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
 
       # Every 5 minutes, print a warning
       if [ $((counter % 600)) -eq 0 ]; then
-        warning "If your network is slow, please download or install Python 3.10+ manually"
+        warning "\nIf your network is slow, please download or install Python 3.10+ manually"
       fi
 
       sleep 0.5

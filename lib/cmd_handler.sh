@@ -15,7 +15,7 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
     local lnx_cmd="$1"
     # 检查命令是否存在
     if ! command -v "$lnx_cmd" &>/dev/null; then
-      info "Automatically installing {} ..." "$lnx_cmd"
+      string "Automatically installing {} ..." "$lnx_cmd"
 
       # 根据不同 Linux 发行版安装命令
       if [ "$DISTRO_PM" = "pacman" ]; then # arch Linux
@@ -32,7 +32,7 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
       if [ -z "$result" ] || ! command -v "$lnx_cmd" &>/dev/null; then
         exiterr "{} installation failed, please install manually. Log: {} [{}]" "$lnx_cmd" "$LOG_FILE" "$date"
       else
-        success "{} installation successful, Log: {} [{}]" "$lnx_cmd" "$LOG_FILE" "$date"
+        success "{} installation successful" "$lnx_cmd"
       fi
     fi
   }
@@ -132,10 +132,8 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
     # 执行命令（非安静模式）
     if [[ "$cmd" == *"&&"* ]]; then
       $SUDO_CMD bash -c "($cmd) >> \"$log_file\" 2>&1" & # 命令组加上括号
-      echo "▶️: $SUDO_CMD bash -c ($cmd)" >&2
     else
-      $SUDO_CMD "${cmd[@]}" >>"$log_file" 2>&1 & # 单个命令直接执行
-      echo "▶️: $SUDO_CMD $cmd" >&2
+      $SUDO_CMD bash -c "$cmd >>\"$log_file\" 2>&1" & # 单个命令直接执行
     fi
 
     # 启动命令并获取 PID
@@ -154,7 +152,9 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
       return 1
     fi
 
-    string "Monitoring process {}..." "$pid"
+    if [[ "${DEBUG:-0}" == "1" ]]; then
+      string "Monitoring process {}..." "$pid"
+    fi
 
     local max_width=$(tput cols)
     [[ $max_width -gt 80 ]] && max_width=80
