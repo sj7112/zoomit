@@ -41,19 +41,23 @@ class SshSetup:
         self.modified = True
 
         lines = self.lines
+        indexes_to_delete = []
         modify = False
         for i, line in enumerate(lines):
             if re.match(rf"^\s*#?\s*({key})\s+(\S+)", line):
-                if not modify:  # modify the first match
-                    lines[i] = new_line
+                if not modify:
+                    lines[i] = new_line  # modify the first match
                     modify = True
-                else:  # delete other matches
-                    del lines[i]
-                    i -= 1
+                else:
+                    indexes_to_delete.append(i)  # save index for deleting
 
         # If no matching line is found, add a new line
         if not modify:
             lines.append(new_line)
+        elif indexes_to_delete:
+            # delete other matches
+            for i in reversed(indexes_to_delete):
+                del lines[i]
 
     def is_service_active(self, service_name):
         """检查服务是否激活"""
@@ -128,12 +132,10 @@ class SshSetup:
         # 询问是否允许root登录
         allow_root = confirm_action(_mf("Allow root login via SSH?:"), default=curr_root_permit)
         if allow_root == 0:
-            if not curr_root_permit:
-                self.modify_config_line("PermitRootLogin", "PermitRootLogin yes")
+            self.modify_config_line("PermitRootLogin", "PermitRootLogin yes")
             string("[{}] Root login allowed", MSG_SUCCESS)
         elif allow_root == 1:
-            if curr_root_permit:
-                self.modify_config_line("PermitRootLogin", "PermitRootLogin no")
+            self.modify_config_line("PermitRootLogin", "PermitRootLogin no")
             string("[{}] Root login disabled", MSG_SUCCESS)
         else:
             return 2
