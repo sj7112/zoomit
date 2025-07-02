@@ -138,14 +138,16 @@ EOF
 
 exec >> "$LOG_FILE" 2>&1  # add to log data
 
+set -x  # show all commands
 echo "=== Switch Network start - \$(date) ==="
 $SUDO_CMD systemctl stop networking
 $SUDO_CMD systemctl disable networking
 $SUDO_CMD pkill dhclient || true
 $SUDO_CMD pkill dhcpcd || true
-$SUDO_CMD systemctl enable --now systemd-networkd
-$SUDO_CMD systemctl enable --now systemd-resolved
-$SUDO_CMD systemctl restart systemd-networkd
+$SUDO_CMD systemctl enable systemd-networkd
+$SUDO_CMD systemctl start systemd-networkd
+$SUDO_CMD systemctl enable systemd-resolved
+$SUDO_CMD systemctl start systemd-resolved
 echo "=== Switch Network end - \$(date) ==="
 
 # clean up
