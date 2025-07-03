@@ -507,7 +507,6 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
         upgrade_pip
         install_packages
       fi
-      echo
     fi
   }
 
