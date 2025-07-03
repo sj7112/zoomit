@@ -146,7 +146,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   config_sshd() {
     echo ""
 
-    local ssh_service=$([[ $DISTRO_OSTYPE == ubuntu ]] && echo ssh || echo sshd)
+    local ssh_service=$([[ $DISTRO_OSTYPE == "ubuntu" ]] && echo ssh || echo sshd)
 
     # Check if sshd is installed
     if ! ($SUDO_CMD systemctl is-active ssh &>/dev/null || $SUDO_CMD systemctl is-active sshd &>/dev/null); then
@@ -156,7 +156,9 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
       else
         install_base_pkg "openssh-server"
       fi
-      $SUDO_CMD systemctl enable --now "$ssh_service"
+      $SUDO_CMD systemctl enable "$ssh_service"
+      #  $SUDO_CMD systemctl start "$ssh_service"
+      $SUDO_CMD systemctl restart "$ssh_service"
     fi
 
     if sh_config_sshd; then # python adds-on: config /etc/ssh/sshd_config
