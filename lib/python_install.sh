@@ -31,12 +31,12 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
   # Check if Python 3.10+ is already available
   check_py_version() {
     local py_path=$1
-    # Check if python3 binary exists
-    [ ! -x "$py_path" ] || return 1
+    # Check if python3 exists and executable
+    [ -x "$py_path" ] || return 1
     # check if python3 version is 3.10+
     py_code='import sys; exit(0) if sys.version_info >= (3,10) else exit(1)'
-    timeout 3s bash -c "exec >/dev/null 2>&1; \"$py_path\" -c '$py_code'" || return 1
-    # "$py_path" -c "$py_code" >/dev/null 2>&1 || return 1
+    # timeout 3s bash -c "exec >/dev/null 2>&1; \"$py_path\" -c '$py_code'" || return 1
+    "$py_path" -c "$py_code" >/dev/null 2>&1 || return 1
 
     # Ensure both venv and ensurepip are available
     if "$py_path" -m venv --help >/dev/null 2>&1 \
@@ -80,13 +80,9 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     local output="$1"
     local url="$2"
 
-    # Check parameters
-    if [ -z "$output" ] || [ -z "$url" ]; then
-      error "Usage: smart_geturl <output_file> <URL>"
-      return 1
-    fi
-
     # Automatically determine if wget or curl is available
+    echo "$(_mf "Web resource"): $url"
+    echo "$(_mf "Output path"): $output"
     echo "$(_mf "File size"): ~= 42M"
     echo "$(_mf "Start time"): $(date)"
     if command -v curl >/dev/null 2>&1; then
@@ -103,8 +99,10 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     local start_time=$(date +%s)
 
     # Define local cleanup function on exit
+    ON_EXIT_CODE=0
     SMART_WGET_PID=$pid
     on_exit() {
+      ON_EXIT_CODE=$?
       local oid="$SMART_WGET_PID"
       if kill -0 "$oid" 2>/dev/null; then
         echo
@@ -193,9 +191,10 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
       display_content="$(date '+%H:%M:%S') | $(_mf "Elapsed Time"): $elapsed_formatted | $cached_stats"
       printf "\r\033[K[%s] %s" "${spinner}" "${display_content}"
 
-      # Every 5 minutes, print a warning
+      # Every 5 minutes, print a warning message
       if [ $((counter % 600)) -eq 0 ]; then
-        warning "\nIf your network is slow, please download or install Python 3.10+ manually"
+        echo
+        warning "If your network is slow, please download or install Python 3.10+ manually"
       fi
 
       sleep 0.5
@@ -207,8 +206,10 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
 
     # Remove trap (to avoid affecting other code)
     trap - INT TERM EXIT
-
     local exit_code=$?
+    if [ $exit_code -eq 0 ] && [ $ON_EXIT_CODE -ne 0 ]; then
+      exit_code=$ON_EXIT_CODE # pass exit code (on_exit cannot directly return code because of BASH limitation)
+    fi
     if [ $exit_code -eq 0 ] && [ -f "$output" ]; then
       local final_size
       if [ -f "$output" ]; then
@@ -216,7 +217,6 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
         if stat -c%s "$output" >/dev/null 2>&1; then
           final_bytes=$(stat -c%s "$output")
         fi
-
         if [ "$final_bytes" -gt 1048576 ]; then
           final_size="$(echo "$final_bytes" | awk '{printf "%.1fMB", $1/1048576}')"
         else
@@ -238,19 +238,24 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     # Download file (supports resuming)
     info "Downloading Python {} standalone..." "$PY_VERSION"
 
+    set +e
     smart_geturl "$PY_GZ_FILE" "$python_url"
-
-    # clean up old Python installation
-    if [ -d "$PY_INST_DIR" ] && [ "$(ls -A "$PY_INST_DIR")" ]; then
-      warn "Cleaning up existing Python install at {}..." "$PY_INST_DIR"
-      rm -rf "$PY_INST_DIR"
+    ret_code=$?
+    set -e
+    if [[ $ret_code -eq 0 ]]; then
+      # Extract to the installation directory
+      info "Installing Python to {}..." "$PY_INST_DIR"
+      mkdir -p "$PY_INST_DIR" # Ensure the installation directory exists
+      if ! tar -zxf "$PY_GZ_FILE" -C "$PY_INST_DIR" --strip-components=1; then
+        exiterr "Extraction and installation failed"
+      fi
     fi
-    mkdir -p "$PY_INST_DIR"
 
-    # Extract to the installation directory
-    info "Installing Python to {}..." "$PY_INST_DIR"
-    if ! tar -zxf "$PY_GZ_FILE" -C "$PY_INST_DIR" --strip-components=1; then
-      exiterr "Extraction and installation failed"
+    # Verify if it is usable
+    if ! check_py_version "$local_bin"; then
+      exiterr "Python {} installation failed: {} does not exist or is not executable" "$PY_VERSION" "$local_bin"
+    else
+      info "Python {} installation completed" "$PY_VERSION"
     fi
   }
 
@@ -287,16 +292,8 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
       py_bin="$default_bin"
     elif check_py_version "$local_bin"; then
       py_bin="$local_bin"
-    else
-      # reinstalled python binary version
-      install_py_standalone
-      # Verify if it is usable
-      if check_py_version "$local_bin"; then
-        info "Python {} installation completed" "$PY_VERSION"
-        py_bin="$local_bin"
-      else
-        exiterr "Python {} installation failed: {} does not exist or is not executable" "$PY_VERSION" "$local_bin"
-      fi
+    elif install_py_standalone; then
+      py_bin="$local_bin"
     fi
 
     # Create Python virtual environment
@@ -488,7 +485,6 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
   # Main function: create venv, install pip
   # ==============================================================================
   create_py_venv() {
-    install_py_standalone
     # create ~/.venv; install pip; install third party packages
     if install_py_venv; then
       local INFO_ICON=$([ "$TERM_SUPPORT_UTF8" -eq 0 ] && echo "🌍" || echo "[${MSG_INFO}]")

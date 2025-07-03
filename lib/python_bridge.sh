@@ -21,18 +21,30 @@ if [[ -z "${LOADED_PYTHON_BRIDGE:-}" ]]; then
 
   # ===== 调用 myshell.py 中的命令 =====
   sh_update_source() {
+    echo
     py_exec "$ROOT_DIR/myshell.py" sh_update_source "$DISTRO_OSTYPE"
   }
 
   sh_config_sshd() {
+    set +e
     py_exec "$ROOT_DIR/myshell.py" sh_config_sshd
+    ret_code=$?
+    set -e
+    return $ret_code
   }
   # User interaction, cannot use subshells like $(...), use configuration file to pass data
   sh_fix_ip() {
+    set +e
     py_exec "$ROOT_DIR/myshell.py" sh_fix_ip
+    ret_code=$?
+    set -e
+    return $ret_code
   }
 
   sh_clear_cache() {
+    if [[ ! -f "$VENV_BIN" ]]; then
+      exiterr "Python executable file {} does not exist" "$VENV_BIN"
+    fi
     py_exec "$ROOT_DIR/myshell.py" sh_clear_cache
   }
 

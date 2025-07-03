@@ -159,19 +159,14 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
       $SUDO_CMD systemctl enable --now "$ssh_service"
     fi
 
-    set +e
-    sh_config_sshd # python adds-on: config /etc/ssh/sshd_config
-    if [[ $? -ne 0 ]]; then
-      return
-    fi
-    set -e
-
-    # Restart SSH service
-    $SUDO_CMD systemctl restart "$ssh_service"
-    if [[ $? -eq 0 ]]; then
-      info "SSH configuration has been applied"
-    else
-      warning "systemctl restart {} failed, please execute manually" "$ssh_service"
+    if sh_config_sshd; then # python adds-on: config /etc/ssh/sshd_config
+      # Restart SSH service
+      $SUDO_CMD systemctl restart "$ssh_service"
+      if [[ $? -eq 0 ]]; then
+        info "SSH configuration has been applied"
+      else
+        warning "systemctl restart {} failed, please execute manually" "$ssh_service"
+      fi
     fi
   }
 
@@ -180,17 +175,10 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   # --------------------------
   configure_ip() {
     echo ""
-
-    set +e
-    sh_fix_ip # python adds-on: config network as fix ip
-    if [[ $? -ne 0 ]]; then
-      return
-    else
+    if sh_fix_ip; then # python adds-on: config network as fix ip
       init_env_nw
+      network_config
     fi
-    set -e
-
-    network_config
   }
 
   install_docker() {

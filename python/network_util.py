@@ -184,13 +184,18 @@ class NetworkSetup:
         # Prompt the user to see if they want to modify the IP configuration
         default = True
         if env_nw.get("STATIC_IP"):
-            prompt = _mf("A static IP is already configured on the server. Would you like to adjust it?")
-            default = False
-        elif env_nw.get("DHCP_CLIENT") == True:
-            prompt = _mf("Detected that the server is using a dynamic IP. Would you like to change it to a static IP?")
+            if env_nw.get("DHCP_CLIENT") == True:
+                string(f"{_mf('您的服务器已配置动态IP')}: {env_nw['STATIC_IP']}")
+            else:
+                string(f"{_mf('您的服务器已配置静态IP')}: {env_nw['STATIC_IP']}")
+                default = False
         else:
-            prompt = _mf("Detected that the server might be using a static IP. Would you like to adjust it?")
+            if env_nw.get("DHCP_CLIENT") == True:
+                string("您的服务器可能已配置动态IP")
+            else:
+                string("您的服务器可能已配置静态IP")
 
+        prompt = _mf("Would you like to adjust it?")
         no_msg = _mf("User chose not to modify the network configuration")
         retVal = confirm_action(prompt, self.setup_octet, nomsg=no_msg, default=default)
 
