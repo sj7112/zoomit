@@ -191,7 +191,7 @@ class NetworkSetup:
                 string(f"{_mf('Server may be configured with a static IP')}: {env_nw['CURR_IP']}")
         else:
             if env_nw.get("CURR_IP"):
-                string(f"{_mf('Server may be configured with a dynamic IP')}: {env_nw['CURR_IP']}")
+                string(f"{_mf('Server is configured with a dynamic IP')}: {env_nw['CURR_IP']}")
             else:
                 string("Server may be configured with a dynamic IP")
 
