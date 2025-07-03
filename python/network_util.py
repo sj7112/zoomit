@@ -185,18 +185,18 @@ class NetworkSetup:
         default = True
         if env_nw.get("STATIC_IP"):
             if env_nw.get("DHCP_CLIENT") == True:
-                string(f"{_mf('您的服务器已配置动态IP')}: {env_nw['STATIC_IP']}")
+                string(f"{_mf('Server is configured with a dynamic IP')}: {env_nw['STATIC_IP']}")
             else:
-                string(f"{_mf('您的服务器已配置静态IP')}: {env_nw['STATIC_IP']}")
+                string(f"{_mf('Server is configured with a static IP')}: {env_nw['STATIC_IP']}")
                 default = False
         else:
             if env_nw.get("DHCP_CLIENT") == True:
-                string("您的服务器可能已配置动态IP")
+                string("Server may be configured with a dynamic IP")
             else:
-                string("您的服务器可能已配置静态IP")
+                string("Server may be configured with a static IP")
 
         prompt = _mf("Would you like to adjust it?")
-        no_msg = _mf("User chose not to modify the network configuration")
+        no_msg = _mf("Do not modify the network configuration")
         retVal = confirm_action(prompt, self.setup_octet, nomsg=no_msg, default=default)
 
         self.save_env_nw()
