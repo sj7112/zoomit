@@ -428,7 +428,6 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     local len=${#mirror_list[@]}
     local choice
     local choice_num
-    local selected_mirror
     local url
 
     if [[ $len -eq 0 ]]; then
@@ -500,7 +499,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
 
       if [[ $status -eq 0 ]]; then # use sys.exit() to return code
         show_pip_mirrors
-        url=$(choose_pip_mirror)
+        choose_pip_mirror
         status=$?
       fi
 
@@ -521,7 +520,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
 
     # 主函数
     main() {
-      info "Python $PY_VERSION Standalone 自动安装脚本"
+      echo "Python $PY_VERSION Standalone 自动安装脚本"
       create_py_venv
     }
 
