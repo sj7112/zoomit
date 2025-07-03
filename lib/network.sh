@@ -68,18 +68,18 @@ exec >> "$LOG_FILE" 2>&1  # add to log data
 set -x
 echo "=== Switch Network (nmcli) start - \$(date) ==="
 
-# 1. Check if the connection exists, create it if not
+# 1. Check if the connection exists, delete it if not
 if ! nmcli connection show "$CON_NAME" &>/dev/null; then
-  nmcli connection add type ethernet ifname "$IFACE" con-name "$CON_NAME"
+  nmcli connection delete "$CON_NAME" &>/dev/null || true
 fi
 
-# 2. Modify the connection to use a static IP
-nmcli connection modify "$CON_NAME" \\
-  ipv4.addresses "$IP_ADDR/$PREFIX" \\
-  ipv4.gateway "$GATEWAY" \\
-  ipv4.dns "$DNS" \\
-  ipv4.method manual \\
-  connection.autoconnect yes
+# 2. add the connection to use a static IP
+nmcli connection add type ethernet ifname "$IFACE" con-name "$CON_NAME" \
+  ipv4.addresses "$IP_ADDR/$PREFIX" \
+  ipv4.gateway "$GATEWAY" \
+  ipv4.dns "$DNS" \
+  ipv4.method manual \
+  connection.autoconnect yes  
 
 # 3. Activate the connection
 if nmcli connection up "$CON_NAME"; then
