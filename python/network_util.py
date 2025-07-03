@@ -183,17 +183,17 @@ class NetworkSetup:
 
         # Prompt the user to see if they want to modify the IP configuration
         default = True
-        if env_nw.get("STATIC_IP"):
-            if env_nw.get("DHCP_CLIENT") == True:
-                string(f"{_mf('Server is configured with a dynamic IP')}: {env_nw['STATIC_IP']}")
-            else:
+        if env_nw.get("DHCP_CLIENT") == False:
+            if env_nw.get("STATIC_IP"):
                 string(f"{_mf('Server is configured with a static IP')}: {env_nw['STATIC_IP']}")
                 default = False
-        else:
-            if env_nw.get("DHCP_CLIENT") == True:
-                string("Server may be configured with a dynamic IP")
             else:
-                string("Server may be configured with a static IP")
+                string(f"{_mf('Server may be configured with a static IP')}: {env_nw['CURR_IP']}")
+        else:
+            if env_nw.get("CURR_IP"):
+                string(f"{_mf('Server may be configured with a dynamic IP')}: {env_nw['CURR_IP']}")
+            else:
+                string("Server may be configured with a dynamic IP")
 
         prompt = _mf("Would you like to adjust it?")
         no_msg = _mf("Do not modify the network configuration")
