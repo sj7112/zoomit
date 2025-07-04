@@ -248,7 +248,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   require_sudo() {
     if [[ "$EUID" -ne 0 ]]; then
       load_global_prop # Load global properties (Step 1)
-      warning -i "INIT_SUDO_RUN"
+      warning -i "$INIT_SUDO_RUN"
       exec sudo "$0" "$@"
     fi
     export REAL_USER="${SUDO_USER:-root}" # save original user

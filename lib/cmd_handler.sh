@@ -189,7 +189,7 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
   # 功能：将文件或目录归属改为 $REAL_USER，如果提供了权限（如 644），则一并修改
   # ==============================================================================
   user_permit() {
-    local mode targets=()
+    local mode="" targets=()
 
     # Parse arguments
     for arg in "$@"; do
