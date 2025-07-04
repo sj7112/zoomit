@@ -136,7 +136,6 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   # ==============================================================================
   configure_sshd() {
     echo ""
-
     local ssh_service=$([[ $DISTRO_OSTYPE == "ubuntu" ]] && echo ssh || echo sshd)
 
     # Check if sshd is installed

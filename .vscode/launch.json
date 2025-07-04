@@ -29,7 +29,7 @@
                 // "--version"
             ],
             "env": {
-                "DEBUG": "1"
+                "DEBUG": "0"
             }
         },
         {
@@ -41,7 +41,7 @@
             "program": "${workspaceFolder}/lib/python_install.sh",
             "args": [],
             "env": {
-                "DEBUG": "1"
+                "DEBUG": "0"
             }
         },
         {
@@ -52,7 +52,7 @@
             "program": "${workspaceFolder}/lib/hash_util.sh",
             "args": [],
             "env": {
-                "DEBUG": "1"
+                "DEBUG": "0"
             }
         },
         {
@@ -62,7 +62,7 @@
             "program": "${workspaceFolder}/python/cmd_handler.py",
             "args": [],
             "env": {
-                "DEBUG": "1"
+                "DEBUG": "0"
             },
             "console": "integratedTerminal"
         },
@@ -73,7 +73,7 @@
             "program": "${workspaceFolder}/python/config_sshd.py",
             "args": [],
             "env": {
-                "DEBUG": "1"
+                "DEBUG": "0"
             },
             "console": "integratedTerminal"
         },
@@ -170,7 +170,7 @@
                 "CN"
             ],
             "env": {
-                "DEBUG": "1"
+                "DEBUG": "0"
             },
             "console": "integratedTerminal"
         },

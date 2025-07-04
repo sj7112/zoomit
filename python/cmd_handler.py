@@ -299,7 +299,7 @@ def pm_install(lnx_cmds: Union[str, List[str]]):
 # ==============================================================================
 
 if __name__ == "__main__":
-    DEBUG = os.environ.get("DEBUG") == "1"  # 测试标志
+    DEBUG = os.environ.get("DEBUG") == "0"  # 测试标志
 
     # Example 1: Execute single command
     print("=== 示例1: 单个命令 ===")

@@ -91,7 +91,7 @@ class MirrorTester:
         self.curr_mirror = None
         self.mirror_list = ""
         self.netlocs = set()  # Unique domain names set (domain support both https and http, use https)
-        self.is_debug = os.environ.get("DEBUG") == "1"  # debug flag
+        self.is_debug = os.environ.get("DEBUG") == "0"  # debug flag
 
     def fetch_mirror_list(self, limit: int = None) -> None:
         string(r"{} Mirror Speed Testing Tool", self.os_info.ostype)
