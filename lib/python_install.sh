@@ -245,6 +245,8 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
       mkdir -p "$PY_INST_DIR" # Ensure the installation directory exists
       if ! tar -zxf "$PY_GZ_FILE" -C "$PY_INST_DIR" --strip-components=1; then
         exiterr "Extraction and installation failed"
+      else
+        user_file_permit "$PY_INST_DIR"
       fi
     fi
 
@@ -508,6 +510,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
       if [[ $status -eq 0 || $status -eq 1 ]]; then
         upgrade_pip
         install_packages
+        user_file_permit "$VENV_DIR"
       fi
     fi
   }

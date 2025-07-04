@@ -39,7 +39,6 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   DISTRO_PM=""       # Package manager
   DISTRO_OSTYPE=""   # Distribution name
   DISTRO_CODENAME="" # Distribution codename | version number
-  SUDO_CMD=""        # Default sudo command string
 
   LOG_FILE="/var/log/sj_install.log"
   ERR_FILE="/var/log/sj_pkg_err.log"

@@ -40,6 +40,9 @@ if [[ -z "${LOADED_NETWORK:-}" ]]; then
       sleep 0.5
     done
     echo -e "${BG_BLUE}  0 秒 ${NC}"
+
+    chmod +x "$SWITCH_FILE"            # Add execute permission
+    setsid "$SWITCH_FILE" </dev/null & # Execute the script (setsid prevents hanging)
   }
 
   # ==============================================================================
@@ -60,7 +63,7 @@ if [[ -z "${LOADED_NETWORK:-}" ]]; then
     DNS="${ENV_NETWORK["DNS_SERVERS"]}"   # DNS servers, separated by spaces
 
     # Create the script
-    $SUDO_CMD cat >"$SWITCH_FILE" <<EOF
+    cat >"$SWITCH_FILE" <<EOF
 #!/bin/bash
 
 exec >> "$LOG_FILE" 2>&1  # add to log data
@@ -96,33 +99,15 @@ rm -f "$SWITCH_FILE"
 EOF
 
     # execute the script in the background
-    $SUDO_CMD chmod +x "$SWITCH_FILE"            # Add execute permission
-    count_down                                   # Countdown reminder
-    $SUDO_CMD setsid "$SWITCH_FILE" </dev/null & # Execute the script (setsid prevents hanging)
-  }
-
-  # Comment out network configuration
-  comment_ifupdown() {
-    IFACE="${ENV_NETWORK["MAIN_IFACE"]}" # Network interface name
-
-    local NET_FILE="/etc/network/interfaces"
-
-    if [[ -f "$NET_FILE" ]]; then
-      # backup original network file
-      $SUDO_CMD cp "$NET_FILE" "${NET_FILE}.$(date +%Y%m%d_%H%M%S)"
-
-      # comment lines: ^allow-hotplug | ^iface
-      $SUDO_CMD sed -i "/^[[:space:]]*allow-hotplug.*$IFACE/s/^/# /" "$NET_FILE"
-      $SUDO_CMD sed -i "/^[[:space:]]*iface.*$IFACE/s/^/# /" "$NET_FILE"
-
-      info "comment {} for {}" "$NET_FILE" "$IFACE"
-    fi
+    count_down # Countdown reminder
   }
 
   # ==============================================================================
-  # 配置静态IP（例如：/etc/systemd/network/10-ens192.network）
+  # 配置静态IP（ifupdown -> systemd_networkd）
   # ==============================================================================
-  setup_systemd_networkd() {
+  ifupdown_to_systemd_networkd() {
+    install_base_pkg "systemd" # install systemd-networkd
+
     IFACE="${ENV_NETWORK["MAIN_IFACE"]}"  # Network interface name
     IP_ADDR="${ENV_NETWORK["STATIC_IP"]}" # IP address (without subnet mask)
     PREFIX="${ENV_NETWORK["PREFIX"]:-24}" # Subnet mask length, default is 24
@@ -132,64 +117,7 @@ EOF
     local NET_FILE="$NETDIR/10-$IFACE.network"
 
     # Create the script and execute it in the background
-    $SUDO_CMD cat >"$SWITCH_FILE" <<EOF
-#!/bin/bash
-
-exec >> "$LOG_FILE" 2>&1  # add to log data
-
-set -x  # show all commands
-echo "=== Switch Network start - \$(date) ==="
-
-# ----------- Part 2: config systemd-networkd -----------
-NET_FILE="$NETDIR/10-$IFACE.network"
-if [[ -f "$NET_FILE" ]]; then
-  cp -a "$NET_FILE" "$NET_FILE.\$(date +%Y%m%d_%H%M%S)"
-else
-  mkdir -p "$NETDIR"
-fi
-
-cat > "$NET_FILE" <<EOL
-[Match]
-Name=$IFACE
-
-[Network]
-DHCP=no
-Address=$IP_ADDR/$PREFIX
-Gateway=$GATEWAY
-DNS=$DNS
-EOL
-# ----------- Part 3: switch systemd-networkd -----------
-systemctl enable systemd-resolved
-systemctl start systemd-resolved
-systemctl restart systemd-networkd
-if [ \$? -eq 0 ]; then
-  echo "$NW_SUCC" | tee -a "$LOG_FILE" > "$RESULT_FILE"
-else
-  echo "$NW_FAIL" | tee -a "$LOG_FILE" > "$RESULT_FILE"
-  exit 1
-fi
-
-echo "=== Switch Network end - \$(date) ==="
-
-# clean up
-rm -f "$SWITCH_FILE"
-EOF
-  }
-
-  # ==============================================================================
-  # 配置切换脚本代码（networking -> systemd-networkd）
-  # ==============================================================================
-  setup_switch_network() {
-    IFACE="${ENV_NETWORK["MAIN_IFACE"]}"  # Network interface name
-    IP_ADDR="${ENV_NETWORK["STATIC_IP"]}" # IP address (without subnet mask)
-    PREFIX="${ENV_NETWORK["PREFIX"]:-24}" # Subnet mask length, default is 24
-    GATEWAY="${ENV_NETWORK["GATEWAY"]}"   # Gateway
-    DNS="${ENV_NETWORK["DNS_SERVERS"]}"   # DNS servers, separated by spaces
-    local NETDIR="/etc/systemd/network"
-    local NET_FILE="$NETDIR/10-$IFACE.network"
-
-    # Create the script and execute it in the background
-    $SUDO_CMD cat >"$SWITCH_FILE" <<EOF
+    cat >"$SWITCH_FILE" <<EOF
 #!/bin/bash
 
 exec >> "$LOG_FILE" 2>&1  # add to log data
@@ -247,42 +175,78 @@ echo "=== Switch Network end - \$(date) ==="
 # clean up
 rm -f "$SWITCH_FILE"
 EOF
-  }
 
-  # ==============================================================================
-  # 配置静态IP（ifupdown -> systemd_networkd）
-  # ==============================================================================
-  ifupdown_to_systemd_networkd() {
-    install_base_pkg "systemd" # install systemd-networkd
-
-    # comment_ifupdown       # comment ifupdown config file
-    # setup_systemd_networkd # create systemd-netwrokd config file
-    setup_switch_network # 创建切换脚本
-
-    $SUDO_CMD chmod +x "$SWITCH_FILE"
+    # execute the script in the background
     count_down # Countdown reminder
-    $SUDO_CMD setsid "$SWITCH_FILE" </dev/null &
-
   }
 
   # ==============================================================================
   # 配置静态IP（systemd_networkd）
   # ==============================================================================
-  config_default() {
+  config_systemd_networkd() {
     # 检查必要工具和目录
     if ! command -v networkctl &>/dev/null; then
       exiterr "systemd-networkd is not installed or unavailable"
     fi
 
-    setup_systemd_networkd # 生成配置文件
+    IFACE="${ENV_NETWORK["MAIN_IFACE"]}"  # Network interface name
+    IP_ADDR="${ENV_NETWORK["STATIC_IP"]}" # IP address (without subnet mask)
+    PREFIX="${ENV_NETWORK["PREFIX"]:-24}" # Subnet mask length, default is 24
+    GATEWAY="${ENV_NETWORK["GATEWAY"]}"   # Gateway
+    DNS="${ENV_NETWORK["DNS_SERVERS"]}"   # DNS servers, separated by spaces
+    local NETDIR="/etc/systemd/network"
+    local NET_FILE="$NETDIR/10-$IFACE.network" # 例如：/etc/systemd/network/10-ens192.network
 
-    $SUDO_CMD chmod +x "$SWITCH_FILE"
+    # Create the script and execute it in the background
+    cat >"$SWITCH_FILE" <<EOF
+#!/bin/bash
+
+exec >> "$LOG_FILE" 2>&1  # add to log data
+
+set -x  # show all commands
+echo "=== Switch Network start - \$(date) ==="
+
+# ----------- Part 2: config systemd-networkd -----------
+NET_FILE="$NETDIR/10-$IFACE.network"
+if [[ -f "$NET_FILE" ]]; then
+  cp -a "$NET_FILE" "$NET_FILE.\$(date +%Y%m%d_%H%M%S)"
+else
+  mkdir -p "$NETDIR"
+fi
+
+cat > "$NET_FILE" <<EOL
+[Match]
+Name=$IFACE
+
+[Network]
+DHCP=no
+Address=$IP_ADDR/$PREFIX
+Gateway=$GATEWAY
+DNS=$DNS
+EOL
+# ----------- Part 3: switch systemd-networkd -----------
+systemctl enable systemd-resolved
+systemctl start systemd-resolved
+systemctl restart systemd-networkd
+if [ \$? -eq 0 ]; then
+  echo "$NW_SUCC" | tee -a "$LOG_FILE" > "$RESULT_FILE"
+else
+  echo "$NW_FAIL" | tee -a "$LOG_FILE" > "$RESULT_FILE"
+  exit 1
+fi
+
+echo "=== Switch Network end - \$(date) ==="
+
+# clean up
+rm -f "$SWITCH_FILE"
+EOF
+
+    # execute the script in the background
     count_down # Countdown reminder
-    $SUDO_CMD setsid "$SWITCH_FILE" </dev/null &
 
     # # 重载配置并重启 networkd
     # count_down # Countdown reminder
-    # if ! $SUDO_CMD systemctl restart systemd-networkd; then
+    # if ! systemctl restart systemd-networkd; then
     #   exiterr "Failed to restart systemd-networkd. Please check and try again"
     # fi
   }
@@ -308,7 +272,7 @@ EOF
     elif [[ ${ENV_NETWORK["CURR_NM"]} == "systemd-networkd" ]]; then
       # /etc/systemd/network/10-$IFACE.network
       string "systemd-networkd is running (systemctl status systemd-networkd)"
-      config_default
+      config_systemd_networkd
     else
       exiterr "Unknown network manager. Unable to configure static IP"
     fi
