@@ -147,6 +147,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
       else
         install_base_pkg "openssh-server"
       fi
+      sleep 0.5 # Wait for a moment to ensure the package is installed
       systemctl enable "$ssh_service"
       # systemctl start "$ssh_service"
       systemctl restart "$ssh_service"
