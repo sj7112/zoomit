@@ -54,7 +54,7 @@ user with sudo authority
 
 
 (4) Features:
-- initial_language - reset language if needed
+- initial_language_utf8 - reset language if needed
 - install_py_venv  - create venv (if there's no python env. auto install standalone version)
 - install_pip      - choose the fastest mirror, configure pip
 - update_source    - choose the fastest mirror, configure package management

@@ -5,10 +5,6 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
   LOADED_CMD_HANDLER=1
 
   # ==============================================================================
-  # 公共子函数（兼容：debian | ubuntu | centos | rhel | openSUSE | arch Linux）
-  # ==============================================================================
-
-  # ==============================================================================
   # install_base_pkg - 检查命令是否存在，不存在自动安装
   # ==============================================================================
   install_base_pkg() {
@@ -188,4 +184,28 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
     return $?
   }
 
+  # ==============================================================================
+  # Description: Set ownership to $REAL_USER, optionally set permission
+  # 功能：将文件或目录归属改为 $REAL_USER，如果提供了权限（如 644），则一并修改
+  # ==============================================================================
+  user_permit() {
+    local mode targets=()
+
+    # Parse arguments
+    for arg in "$@"; do
+      if [[ "$arg" == --mode=* ]]; then
+        mode="${arg#*=}"
+      else
+        targets+=("$arg")
+      fi
+    done
+
+    for t in "${targets[@]}"; do
+      # Skip if path does not exist
+      if [[ -e "$t" ]]; then
+        chown -fR "$REAL_USER:$REAL_USER" "$t"
+        [[ -n "$mode" ]] && chmod -R "$mode" "$t"
+      fi
+    done
+  }
 fi

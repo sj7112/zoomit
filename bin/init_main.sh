@@ -10,6 +10,10 @@
 # See <https://www.gnu.org/licenses/> for details.
 # Project homepage: https://github.com/sj7112/zoomit
 
+# ==============================================================================
+# Compatibility: debian | ubuntu | centos | rhel | openSUSE | arch Linux
+# ==============================================================================
+
 # Load once only
 if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   LOADED_INIT_MAIN=1
@@ -41,27 +45,19 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   ERR_FILE="/var/log/sj_pkg_err.log"
 
   # ==============================================================================
-  # Compatibility: debian | ubuntu | centos | rhel | openSUSE | arch Linux
   # Feature 1: check root authority and upgrade the system
   # ==============================================================================
-  # initial sudo param
-  check_user_auth() {
-    if [ "$(id -u)" -ne 0 ]; then
-      if ! command -v sudo &>/dev/null; then
-        exiterr -i "INIT_SUDO_NO_EXIST"
-      fi
-      SUDO_CMD="sudo" # If not root, elevate privileges
-    fi
 
+  # initial sudo param
+  initial_log_file() {
     # Set log file owner to the current user and current group, with 644 permissions
-    [[ -f "$LOG_FILE" ]] || $SUDO_CMD touch "$LOG_FILE"
-    [[ -f "$ERR_FILE" ]] || $SUDO_CMD touch "$ERR_FILE"
-    $SUDO_CMD chown "$USER:$USER" "$LOG_FILE" "$ERR_FILE"
-    $SUDO_CMD chmod 644 "$LOG_FILE" "$ERR_FILE"
+    [[ -f "$LOG_FILE" ]] || touch "$LOG_FILE"
+    [[ -f "$ERR_FILE" ]] || touch "$ERR_FILE"
+    user_permit "$LOG_FILE" "$ERR_FILE"
   }
 
   # ** Environment parameters: package management | os name **
-  init_os_release() {
+  initial_os_release() {
     if [ -f /etc/os-release ]; then
       . /etc/os-release
       DISTRO_OSTYPE="$ID"
@@ -96,7 +92,6 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
             fi
             ;;
           arch) DISTRO_CODENAME="arch" ;; # Arch has no codename
-
         esac
       fi
     elif command -v lsb_release &>/dev/null; then
@@ -107,15 +102,15 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   }
 
   # ==============================================================================
-  # Initial environment variables: package manager | operating system name
+  # Initial environment variables
   # ==============================================================================
   initial_global() {
-    load_global_prop # Load global properties (Step 1)
-    check_user_auth  # initial sudo param
-    init_os_release  # initial distribution data
-    initial_language # fix shell language to ensure UTF-8 support
+    load_global_prop      # Load global properties (Step 1)
+    initial_log_file      # 初始化日志文件
+    initial_os_release    # 初始化发行版信息
+    initial_language_utf8 # 初始化语言包以支持utf8
     echo -e "\n=== $INIT_SYSTEM_START - $PRETTY_NAME ===\n"
-    load_message_prop # load message translations
+    multi_lang_properties # 加载多语言配置文件
   }
 
   # ==============================================================================
@@ -235,7 +230,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   }
 
   # ==============================================================================
-  # Main Function (Compatibility: debian | ubuntu | centos | rhel | openSUSE | arch Linux)
+  # Main Function
   # ==============================================================================
   init_main() {
     initial_global # Set environment variables
@@ -246,7 +241,21 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     close_all # close python cache
   }
 
+  # ==============================================================================
+  # Description: Ensure script is run as root via sudo
+  # 功能：强制脚本以 root（sudo）身份运行，否则自动重新调用自己
+  # ==============================================================================
+  require_sudo() {
+    if [[ "$EUID" -ne 0 ]]; then
+      load_global_prop # Load global properties (Step 1)
+      warning -i "INIT_SUDO_RUN"
+      exec sudo "$0" "$@"
+    fi
+    export REAL_USER="${SUDO_USER:-root}" # save original user
+  }
+
   show_version() {
+    load_global_prop # Load global properties (Step 1)
     local version="zoomit v1.0"
     local year="2005"
     local author="sj7112"
@@ -255,19 +264,22 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     echo ""
   }
 
+  # ==============================================================================
+  # Main Function
+  # ==============================================================================
   if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     # Check for --version or -v argument
     for arg in "$@"; do
       case "$arg" in
         --version | -v)
-          load_global_prop # Load global properties (Step 1)
           show_version
           exit 0
           ;;
       esac
     done
 
-    init_main "$@" # Execute as root
+    require_sudo "$@" # Force the main script to run with sudo
+    init_main "$@"    # Execute as root
   fi
 
 fi

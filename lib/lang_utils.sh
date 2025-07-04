@@ -208,7 +208,7 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
     local profile_file="$HOME/.profile"
 
     if [ "$curr_lang" != "$new_lang" ]; then
-      local prompt=$(_mf "Change {} language from [{}] to [{}]?" "$USER" "$curr_lang" "$new_lang")
+      local prompt=$(_mf "Change {} language from [{}] to [{}]?" "$REAL_USER" "$curr_lang" "$new_lang")
       if confirm_action "$prompt" default="N"; then
         if [ -n "$profile_file" ]; then
           set_user_lang_profile "$new_lang" # 优先设置 ~/.profile
@@ -225,7 +225,7 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
   }
 
   # Attempts to fix the locale settings to ensure UTF-8 compatibility
-  initial_language() {
+  initial_language_utf8() {
     local new_lang
     if ! test_terminal_display; then
       new_lang="en_US.UTF-8" # Terminal does not support UTF-8, use default value
@@ -274,7 +274,7 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
   }
 
   # Load message translations
-  load_message_prop() {
+  multi_lang_properties() {
     # Skip if already loaded
     if [[ -n "${LANGUAGE_MSGS+x}" ]] && [[ ${#LANGUAGE_MSGS[@]} -ne 0 ]]; then
       return 0

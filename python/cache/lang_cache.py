@@ -61,7 +61,7 @@ def get_lang_file(prefix: str = "") -> str:
     return os.path.join(PROP_PATH, f"{prefix}{DEFAULT_LANG}.properties")
 
 
-def load_message_prop() -> Dict[str, str]:
+def multi_lang_properties() -> Dict[str, str]:
     """Load message translations for .py files"""
     lang_file = get_lang_file()
     lines = read_lang_prop(lang_file)
@@ -153,7 +153,7 @@ class LangCache:
         if self.cache.get(INIT_KEY):  # 缓存已经初始化过
             return
 
-        lang_dict: Dict[str, str] = load_message_prop()
+        lang_dict: Dict[str, str] = multi_lang_properties()
         with self.cache.transact():
             for k, v in lang_dict.items():
                 self.cache.set(k, v)
