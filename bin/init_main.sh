@@ -143,11 +143,10 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     if ! (systemctl is-active ssh &>/dev/null || systemctl is-active sshd &>/dev/null); then
       info "sshd is not installed, installing now..."
       if [[ "$DISTRO_PM" = "zypper" || "$DISTRO_PM" = "pacman" ]]; then
-        install_base_pkg "openssh"
+        install_base_pkg "openssh" "sshd|ssh"
       else
-        install_base_pkg "openssh-server"
+        install_base_pkg "openssh-server" "sshd|ssh"
       fi
-      sleep 0.5 # Wait for a moment to ensure the package is installed
       systemctl enable "$ssh_service"
       # systemctl start "$ssh_service"
       systemctl restart "$ssh_service"
@@ -231,9 +230,9 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   init_main() {
     initial_global # Set environment variables
     echo -e "\n=== $INIT_SYSTEM_START - $PRETTY_NAME ===\n"
-    initial_environment # Initialize basic values
-    configure_sshd      # Configure SSH
-    configure_ip        # Configure static IP
+    # initial_environment # Initialize basic values
+    configure_sshd # Configure SSH
+    configure_ip   # Configure static IP
     # docker_compose # Install Docker software
     close_all # close python cache
     echo -e "\n=== $INIT_SYSTEM_END - $PRETTY_NAME ==="

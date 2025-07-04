@@ -9,6 +9,7 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
   # ==============================================================================
   install_base_pkg() {
     local lnx_cmd="$1"
+    local chk_cmd="${2-$1}" # allow blank string ("")
     # 检查命令是否存在
     if ! command -v "$lnx_cmd" &>/dev/null; then
       string "Automatically installing {} ..." "$lnx_cmd"
@@ -21,15 +22,26 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
       else # centos | rhel | openSUSE
         cmd=("$DISTRO_PM install -y $lnx_cmd")
       fi
-      local result=$(cmd_exec "${cmd[@]}")
+
+      # 检查chk_cmd是否包含多个命令，用"|"分隔
+      cmd_exec "${cmd[@]}"
+      if [[ $? -eq 0 ]]; then
+        if [[ -z "$chk_cmd" ]]; then
+          success "{} installation successful" "$lnx_cmd"
+          return 0 # chk_cmd is blank string ("")
+        fi
+        IFS="|" read -ra cmds <<<"$chk_cmd"
+        for cmd in "${cmds[@]}"; do
+          command -v "$cmd" &>/dev/null && {
+            success "{} installation successful" "$lnx_cmd"
+            return 0 # executable program installed
+          }
+        done
+      fi
 
       # 再次检查是否安装成功
-      local date=$(date "+%Y-%m-%d %H:%M:%S")
-      if [ -z "$result" ] || ! command -v "$lnx_cmd" &>/dev/null; then
-        exiterr "{} installation failed, please install manually. Log: {} [{}]" "$lnx_cmd" "$LOG_FILE" "$date"
-      else
-        success "{} installation successful" "$lnx_cmd"
-      fi
+      exiterr "{} installation failed, please install manually. Log: {} [{}]" \
+        "$lnx_cmd" "$LOG_FILE" "$(date "+%Y-%m-%d %H:%M:%S")"
     fi
   }
 
@@ -106,7 +118,6 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
   # ==============================================================================
   cmd_exec() {
     local combined_cmd="" # 合并后的命令行参数
-    local result=0        # 返回成功=0 | 失败=1
 
     # 合并命令，用 && 连接
     for cmd in "${@}"; do
