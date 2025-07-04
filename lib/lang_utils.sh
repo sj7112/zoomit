@@ -268,14 +268,9 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
   # ==============================================================================
   # Initial default message translations
   load_global_prop() {
-    local sudo="${1:-}"
     local prop_file=$(get_lang_prop ".")
     # shellcheck disable=SC1090
-    if [[ -z "$sudo" ]]; then
-      source "$prop_file"
-    else
-      "$sudo" source "$prop_file"
-    fi
+    source "$prop_file"
   }
 
   # Load message translations

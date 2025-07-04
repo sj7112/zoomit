@@ -247,7 +247,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   # ==============================================================================
   require_sudo() {
     if [[ "$EUID" -ne 0 ]]; then
-      load_global_prop "sudo" # Load global properties (Step 1)
+      load_global_prop # Load global properties (Step 1)
       warning -i "INIT_SUDO_RUN"
       exec sudo "$0" "$@"
     fi
