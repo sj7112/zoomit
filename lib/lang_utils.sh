@@ -62,7 +62,6 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
       ascii) echo "${normalize}.ASCII" ;;
       *) echo "$lang" ;; # 其他编码默认为空（未处理）
     esac
-
   }
 
   # Normalize locale format
@@ -76,7 +75,7 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
       lang_suffix=$(echo "$lang_part" | cut -d_ -f2 | tr '[:lower:]' '[:upper:]')
       norm_lang="${lang_prefix}_${lang_suffix}"
     else
-      string "Invalid language format. Please re-enter (e.g., en_US | en_US.UTF-8)"
+      string -i "$INIT_SHELL_LANG_FOMAT_ERROR"
       return 1 # Invalid format
     fi
 
@@ -87,10 +86,9 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
     # Check with [ locale -a ]
     locale -a | grep -Fxq "$lang"
     if [[ $? -ne 0 ]]; then
-      string "Not in the locale list. Please re-enter (check [ locale -a ])"
+      string -i "$INIT_SHELL_LANG_NOT_IN_LIST"
       return 1 # Format does not exist
     fi
-    echo "set LANG to $lang" >&2
     echo "${lang}"
     return 0
   }
@@ -111,7 +109,7 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
     # reset language
     local input_lang
     while true; do
-      local prompt=$(_mf "Set shell language (Default = {}): " "$default_lang")
+      local prompt=$(_mf -i "$INIT_SHELL_LANG" "$default_lang")
       read -rp "$prompt" input_lang
 
       # get input language
@@ -132,10 +130,8 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
   set_user_lang_profile() {
     local lang="$1"
 
-    local profile_file="$HOME/.profile" # prefer ~/.profile
-    if [ ! -f "$profile_file" ]; then
-      touch "$profile_file"
-    fi
+    local profile_file="$REAL_HOME/.profile" # prefer ~/.profile
+    user_file_permit "$profile_file"
 
     # Update or add LANG setting
     if grep -q "^LANG=" "$profile_file"; then
@@ -161,9 +157,7 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
     local config_file="$1"
     local lang="$2" # 目标语言（如 en_US.UTF-8）
 
-    if [ ! -f "$config_file" ]; then
-      touch "$config_file"
-    fi
+    user_file_permit "$config_file"
 
     # LANG setup
     export_line="export LANG=\"$lang\""
@@ -205,17 +199,17 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
   reset_user_locale() {
     local new_lang="$(normalize_code_upper "$1")"
     local curr_lang="$(normalize_code_upper "$2")" # Read user language settings
-    local profile_file="$HOME/.profile"
+    local profile_file="$REAL_HOME/.profile"
 
     if [ "$curr_lang" != "$new_lang" ]; then
-      local prompt=$(_mf "Change {} language from [{}] to [{}]?" "$REAL_USER" "$curr_lang" "$new_lang")
+      local prompt=$(_mf -i "$INIT_SHELL_LANG_CHANGE" "$REAL_USER" "$curr_lang" "$new_lang")
       if confirm_action "$prompt" default="N"; then
         if [ -n "$profile_file" ]; then
           set_user_lang_profile "$new_lang" # 优先设置 ~/.profile
         elif [[ "$SHELL" =~ "bash" ]]; then
-          set_user_lang_sh "$HOME/.bashrc" "$new_lang" # 设置 ~/.bashrc
+          set_user_lang_sh "$REAL_HOME/.bashrc" "$new_lang" # 设置 ~/.bashrc
         elif [[ "$SHELL" =~ "zsh" ]]; then
-          set_user_lang_sh "$HOME/.zshrc" "$new_lang" # 设置 ~/.zshrc
+          set_user_lang_sh "$REAL_HOME/.zshrc" "$new_lang" # 设置 ~/.zshrc
         else
           set_user_lang_profile "$new_lang" # 非bash或zsh，设置 ~/.profile
         fi
@@ -228,8 +222,8 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
   initial_language_utf8() {
     local new_lang
     if ! test_terminal_display; then
+      echo "Terminal does not support UTF-8" >&2
       new_lang="en_US.UTF-8" # Terminal does not support UTF-8, use default value
-      echo "Terminal does not support UTF-8, set LANG to $new_lang" >&2
     else
       new_lang=$(reset_language)
     fi
@@ -326,7 +320,7 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
 
     # message for debug
     echo "[${MSG_INFO}] Loaded ${#LANGUAGE_MSGS[@]} sh messages from $prop_file" on "$(date '+%F %T')"
-    echo ""
+    echo
   }
 
   # Translate message

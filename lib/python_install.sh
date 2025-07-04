@@ -17,10 +17,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
   PY_VERSION="3.10.17"
   PY_REL_DATE="20250517" # Use a stable release version
 
-  PY_INST_DIR="$HOME/.local/python-$PY_VERSION"
   PY_GZ_FILE="/tmp/cpython-${PY_VERSION}-standalone.tar.gz"
-  VENV_DIR="$HOME/.venv"
-  VENV_BIN="$HOME/.venv/bin/python"
 
   mirror_list=() # 👈 Define as a global array
   fail_list=()
@@ -86,9 +83,9 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     echo "$(_mf "File size"): ~= 42M"
     echo "$(_mf "Start time"): $(date)"
     if command -v curl >/dev/null 2>&1; then
-      ($SUDO_CMD curl -L -C - -s -o "$output" "$url") &
+      curl -L -C - -s -o "$output" "$url" &
     elif command -v wget >/dev/null 2>&1; then
-      ($SUDO_CMD wget -c -q -O "$output" "$url") &
+      wget -c -q -O "$output" "$url" &
     else
       error "Neither wget nor curl is installed on the system, unable to download."
       return 2
@@ -261,6 +258,11 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
 
   # Create a virtual environment and install common packages
   install_py_venv() {
+    # setup global variables
+    PY_INST_DIR="$REAL_HOME/.local/python-$PY_VERSION"
+    VENV_DIR="$REAL_HOME/.venv"
+    VENV_BIN="$REAL_HOME/.venv/bin/python"
+
     # Remove existing virtual environment
     if [[ -d "$VENV_DIR" ]]; then
       local default="N"
@@ -279,7 +281,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
         return $?
       else
         info "Deleting virtual environment {}..." "$VENV_DIR"
-        $SUDO_CMD rm -rf "$VENV_DIR"
+        rm -rf "$VENV_DIR"
       fi
     fi
 

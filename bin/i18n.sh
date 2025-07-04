@@ -300,7 +300,7 @@ if [[ -z "${LOADED_I18N:-}" ]]; then
         fi
 
         # 提取函数名和消息类型
-        local func_type=${key%.*} # 如 initial_env.info
+        local func_type=${key%.*} # 如 initial_environment.info
         local counter=${key##*.}  # 如 001
 
         # 更新计数器（如果需要）

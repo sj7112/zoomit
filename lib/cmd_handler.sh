@@ -126,11 +126,8 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
     local log_file="${2:-$LOG_FILE}"
 
     # 执行命令（非安静模式）
-    if [[ "$cmd" == *"&&"* ]]; then
-      $SUDO_CMD bash -c "($cmd) >> \"$log_file\" 2>&1" & # 命令组加上括号
-    else
-      $SUDO_CMD bash -c "($cmd) >>\"$log_file\" 2>&1" & # 单个命令同样加上($cmd)防信号丢失
-    fi
+    # bash -c "($cmd) >> \"$log_file\" 2>&1" &
+    ( ($cmd) >>"$log_file" 2>&1) &
 
     # 启动命令并获取 PID
     # eval "$cmd >> \"$log_file\" 2>&1 &"
@@ -188,24 +185,45 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
   # Description: Set ownership to $REAL_USER, optionally set permission
   # 功能：将文件或目录归属改为 $REAL_USER，如果提供了权限（如 644），则一并修改
   # ==============================================================================
-  user_permit() {
-    local mode="" targets=()
+  user_file_permit() {
+    local targets=()
+    local autofile=0 # default=auto create file
+    local mode=""    # default=do not change mode
+    local showinfo=1 # default=do not show info
+    if [[ "$REAL_USER" == "root" ]]; then
+      return 0
+    fi
 
     # Parse arguments
     for arg in "$@"; do
-      if [[ "$arg" == --mode=* ]]; then
-        mode="${arg#*=}"
-      else
-        targets+=("$arg")
-      fi
+      case "$arg" in
+        --autofile)
+          autofile="${arg#*=}"
+          ;;
+        --mode=*)
+          mode="${arg#*=}"
+          ;;
+        --showinfo)
+          showinfo=0
+          ;;
+        *)
+          targets+=("$arg")
+          ;;
+      esac
     done
 
     for t in "${targets[@]}"; do
-      # Skip if path does not exist
-      if [[ -e "$t" ]]; then
-        chown -fR "$REAL_USER:$REAL_USER" "$t"
-        [[ -n "$mode" ]] && chmod -R "$mode" "$t"
+      if [[ ! -e "$t" ]]; then
+        if [[ "$autofile" -eq 0 ]]; then
+          touch "$t" # Create file if it does not exist
+        else
+          continue # Target file does not exist, skip it
+        fi
       fi
+      chown -fR "$REAL_USER:$REAL_USER" "$t"    # change owner
+      [[ -n "$mode" ]] && chmod -R "$mode" "$t" # change mode
     done
+    [[ "$showinfo" -eq 0 ]] && string "{} ownership changed to {}" "${targets[*]}" "$REAL_USER"
+    return 0
   }
 fi

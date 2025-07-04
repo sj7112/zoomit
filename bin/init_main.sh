@@ -47,13 +47,10 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   # ==============================================================================
   # Feature 1: check root authority and upgrade the system
   # ==============================================================================
-
   # initial sudo param
   initial_log_file() {
     # Set log file owner to the current user and current group, with 644 permissions
-    [[ -f "$LOG_FILE" ]] || touch "$LOG_FILE"
-    [[ -f "$ERR_FILE" ]] || touch "$ERR_FILE"
-    user_permit "$LOG_FILE" "$ERR_FILE"
+    user_file_permit "$LOG_FILE" "$ERR_FILE" "--showinfo" "--mode=644"
   }
 
   # ** Environment parameters: package management | os name **
@@ -109,14 +106,14 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     initial_log_file      # 初始化日志文件
     initial_os_release    # 初始化发行版信息
     initial_language_utf8 # 初始化语言包以支持utf8
-    echo -e "\n=== $INIT_SYSTEM_START - $PRETTY_NAME ===\n"
     multi_lang_properties # 加载多语言配置文件
+    string "set LANG to {}" "$LANG"
   }
 
   # ==============================================================================
   # Initial environment: python 3.10 | install packages
   # ==============================================================================
-  initial_env() {
+  initial_environment() {
     # 1. install Python3 virtual environment
     create_py_venv
     # 2. Select and update package manager
@@ -133,32 +130,32 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
 
   # ==============================================================================
   # Feature 2: Configure SSH (applicable to all distributions)
-  # Function: config_sshd
+  # Function: configure_sshd
   # Purpose: Check and install sshd, interactively modify SSH port and root login permissions
   # Parameters: None
   # Return Value: None (directly modifies /etc/ssh/sshd_config and restarts sshd)
   # ==============================================================================
-  config_sshd() {
+  configure_sshd() {
     echo ""
 
     local ssh_service=$([[ $DISTRO_OSTYPE == "ubuntu" ]] && echo ssh || echo sshd)
 
     # Check if sshd is installed
-    if ! ($SUDO_CMD systemctl is-active ssh &>/dev/null || $SUDO_CMD systemctl is-active sshd &>/dev/null); then
+    if ! (systemctl is-active ssh &>/dev/null || systemctl is-active sshd &>/dev/null); then
       info "sshd is not installed, installing now..."
       if [[ "$DISTRO_PM" = "zypper" || "$DISTRO_PM" = "pacman" ]]; then
         install_base_pkg "openssh"
       else
         install_base_pkg "openssh-server"
       fi
-      $SUDO_CMD systemctl enable "$ssh_service"
-      #  $SUDO_CMD systemctl start "$ssh_service"
-      $SUDO_CMD systemctl restart "$ssh_service"
+      systemctl enable "$ssh_service"
+      # systemctl start "$ssh_service"
+      systemctl restart "$ssh_service"
     fi
 
-    if sh_config_sshd; then # python adds-on: config /etc/ssh/sshd_config
+    if sh_configure_sshd; then # python adds-on: config /etc/ssh/sshd_config
       # Restart SSH service
-      $SUDO_CMD systemctl restart "$ssh_service"
+      systemctl restart "$ssh_service"
       if [[ $? -eq 0 ]]; then
         info "SSH configuration has been applied"
       else
@@ -226,7 +223,6 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   # --------------------------
   close_all() {
     sh_clear_cache
-    echo "=== $INIT_SYSTEM_END - $PRETTY_NAME ==="
   }
 
   # ==============================================================================
@@ -234,11 +230,13 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   # ==============================================================================
   init_main() {
     initial_global # Set environment variables
-    initial_env    # Initialize basic values
-    config_sshd    # Configure SSH
-    configure_ip   # Configure static IP
+    echo -e "\n=== $INIT_SYSTEM_START - $PRETTY_NAME ===\n"
+    initial_environment # Initialize basic values
+    configure_sshd      # Configure SSH
+    configure_ip        # Configure static IP
     # docker_compose # Install Docker software
     close_all # close python cache
+    echo -e "\n=== $INIT_SYSTEM_END - $PRETTY_NAME ==="
   }
 
   # ==============================================================================
@@ -246,12 +244,22 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   # 功能：强制脚本以 root（sudo）身份运行，否则自动重新调用自己
   # ==============================================================================
   require_sudo() {
+    # Run as root
     if [[ "$EUID" -ne 0 ]]; then
       load_global_prop # Load global properties (Step 1)
       warning -i "$INIT_SUDO_RUN"
-      exec sudo "$0" "$@"
+      exec sudo env REAL_USER="$USER" REAL_HOME="$HOME" "$0" "$@"
+    else
+      [[ -z "${REAL_USER:-}" && -z "${SUDO_USER:-}" ]] && {
+        export REAL_USER="$USER"
+        export REAL_HOME="$HOME"
+      }
     fi
-    export REAL_USER="${SUDO_USER:-root}" # save original user
+    # Ensure old process is terminated
+    if [[ -z "${REAL_USER:-}" ]]; then
+      echo "System Error: REAL_USER has no value, exiting."
+      exit 1
+    fi
   }
 
   show_version() {

@@ -42,8 +42,8 @@ def main():
                     sys.exit(f"Error: Unknown distro '{distro_ostype}'")
 
         # Check if the server is using a static IP (user interactive)
-        case "sh_config_sshd":
-            exit_code = SshSetup().config_sshd()
+        case "sh_configure_sshd":
+            exit_code = SshSetup().configure_sshd()
             sys.exit(exit_code)
 
         # Check if the server is using a static IP (user interactive)

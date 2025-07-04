@@ -84,7 +84,7 @@ class SshSetup:
                 return match.group(1).lower() == "yes"
         return permit
 
-    def config_sshd(self):
+    def configure_sshd(self):
         """
         配置SSH服务
         功能: 检查sshd，交互式修改 SSH 端口和 root 登录权限
@@ -107,7 +107,7 @@ class SshSetup:
         # check SSH service status
         ssh_service = "ssh" if _os_info.ostype == "ubuntu" else "sshd"  # get service name
         if self.is_service_active(ssh_service):
-            login_permit = _mf("Root login allowed") if root_login else _mf("Root login disabled")
+            login_permit = _mf("root login allowed") if root_login else _mf("root login disabled")
             string(r"Current SSH is running on Port {}, {}", ssh_port, login_permit)
             prompt = _mf("Would you like to reconfigure it?")
             ret_code = confirm_action(prompt, default=False)
@@ -136,10 +136,10 @@ class SshSetup:
         allow_root = confirm_action(_mf("Allow root login via SSH?"), default=root_login)
         if allow_root == 0:
             self.modify_config_line("PermitRootLogin", "PermitRootLogin yes")
-            print(f"[{MSG_SUCCESS}] {_mf('Root login allowed')}")
+            print(f"[{MSG_SUCCESS}] {_mf('root login allowed')}")
         elif allow_root == 1:
             self.modify_config_line("PermitRootLogin", "PermitRootLogin no")
-            print(f"[{MSG_SUCCESS}] {_mf('Root login disabled')}")
+            print(f"[{MSG_SUCCESS}] {_mf('root login disabled')}")
         else:
             return 2
 
@@ -152,7 +152,7 @@ class SshSetup:
 if __name__ == "__main__":
     try:
         OSInfoCache.get_instance().clear_cache()
-        SshSetup().config_sshd()
+        SshSetup().configure_sshd()
     except KeyboardInterrupt:
         print("\n操作已取消")
         sys.exit(1)

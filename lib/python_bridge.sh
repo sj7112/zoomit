@@ -7,16 +7,10 @@ if [[ -z "${LOADED_PYTHON_BRIDGE:-}" ]]; then
   # Declare global
   : "${LIB_DIR:=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}" # bin direcotry
   : "${ROOT_DIR:=$(dirname "$BIN_DIR")}"                        # project root directory
-  : VENV_BIN="$HOME/.venv/bin/python"
 
-  # python3虚拟环境（区分是否需要 sudo 包装）
-  # PYTHON="$HOME/.venv/bin/python"
+  # python3 virtual environment: $HOME/.venv/bin/python
   py_exec() {
-    if [ -n "$SUDO_CMD" ]; then
-      "$SUDO_CMD" "$VENV_BIN" "$@"
-    else
-      "$VENV_BIN" "$@"
-    fi
+    "$REAL_HOME/.venv/bin/python" "$@"
   }
 
   # ===== 调用 myshell.py 中的命令 =====
@@ -25,9 +19,9 @@ if [[ -z "${LOADED_PYTHON_BRIDGE:-}" ]]; then
     py_exec "$ROOT_DIR/myshell.py" sh_update_source "$DISTRO_OSTYPE"
   }
 
-  sh_config_sshd() {
+  sh_configure_sshd() {
     set +e
-    py_exec "$ROOT_DIR/myshell.py" sh_config_sshd
+    py_exec "$ROOT_DIR/myshell.py" sh_configure_sshd
     ret_code=$?
     set -e
     return $ret_code
