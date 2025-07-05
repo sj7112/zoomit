@@ -6,9 +6,8 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
 
   # check if package has already installed
   check_pkg_installed() {
-    local chk_cmd="$1"
     local chk_cmd="${2-$1}"       # allow blank string ("")
-    [ -z "$chk_cmd" ] && return 2 # chk_cmd is blank
+    [ -z "$chk_cmd" ] && return 2 # chk_cmd is blank (program may not installed)
     IFS="|" read -ra cmds <<<"$chk_cmd"
     for cmd in "${cmds[@]}"; do
       command -v "$cmd" &>/dev/null && {
@@ -22,9 +21,7 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
   # Check if the command exists, if not, install it automatically
   # ==============================================================================
   install_base_pkg() {
-    if [[ $(check_pkg_installed "$@") == 0 ]]; then
-      return 0 # program already installed
-    fi
+    check_pkg_installed "$@" && return 0 # program already installed
 
     # Install command based on different Linux distributions
     local lnx_cmd="$1"
@@ -36,16 +33,22 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
       cmd=("$DISTRO_PM install -y $lnx_cmd")
     fi
 
-    string "Automatically installing {} ..." "$lnx_cmd"
+    # message for debug
+    if [[ "${DEBUG:-1}" == "0" ]]; then
+      string "Automatically installing {} ..." "$lnx_cmd"
+    fi
 
     set +e
     cmd_exec "${cmd[@]}"
     local ret_code=$?
     set -e
 
-    if [[ (ret_code -eq 0) && ($(check_pkg_installed "$@") != 1) ]]; then
-      success "{} installation successful" "$lnx_cmd"
-      return 0 # program already installed
+    if [[ $ret_code -eq 0 ]]; then
+      check_pkg_installed "$@"
+      if [ $? -ne 1 ]; then
+        success "{} installation successful" "$lnx_cmd"
+        return 0 # program already installed
+      fi
     fi
 
     # Check again if the installation was successful

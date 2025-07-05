@@ -27,6 +27,7 @@ DEFAULT_LANG = "en"
 CODE_POSTFIX = ".py"
 CACHE_PATH = "/tmp/sj_cache"
 INIT_KEY = "__lang_cache_initialized__"
+DEBUG = os.environ.get("DEBUG") == "0"  # 测试标志
 
 
 def read_lang_prop(fn):
@@ -118,9 +119,10 @@ def multi_lang_properties() -> Dict[str, str]:
         return {}
 
     # message for debug
-    time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print(f"[INFO] Loaded {len(language_msgs)} py messages from {lang_file} on {time}")
-    print()
+    if DEBUG:
+        time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        print(f"[INFO] Loaded {len(language_msgs)} py messages from {lang_file} on {time}")
+        print()
 
     return language_msgs
 

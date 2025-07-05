@@ -21,6 +21,7 @@ def main():
     """Provides various python functions (integrated with shell scripts)"""
     # print("LANG:", os.environ.get("LANG"))
     # print("LANGUAGE:", os.environ.get("LANGUAGE"))
+    # print("DEBUG:", os.environ.get("DEBUG"))
 
     command = sys.argv[1]
     match command:

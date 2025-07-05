@@ -22,6 +22,45 @@ if [[ -z "${LOADED_NETWORK:-}" ]]; then
   }
 
   # ==============================================================================
+  # Part 1: add header to auto switch network script
+  # ==============================================================================
+  cat_header() {
+    cat >"$SWITCH_FILE" <<EOF
+#!/bin/bash
+
+exec >> "$LOG_FILE" 2>&1  # add to log data
+
+set -x
+echo "=== Switch Network start - \$(date) ==="
+
+EOF
+  }
+
+  # ==============================================================================
+  # Part 3: add footer to auto switch network script
+  # ==============================================================================
+  cat_footer() {
+    NW_SUCC=$(_mf "[{}] Network switched. Log: {}" "$MSG_SUCCESS" "$LOG_FILE")
+    NW_FAIL=$(_mf "[{}] Failed to switch network. Log: {}" "$MSG_ERROR" "$LOG_FILE")
+    DEBUG_CMT=$([[ "${DEBUG:-1}" == "0" ]] && echo "# " || echo "")
+
+    cat >>"$SWITCH_FILE" <<EOF
+if [ \$? -eq 0 ]; then
+  echo "$NW_SUCC" | tee -a "$LOG_FILE" > "$RESULT_FILE"
+  sed -i 's/^HAS_STATIC=.*/HAS_STATIC=active/' "$ENV_NW_PATH"
+else
+  echo "$NW_FAIL" | tee -a "$LOG_FILE" > "$RESULT_FILE"
+  exit 1
+fi
+
+echo "=== Switch Network end - \$(date) ==="
+
+# clean up
+${DEBUG_CMT}rm -f "$SWITCH_FILE"
+EOF
+  }
+
+  # ==============================================================================
   # Countdown function
   # ==============================================================================
   count_down() {
@@ -43,17 +82,20 @@ if [[ -z "${LOADED_NETWORK:-}" ]]; then
 
     chmod +x "$SWITCH_FILE"            # Add execute permission
     setsid "$SWITCH_FILE" </dev/null & # Execute the script (setsid prevents hanging)
+
+    # # 重载配置并重启 networkd
+    # count_down # Countdown reminder
+    # if ! systemctl restart systemd-networkd; then
+    #   exiterr "Failed to restart systemd-networkd. Please check and try again"
+    # fi
   }
 
   # ==============================================================================
   # Configure Static IP (NetworkManager)
+  # check connection: nmcli connection show
+  # check config file: /etc/netplan/90-uuid.yaml
   # ==============================================================================
   config_nmcli() {
-    # Check if nmcli exists
-    if ! command -v nmcli &>/dev/null; then
-      exiterr "nmcli is not installed or unavailable. Please install it and try again"
-    fi
-
     # Set environment variables
     IFACE="${ENV_NETWORK["MAIN_IFACE"]}"  # Network interface name
     CON_NAME="static-$IFACE"              # Connection name, used to identify the configuration in NetworkManager
@@ -62,15 +104,8 @@ if [[ -z "${LOADED_NETWORK:-}" ]]; then
     GATEWAY="${ENV_NETWORK["GATEWAY"]}"   # Gateway
     DNS="${ENV_NETWORK["DNS_SERVERS"]}"   # DNS servers, separated by spaces
 
-    # Create the script
-    cat >"$SWITCH_FILE" <<EOF
-#!/bin/bash
-
-exec >> "$LOG_FILE" 2>&1  # add to log data
-
-set -x
-echo "=== Switch Network (nmcli) start - \$(date) ==="
-
+    # Create the script - Main part
+    cat >>"$SWITCH_FILE" <<EOF
 # 1. Check if the connection exists, delete it if not
 if ! nmcli connection show "$CON_NAME" &>/dev/null; then
   nmcli connection delete "$CON_NAME" &>/dev/null || true
@@ -85,28 +120,15 @@ nmcli connection add type ethernet ifname "$IFACE" con-name "$CON_NAME" \\
   connection.autoconnect yes
 
 # 3. Activate the connection
-if nmcli connection up "$CON_NAME"; then
-  echo "$NW_SUCC" | tee -a "$LOG_FILE" > "$RESULT_FILE"
-else
-  echo "$NW_FAIL" | tee -a "$LOG_FILE" > "$RESULT_FILE"
-  exit 1
-fi
-
-echo "=== Switch Network (nmcli) end - \$(date) ==="
-
-# clean up
-rm -f "$SWITCH_FILE"
+nmcli connection up "$CON_NAME"
 EOF
-
-    # execute the script in the background
-    count_down # Countdown reminder
   }
 
   # ==============================================================================
   # 配置静态IP（ifupdown -> systemd_networkd）
   # ==============================================================================
   ifupdown_to_systemd_networkd() {
-    install_base_pkg "systemd" # install systemd-networkd
+    install_base_pkg "systemd" "systemctl" # install systemd-networkd
 
     IFACE="${ENV_NETWORK["MAIN_IFACE"]}"  # Network interface name
     IP_ADDR="${ENV_NETWORK["STATIC_IP"]}" # IP address (without subnet mask)
@@ -116,15 +138,8 @@ EOF
     local NETDIR="/etc/systemd/network"
     local NET_FILE="$NETDIR/10-$IFACE.network"
 
-    # Create the script and execute it in the background
-    cat >"$SWITCH_FILE" <<EOF
-#!/bin/bash
-
-exec >> "$LOG_FILE" 2>&1  # add to log data
-
-set -x  # show all commands
-echo "=== Switch Network start - \$(date) ==="
-
+    # Create the script - Main part
+    cat >>"$SWITCH_FILE" <<EOF
 # ----------- Part 1: comment ifupdown -----------
 IFACE="${ENV_NETWORK["MAIN_IFACE"]}"
 NET_FILE="/etc/network/interfaces"
@@ -136,7 +151,6 @@ if [[ -f "$NET_FILE" ]]; then
 fi
 
 # ----------- Part 2: config systemd-networkd -----------
-NET_FILE="$NETDIR/10-$IFACE.network"
 if [[ -f "$NET_FILE" ]]; then
   cp -a "$NET_FILE" "$NET_FILE.\$(date +%Y%m%d_%H%M%S)"
 else
@@ -163,32 +177,13 @@ systemctl start systemd-networkd
 systemctl enable systemd-resolved
 systemctl start systemd-resolved
 systemctl restart systemd-networkd
-if [ \$? -eq 0 ]; then
-  echo "$NW_SUCC" | tee -a "$LOG_FILE" > "$RESULT_FILE"
-else
-  echo "$NW_FAIL" | tee -a "$LOG_FILE" > "$RESULT_FILE"
-  exit 1
-fi
-
-echo "=== Switch Network end - \$(date) ==="
-
-# clean up
-rm -f "$SWITCH_FILE"
 EOF
-
-    # execute the script in the background
-    count_down # Countdown reminder
   }
 
   # ==============================================================================
   # 配置静态IP（systemd_networkd）
   # ==============================================================================
   config_systemd_networkd() {
-    # 检查必要工具和目录
-    if ! command -v networkctl &>/dev/null; then
-      exiterr "systemd-networkd is not installed or unavailable"
-    fi
-
     IFACE="${ENV_NETWORK["MAIN_IFACE"]}"  # Network interface name
     IP_ADDR="${ENV_NETWORK["STATIC_IP"]}" # IP address (without subnet mask)
     PREFIX="${ENV_NETWORK["PREFIX"]:-24}" # Subnet mask length, default is 24
@@ -196,18 +191,9 @@ EOF
     DNS="${ENV_NETWORK["DNS_SERVERS"]}"   # DNS servers, separated by spaces
     local NETDIR="/etc/systemd/network"
     local NET_FILE="$NETDIR/10-$IFACE.network" # 例如：/etc/systemd/network/10-ens192.network
-
-    # Create the script and execute it in the background
-    cat >"$SWITCH_FILE" <<EOF
-#!/bin/bash
-
-exec >> "$LOG_FILE" 2>&1  # add to log data
-
-set -x  # show all commands
-echo "=== Switch Network start - \$(date) ==="
-
+    # Create the script - Main part
+    cat >>"$SWITCH_FILE" <<EOF
 # ----------- Part 2: config systemd-networkd -----------
-NET_FILE="$NETDIR/10-$IFACE.network"
 if [[ -f "$NET_FILE" ]]; then
   cp -a "$NET_FILE" "$NET_FILE.\$(date +%Y%m%d_%H%M%S)"
 else
@@ -228,35 +214,16 @@ EOL
 systemctl enable systemd-resolved
 systemctl start systemd-resolved
 systemctl restart systemd-networkd
-if [ \$? -eq 0 ]; then
-  echo "$NW_SUCC" | tee -a "$LOG_FILE" > "$RESULT_FILE"
-else
-  echo "$NW_FAIL" | tee -a "$LOG_FILE" > "$RESULT_FILE"
-  exit 1
-fi
-
-echo "=== Switch Network end - \$(date) ==="
-
-# clean up
-rm -f "$SWITCH_FILE"
 EOF
-
-    # execute the script in the background
-    count_down # Countdown reminder
-
-    # # 重载配置并重启 networkd
-    # count_down # Countdown reminder
-    # if ! systemctl restart systemd-networkd; then
-    #   exiterr "Failed to restart systemd-networkd. Please check and try again"
-    # fi
   }
 
   # ==============================================================================
   # main function: network configuration
   # ==============================================================================
   network_config() {
-    NW_SUCC=$(_mf "[{}] Network switched. Log: {}" "$MSG_SUCCESS" "$LOG_FILE")
-    NW_FAIL=$(_mf "[{}] Failed to switch network. Log: {}" "$MSG_ERROR" "$LOG_FILE")
+    # Part 1: Create the script - header
+    cat_header
+
     if [[ ${ENV_NETWORK["CURR_NM"]} == "NetworkManager" ]]; then
       string "NetworkManager is running (systemctl status NetworkManager)"
       config_nmcli
@@ -276,6 +243,12 @@ EOF
     else
       exiterr "Unknown network manager. Unable to configure static IP"
     fi
+
+    # Part 3: Create the script - footer
+    cat_footer
+
+    # execute the script in the background
+    count_down # Countdown reminder
   }
 
 fi

@@ -262,9 +262,8 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
   # ==============================================================================
   # Initial default message translations
   load_global_prop() {
-    local prop_file=$(get_lang_prop ".")
     # shellcheck disable=SC1090
-    source "$prop_file"
+    source "$(get_lang_prop ".")"
   }
 
   # Load message translations
@@ -319,8 +318,10 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
     done <"$prop_file"
 
     # message for debug
-    echo "[${MSG_INFO}] Loaded ${#LANGUAGE_MSGS[@]} sh messages from $prop_file" on "$(date '+%F %T')"
-    echo
+    if [[ "${DEBUG:-1}" == "0" ]]; then
+      echo "[${MSG_INFO}] Loaded ${#LANGUAGE_MSGS[@]} sh messages from $prop_file" on "$(date '+%F %T')"
+      echo
+    fi
   }
 
   # Translate message
