@@ -10,7 +10,8 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.pat
 
 from python.file_util import read_env_file
 from python.cmd_handler import cmd_ex_str, cmd_ex_pat
-from python.system import confirm_action, get_network_service, get_static_ip, check_dns
+from python.system import get_network_service, get_static_ip, check_dns
+from python.read_util import confirm_action
 from python.msg_handler import _mf, exiterr, info, string
 from python.debug_tool import print_array
 

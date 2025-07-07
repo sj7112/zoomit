@@ -14,7 +14,7 @@ from python.cmd_handler import cmd_ex_str
 from python.file_util import read_file, write_source_file
 from python.msg_handler import MSG_ERROR, MSG_SUCCESS, _mf, error, string
 from python.cache.os_info import OSInfo, OSInfoCache
-from python.system import confirm_action
+from python.read_util import confirm_action
 from python.debug_tool import print_array
 
 

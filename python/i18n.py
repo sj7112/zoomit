@@ -15,7 +15,7 @@ from python.lang.lang_util import debug_assertion, update_lang_files
 from python.msg_handler import _mf, string, info, warning, error, exiterr
 from python.debug_tool import create_app, default_cmd, print_array
 from python.file_util import write_array
-from python.system import confirm_action
+from python.read_util import confirm_action
 
 
 # 设置默认路径

@@ -9,7 +9,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.pat
 
 from python.msg_handler import _mf, exiterr, info, string
 from python.i18n import resolve_lang_files
-from python.system import confirm_action
+from python.read_util import confirm_action
 
 
 # ==============================================================================

@@ -20,8 +20,9 @@ from typing import Dict, List, Optional
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))  # add root sys.path
 
 from python.cache.os_info import OSInfoCache
-from python.system import confirm_action, setup_logging
-from python.cmd_handler import cmd_ex_be, pm_refresh, pm_upgrade
+from python.system import setup_logging
+from python.read_util import confirm_action
+from python.cmd_handler import pm_refresh, pm_upgrade
 from python.msg_handler import _mf, error, info, string, warning
 from python.file_util import write_array
 

@@ -14,7 +14,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent.parent))  # add root 
 from python.mirror.linux_speed import MirrorResult, MirrorTester, get_country_name
 from python.msg_handler import _mf
 from python.file_util import write_source_file
-from python.system import confirm_action
+from python.read_util import confirm_action
 
 
 class ArchMirrorTester(MirrorTester):
