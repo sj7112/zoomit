@@ -27,7 +27,7 @@ if [[ -z "${LOADED_SYSTEM:-}" ]]; then
   }
 
   # ==============================================================================
-  # 自动生成临时文件（用于子函数向父函数传递数据）
+  # Generate a unique temporary file path (pass data from a sub-shell to a parent)
   # ==============================================================================
   generate_temp_file() {
     # If nanoseconds not supported, fallback to second-level timestamp

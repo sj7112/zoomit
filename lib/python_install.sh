@@ -345,7 +345,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
 
   # get result for all mirrors after test speed
   show_pip_mirrors() {
-    log_file="/tmp/mypip_mirror_list.log"
+    local log_file="$1"
 
     # Read and categorize records
     while IFS="|" read -r status name url time; do
@@ -509,15 +509,14 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
       echo "${INFO_ICON} $(_mf "Testing global pip mirror speeds...")"
       echo "======================================================================"
 
-      set +e
-      sh_install_pip # python adds-on: test and pick up a faster mirror
-      local status=$?
-      set -e
-
-      if [[ $status -eq 0 ]]; then # use sys.exit() to return code
-        show_pip_mirrors
+      local status
+      local result_f=$(sh_install_pip)    # python adds-on: test and pick up a faster mirror
+      if [[ $result_f != "ERROR" ]]; then # use sys.exit() to return code
+        show_pip_mirrors "$result_f"
         choose_pip_mirror
         status=$?
+      else
+        status=1
       fi
 
       if [[ $status -eq 0 || $status -eq 1 ]]; then

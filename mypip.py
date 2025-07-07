@@ -4,10 +4,17 @@
 global pip speed tester, automatically selects the fastest pip mirror
 """
 
+import os
+from pathlib import Path
 import time
 import subprocess
 import sys
 import concurrent.futures
+
+
+sys.path.append(str(Path(__file__).resolve().parent))  # add root sys.path
+
+from python.system import generate_temp_file
 
 
 # Global pip mirrors
@@ -110,16 +117,22 @@ def main():
     """Test all mirrors and return the result"""
     mirror_list, failed_list = test_pip_mirrors()
     if mirror_list:
-        with open("/tmp/mypip_mirror_list.log", "w", encoding="utf-8") as fh:
+        filename = generate_temp_file()
+        with open(filename, "w", encoding="utf-8") as fh:
             for value in mirror_list:
                 line = f"{value['status']}|{value['name']}|{value['url']}|{value['time']}"
                 fh.write(f"{line}\n")
             for value in failed_list:
                 line = f"{value['status']}|{value['name']}|{value['url']}"
                 fh.write(f"{line}\n")
-        sys.exit(0)
 
-    sys.exit(1)
+            # 方法1: 强制刷新缓冲区
+            fh.flush()
+            os.fsync(fh.fileno())
+
+        print(filename)
+    else:
+        print("ERROR")
 
 
 if __name__ == "__main__":

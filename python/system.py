@@ -2,9 +2,11 @@ import glob
 import logging
 import os
 from pathlib import Path
+import random
 import subprocess
 import re
 import sys
+import time
 
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.path
@@ -12,6 +14,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.pat
 
 # 全局日志配置（放在文件开头）
 LOG_FILE = "/var/log/sj_install.log"
+TMP_FILE_PREFIX = "sj_temp_"
 
 
 def setup_logging():
@@ -31,6 +34,31 @@ def setup_logging():
         )
     except Exception:
         logging.basicConfig(level=logging.ERROR)
+
+
+def generate_temp_file() -> str:
+    """
+    Generate a unique temporary file path.
+    Prefer /dev/shm if it exists and is writable, otherwise fallback to /tmp.
+    Create an empty file to reserve the filename.
+    Returns the full file path as a string.
+    """
+    # Try nanosecond-level timestamp if supported, fallback to seconds-level timestamp
+    try:
+        timestamp = time.time_ns()
+    except AttributeError:
+        timestamp = int(time.time() * 1e9)
+
+    # Choose temp directory: /dev/shm preferred if available and writable
+    if os.path.isdir("/dev/shm") and os.access("/dev/shm", os.W_OK):
+        tmpdir = "/dev/shm"
+    else:
+        tmpdir = "/tmp"
+
+    # Generate unique filename with prefix, timestamp, and random number
+    filename = f"{TMP_FILE_PREFIX}{timestamp}{random.randint(0, 32767)}"
+    tmpfile = os.path.join(tmpdir, filename)
+    return tmpfile
 
 
 # ==============================================================================
