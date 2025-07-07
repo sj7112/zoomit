@@ -22,7 +22,7 @@ if [[ -z "${LOADED_PYTHON_BRIDGE:-}" ]]; then
   sh_configure_sshd() {
     set +e
     py_exec "$ROOT_DIR/myshell.py" sh_configure_sshd
-    ret_code=$?
+    local ret_code=$?
     set -e
     return $ret_code
   }
@@ -30,7 +30,7 @@ if [[ -z "${LOADED_PYTHON_BRIDGE:-}" ]]; then
   sh_fix_ip() {
     set +e
     py_exec "$ROOT_DIR/myshell.py" sh_fix_ip
-    ret_code=$?
+    local ret_code=$?
     set -e
     return $ret_code
   }

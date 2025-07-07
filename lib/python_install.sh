@@ -237,7 +237,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
 
     set +e
     smart_geturl "$PY_GZ_FILE" "$python_url"
-    ret_code=$?
+    local ret_code=$?
     set -e
     if [[ $ret_code -eq 0 ]]; then
       # Extract to the installation directory
@@ -264,7 +264,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     if [[ -d "$VENV_DIR" ]]; then
       local default="N"
       local prompt=$(_mf "Virtual environment {} already exists. Delete and reinstall it?" "${VENV_DIR}")
-      if ! confirm_action "$prompt" default="$default"; then
+      if ! confirm_action "$prompt" no_value="$default"; then
         echo
         local pip_url=$("$VENV_BIN" -m pip config get global.index-url 2>/dev/null)
         local mirror_str=""
@@ -274,7 +274,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
           default="Y"
         fi
         prompt=$(_mf "{}Reinstall pip and the required Python libraries?" "$mirror_str")
-        confirm_action "$prompt" default="$default" msg="$(_mf "Skipping virtual environment creation")"
+        confirm_action "$prompt" no_value="$default" msg="$(_mf "Skipping virtual environment creation")"
         return $?
       else
         info "Deleting virtual environment {}..." "$VENV_DIR"
@@ -434,49 +434,62 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
       return 3
     fi
 
-    while true; do
-      local prompt="$(_mf "Please select a mirror to use. Enter 0 to skip") (0-$len): "
-      read -rp "$prompt" choice
-      choice="${choice// /}" # Remove whitespace characters
+    do_choose_pip_mirror() {
+      local choice="$1"
       if [[ "$choice" == "0" ]]; then
         string "Configuration canceled. Keeping current settings"
         return 1
       fi
 
       # Check if input is an integer
-      if [[ "$choice" =~ ^[0-9]+$ ]]; then
-        choice_num=$((choice))
-        if ((choice_num >= 1 && choice_num <= len)); then
-          # Mirror sample: AARNET (Australia)|https://pypi.aarnet.edu.au/simple/|0.4954190254211426
-          # Setup index-url
-          url=$(echo "${mirror_list[choice_num - 1]}" | cut -d'|' -f2)
-          run_with_log "$VENV_BIN" -m pip config set global.index-url "$url"
-          if [[ $? -ne 0 ]]; then
-            echo "Config index-url failure"
-            return 3
-          fi
-          # Setup trusted-host
-          host=$(echo "$url" | cut -d'/' -f3)
-          if [[ "$url" =~ ^http:// ]]; then
-            run_with_log "$VENV_BIN" -m pip config set global.trusted-host "$host"
-            if [[ $? -ne 0 ]]; then
-              echo "Config trusted-host failure"
-              return 3
-            fi
-          fi
-
-          echo
-          echo -e "✨ $(_mf "Pip has been configured to use the new mirror")"
-          echo "   $(_mf "Mirror"): $url"
-          echo "   $(_mf "Trusted Host"): $host"
-          echo
-          return 0
+      choice_num=$((choice))
+      # Mirror sample: AARNET (Australia)|https://pypi.aarnet.edu.au/simple/|0.4954190254211426
+      # Setup index-url
+      url=$(echo "${mirror_list[choice_num - 1]}" | cut -d'|' -f2)
+      run_with_log "$VENV_BIN" -m pip config set global.index-url "$url"
+      if [[ $? -ne 0 ]]; then
+        echo "Config index-url failure"
+        return 3
+      fi
+      # Setup trusted-host
+      host=$(echo "$url" | cut -d'/' -f3)
+      if [[ "$url" =~ ^http:// ]]; then
+        run_with_log "$VENV_BIN" -m pip config set global.trusted-host "$host"
+        if [[ $? -ne 0 ]]; then
+          echo "Config trusted-host failure"
+          return 3
         fi
       fi
 
-      string "[{}] Invalid input! Please enter a number between 0 and {}" "$MSG_ERROR" "$len"
-    done
+      echo
+      echo -e "✨ $(_mf "Pip has been configured to use the new mirror")"
+      echo "   $(_mf "Mirror"): $url"
+      echo "   $(_mf "Trusted Host"): $host"
+      echo
+      return 0
+    }
 
+    valid_pip_mirror() {
+      local choice="$1"
+      local error_msg="$2"
+      # check if input is correct
+      if [[ "$choice" =~ ^[0-9]+$ ]]; then
+        local choice_num=$((choice))
+        if ((choice_num >= 0 && choice_num <= len)); then
+          return 0 # valid input
+        fi
+      fi
+      # Invalid input
+      echo -n "$error_msg" >&2
+      return 2 # continue
+    }
+
+    local prompt="$(_mf "Please select a mirror to use. Enter 0 to skip") (0-$len): "
+    confirm_action "$prompt" do_choose_pip_mirror \
+      option="number" no_value="0" to_value="1" \
+      err_handle="valid_pip_mirror" \
+      error_msg="$(_mf "[{}] Invalid input! Please enter a number between 0 and {}" "$MSG_ERROR" "$len")" \
+      exit_msg="$(_mf "Skipping mirror selection")"
   }
 
   # ==============================================================================
@@ -492,9 +505,9 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     if install_py_venv; then
       local INFO_ICON=$([ "$TERM_SUPPORT_UTF8" -eq 0 ] && echo "🌍" || echo "[${MSG_INFO}]")
       echo
-      echo "=================================================="
+      echo "======================================================================"
       echo "${INFO_ICON} $(_mf "Testing global pip mirror speeds...")"
-      echo "=================================================="
+      echo "======================================================================"
 
       set +e
       sh_install_pip # python adds-on: test and pick up a faster mirror

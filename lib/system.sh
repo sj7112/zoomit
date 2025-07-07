@@ -4,7 +4,7 @@
 if [[ -z "${LOADED_SYSTEM:-}" ]]; then
   LOADED_SYSTEM=1
 
-  declare -A TMP_MAP # 定义全局关联数组
+  TMP_FILE_PREFIX="sj_temp_"
 
   # ==============================================================================
   # get_locale_code - 获取locale代码
@@ -27,42 +27,42 @@ if [[ -z "${LOADED_SYSTEM:-}" ]]; then
   }
 
   # ==============================================================================
-  # generate_tmp_id - 自动生成临时全局变量（用于子函数向父函数传递数据）
+  # 自动生成临时文件（用于子函数向父函数传递数据）
   # ==============================================================================
-  generate_tmp_id() {
-    # try nanosecond-level timestamp
-    local uid="$(date +%s%N 2>/dev/null)"
-    # if %N is not allowed, change to second-level timestamp
-    if ! [[ "$uid" =~ ^[0-9]+$ ]]; then
-      uid="$(date +%s)"
-    fi
+  generate_temp_file() {
+    # If nanoseconds not supported, fallback to second-level timestamp
+    local timestamp="$(date +%s%N 2>/dev/null || date +%s)"
 
-    # legal unique global paramter
-    uid="id_${uid}${RANDOM}" # id_ + timestamp + random (0 ~ 32767)
-
-    # Return the variable name
-    echo "$uid"
+    # Prefer /dev/shm if it exists and is writable, otherwise fallback to /tmp
+    local tmpdir="/tmp"
+    [[ -d /dev/shm && -w /dev/shm ]] && tmpdir="/dev/shm"
+    # Generate a unique file id with timestamp and random number
+    local tmpfile="${tmpdir}/${TMP_FILE_PREFIX}${timestamp}${RANDOM}"
+    # shellcheck disable=SC2188
+    >"$tmpfile" || {
+      echo "Error: Unable to create temp file $tmpfile" >&2
+      return 1
+    }
+    echo "$tmpfile"
   }
 
   # ==============================================================================
-  # fetch_tmp_id - 获取临时全局变量
+  # Destroy temporary files safely
   # ==============================================================================
-  fetch_tmp_id() {
-    local uid="$1"
-
-    # 检查是否存在该键
-    if [[ -n "${TMP_MAP[$uid]+x}" ]]; then
-      echo "${TMP_MAP[$uid]}"
-    else
-      echo "No value found for UID: $uid"
+  destroy_temp_file() {
+    local tmpfile="$1"
+    # Only attempt to remove if variable is not empty and file exists
+    if [[ -n "$tmpfile" && -e "$tmpfile" ]]; then
+      rm -f "$tmpfile"
     fi
   }
 
-  # ==============================================================================
-  # destroy_tmp_id - 销毁临时全局变量
-  # ==============================================================================
-  destroy_tmp_id() {
-    unset TMP_MAP["$1"]
+  destroy_temp_files() {
+    local tmpdir="/tmp"
+    [[ -d /dev/shm && -w /dev/shm ]] && tmpdir="/dev/shm"
+
+    # Remove all files starting with sj_temp_ in the tmpdir
+    rm -f "${tmpdir}/${TMP_FILE_PREFIX}"* 2>/dev/null || true
   }
 
 fi

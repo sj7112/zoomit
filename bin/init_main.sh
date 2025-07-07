@@ -135,7 +135,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   # Return Value: None (directly modifies /etc/ssh/sshd_config and restarts sshd)
   # ==============================================================================
   configure_sshd() {
-    echo ""
+    echo
     local ssh_service=$([[ $DISTRO_OSTYPE == "ubuntu" ]] && echo ssh || echo sshd)
 
     # Check if sshd is installed
@@ -166,7 +166,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   # Feature 3: Configure static IP
   # --------------------------
   configure_ip() {
-    echo ""
+    echo
     if sh_fix_ip; then # python adds-on: config network as fix ip
       init_env_nw
       network_config
@@ -221,6 +221,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   # --------------------------
   close_all() {
     sh_clear_cache
+    destroy_temp_files
   }
 
   # ==============================================================================
@@ -265,9 +266,9 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     local version="zoomit v1.0"
     local year="2005"
     local author="sj7112"
-    echo ""
+    echo
     string -i "$VERSION_CLAIM" "$version" "$year" "$author"
-    echo ""
+    echo
   }
 
   # ==============================================================================
@@ -280,6 +281,9 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
         --version | -v)
           show_version
           exit 0
+          ;;
+        --timeout=* | -t=*)
+          export CONF_TIME_OUT="${arg#*=}"
           ;;
       esac
     done
