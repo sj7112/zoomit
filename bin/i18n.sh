@@ -13,7 +13,7 @@ if [[ -z "${LOADED_I18N:-}" ]]; then
   source "$LIB_DIR/json_handler.sh"
   source "$LIB_DIR/system.sh"
   source "$LIB_DIR/hash_util.sh"
-  source "$LIB_DIR/bash_utils.sh"
+  source "$LIB_DIR/read_util.sh"
   source "$LIB_DIR/python_bridge.sh"
 
   : "${SYSTEM_LANG:=$(get_locale_code)}" # 默认语言

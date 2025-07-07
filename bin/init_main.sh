@@ -24,7 +24,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   : "${LIB_DIR:="$(dirname "$BIN_DIR")/lib"}"                     # lib direcotry
   source "$LIB_DIR/msg_handler.sh"
   source "$LIB_DIR/lang_utils.sh"
-  source "$LIB_DIR/bash_utils.sh"
+  source "$LIB_DIR/read_util.sh"
   source "$LIB_DIR/cmd_handler.sh"
   source "$LIB_DIR/json_handler.sh"
   source "$LIB_DIR/system.sh"

@@ -7,7 +7,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
   # Declare global
   : "${LIB_DIR:=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}" # bin direcotry
   source "$LIB_DIR/msg_handler.sh"
-  source "$LIB_DIR/bash_utils.sh"
+  source "$LIB_DIR/read_util.sh"
   source "$LIB_DIR/python_bridge.sh"
 
   LOG_FILE="/var/log/sj_install.log"
