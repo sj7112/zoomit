@@ -136,18 +136,20 @@ class SshSetup:
             if new_port != ssh_port:
                 self.modify_config_line("Port", f"Port {new_port}")
             print(f"[{MSG_SUCCESS}] {_mf('SSH port set to')}: {new_port}")
+        else:
+            return ret_code
 
         # 询问是否允许root登录
         prompt = _mf("Allow root login via SSH?")
-        allow_root = confirm_action(prompt, no_value=root_login)
-        if allow_root == 0:
+        ret_code = confirm_action(prompt, no_value=root_login)
+        if ret_code == 0:
             self.modify_config_line("PermitRootLogin", "PermitRootLogin yes")
             print(f"[{MSG_SUCCESS}] {_mf('root login allowed')}")
-        elif allow_root == 1:
+        elif ret_code == 1:
             self.modify_config_line("PermitRootLogin", "PermitRootLogin no")
             print(f"[{MSG_SUCCESS}] {_mf('root login disabled')}")
         else:
-            return 2
+            return ret_code
 
         # write file
         if self.modified:

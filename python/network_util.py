@@ -132,34 +132,28 @@ class NetworkSetup:
             string("The current IP address is invalid")
             return 3
 
-        while True:
-            try:
-                prompt = _mf(
-                    r"Please enter the last octet of the static IP address (1–255) [default: {}]: ", curr_last_octet
-                )
-                new_last_octet = input(prompt).strip() or curr_last_octet  # default=current value
+        def valid_setup_octet(new_last_octet: int, error_msg: str) -> int:
+            if not (1 <= new_last_octet <= 255):
+                string("The input must be between 1 and 255")
+                return 2  # continue
 
-                if not new_last_octet.isdigit():
-                    string("Please enter a number")
-                    continue
+            if gateway and new_last_octet == int(gateway.split(".")[-1]):
+                string("The static IP address cannot be the same as the gateway")
+                return 2  # continue
 
-                octet_num = int(new_last_octet)
-                if not (1 <= octet_num <= 255):
-                    string("The input must be between 1 and 255")
-                    continue
+            return 0  # valid input
 
-                if gateway and new_last_octet == gateway.split(".")[-1]:
-                    string("The static IP address cannot be the same as the gateway")
-                    continue
+        prompt = _mf(r"Please enter the last octet of the static IP address (1–255) [default: {}]: ", curr_last_octet)
+        ret_code, new_last_octet = confirm_action(
+            prompt, option="number", no_value=curr_last_octet, err_handle=valid_setup_octet
+        )
 
-                # Build a new static IP address
-                env_nw["STATIC_IP"] = f"{ip_parts[0]}.{ip_parts[1]}.{ip_parts[2]}.{new_last_octet}"
-                env_nw["HAS_STATIC"] = "pending"  # IP is not fixed
-                return 0
+        if ret_code == 0:
+            # Build a new static IP address
+            env_nw["STATIC_IP"] = f"{ip_parts[0]}.{ip_parts[1]}.{ip_parts[2]}.{new_last_octet}"
+            env_nw["HAS_STATIC"] = "pending"  # IP is not fixed
 
-            except KeyboardInterrupt:
-                string("\nOperation cancelled")
-                return 2
+        return ret_code
 
     # ==============================================================================
     # Main Program
