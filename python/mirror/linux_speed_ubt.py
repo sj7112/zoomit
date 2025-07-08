@@ -9,12 +9,14 @@ import sys
 import requests
 from typing import List
 
+from python.read_util import confirm_action
+
 
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))  # add root sys.path
 
 from python.mirror.linux_speed import MirrorResult, MirrorTester, _is_url_accessible
 from python.file_util import write_source_file
-from python.msg_handler import info, error
+from python.msg_handler import _mf, info, error, string
 
 DEF_URL = "https://archive.ubuntu.com/ubuntu/"
 DEF_URL_SEC = "https://security.ubuntu.com/ubuntu/"
@@ -117,31 +119,29 @@ class UbuntuMirrorTester(MirrorTester):
     def fetch_mirror_list(self, limit: int = None) -> None:
         """Choose country mirror list"""
 
-        try:
-            response = requests.get("http://mirrors.ubuntu.com/", timeout=10)
-            response.raise_for_status()
+        def valid_fetch_mirror_list(country_code, error_msg):
+            """Validate mirror list fetch"""
+            if country_code not in countries:
+                string(r"国家代码 {} 不存在于列表中！请核对 http://mirrors.ubuntu.com/", country_code)
+                return 2
+            return 0
 
-            # country code
-            countries = re.findall(r'<a href="([A-Z]{2})\.txt', response.text)
-            countries = sorted(set(countries))
+        # try:
+        response = requests.get("http://mirrors.ubuntu.com/", timeout=10)
+        response.raise_for_status()
 
-            # read country
-            while True:
-                user_input = input(f"请选择国家/地区代码（回车使用默认值 '{self.system_country}'）：").strip().upper()
-                country_code = user_input if user_input else self.system_country
+        # country code
+        countries = re.findall(r'<a href="([A-Z]{2})\.txt', response.text)
+        countries = sorted(set(countries))
 
-                if country_code not in countries:
-                    print(f"国家代码 {country_code} 不存在于列表中！请核对 http://mirrors.ubuntu.com/")
-                    continue
-
-                self.mirror_list = f"http://mirrors.ubuntu.com/{country_code}.txt"
-                break
-
+        prompt = _mf(r"请选择国家/地区代码 (回车使用默认值 '{}'):", self.system_country)
+        status, country_code = confirm_action(
+            prompt, option="string", no_value=self.system_country, err_handle=valid_fetch_mirror_list
+        )
+        if status == 0:
+            self.mirror_list = f"http://mirrors.ubuntu.com/{country_code}.txt"
             super().fetch_mirror_list(limit)
             self.filter_mirrors_by_arch()
-
-        except requests.RequestException as e:
-            print(f"获取国家列表失败: {e}")
 
     def filter_mirrors_by_arch(self) -> list[str]:
         arch = platform.machine()

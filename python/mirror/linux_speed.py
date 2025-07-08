@@ -14,7 +14,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urljoin, urlparse
 import statistics
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))  # add root sys.path
@@ -321,46 +321,38 @@ class MirrorTester:
             string("No available mirrors found")
             return 3
 
-        tot_len = len(top_10)
-        while True:
-            try:
-                # Get user input
+        def do_choose_mirror(choice: int) -> int:
+            # Special case: input is 0
+            if choice == 0:
                 print()
-                string(r"Please select a mirror to use (1-{}), enter 0 to keep current settings", tot_len)
-                prompt = _mf(r"Please enter your choice (0-{}): ", tot_len)
-                choice = input(prompt).strip()
+                string("Configuration cancelled, keeping current settings")
+                return 1
 
-                # Special case: input is 0
-                if choice == "0":
-                    print()
-                    string("Configuration cancelled, keeping current settings")
-                    return 1
+            # Get the user-selected mirror
+            selected_mirror = top_10[choice - 1]
+            print()
+            print(f"✨ {_mf('You selected')}: {selected_mirror.url}")
+            print(f"   {_mf('Download speed')}: {selected_mirror.avg_speed:.1f}s")
 
-                # Convert input to an integer
+            self.update_pm_file(selected_mirror)  # Update PM configuration file
+            return pm_refresh()  # refresh PM configuration
+
+        def valid_choose_mirror(choice: Any, error_msg: str) -> int:
+            if choice.isdigit():
                 choice_num = int(choice)
+                if 0 <= choice_num <= tot_len:
+                    return 0  # valid input
 
-                if 1 <= choice_num <= tot_len:
-                    # Get the user-selected mirror
-                    selected_mirror = top_10[choice_num - 1]
-                    print()
-                    print(f"✨ {_mf('You selected')}: {selected_mirror.url}")
-                    print(f"   {_mf('Download speed')}: {selected_mirror.avg_speed:.1f}s")
+            print(error_msg)
+            return 2  # invalid, continue
 
-                    self.update_pm_file(selected_mirror)  # Update PM configuration file
-                    return pm_refresh()  # refresh PM configuration
-                else:
-                    # Input number is out of range
-                    error(r"Invalid input! Please enter a number between 0-{}", tot_len)
-
-            except ValueError:
-                # Input is not a number
-                error("Invalid input! Please enter a number")
-
-            except KeyboardInterrupt:
-                # User interrupted with Ctrl+C
-                print()
-                string("Operation canceled")
-                return 2
+        tot_len = len(top_10)
+        string(r"Please select a mirror to use (1-{}), enter 0 to keep current settings", tot_len)
+        prompt = _mf(r"Please enter your choice (0-{}): ", tot_len)
+        error_msg = _mf(r"Invalid input! Please enter a number between 0-{}", tot_len)
+        confirm_action(
+            prompt, do_choose_mirror, option="number", no_value="0", err_handle=valid_choose_mirror, error_msg=error_msg
+        )
 
     def print_results(self, results: List[MirrorResult]):
         print()
@@ -392,7 +384,7 @@ class MirrorTester:
                 default = False
 
             # 2. update mirrors
-            ret_code = confirm_action(prompt, self.choose_mirror, default=default)
+            ret_code = confirm_action(prompt, self.choose_mirror, no_value=default)
             default = ret_code == 0
         except Exception as e:
             print()
@@ -405,4 +397,4 @@ class MirrorTester:
             # 3. upgrade PM configuration
             print()
             prompt = _mf("Would you like to upgrade the packages immediately?")
-            confirm_action(prompt, pm_upgrade, default=default)
+            confirm_action(prompt, pm_upgrade, no_value=default)

@@ -469,7 +469,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
       return 0
     }
 
-    valid_pip_mirror() {
+    valid_choose_pip_mirror() {
       local choice="$1"
       local error_msg="$2"
       # check if input is correct
@@ -487,7 +487,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     local prompt="$(_mf "Please select a mirror to use. Enter 0 to skip") (0-$len): "
     confirm_action "$prompt" do_choose_pip_mirror \
       option="number" no_value="0" to_value="1" \
-      err_handle="valid_pip_mirror" \
+      err_handle="valid_choose_pip_mirror" \
       error_msg="$(_mf "[{}] Invalid input! Please enter a number between 0 and {}" "$MSG_ERROR" "$len")" \
       exit_msg="$(_mf "Skipping mirror selection")"
   }

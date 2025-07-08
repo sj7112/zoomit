@@ -4,13 +4,60 @@
 if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
   LOADED_BASH_UTILS=1
 
+  action_handler() {
+    local result_f="${1:-}" # Temp file to store result
+    local response="$2"
+    local option="$3" # "bool" | "number" | "string"
+    local err_handle="$4"
+    local error_msg="$5"
+
+    # Boolean option [YyNn]
+    if [[ "$option" == "bool" ]]; then
+      if [[ ! "$response" =~ ^[YyNn]$ ]]; then
+        if [[ -n $err_handle ]]; then
+          "$err_handle" "$response" "$error_msg"
+          exit $? # 2 = continue, 3 = exit
+        else
+          string "Please enter 'y' for yes, 'n' for no, or press Enter for default"
+          exit 2 # 2 = continue
+        fi
+      fi
+      [[ "$response" =~ ^[Yy]$ ]] && exit 0 || exit 1
+
+    # Number option
+    elif [[ "$option" == "number" ]]; then
+      if [[ -n $err_handle ]]; then
+        "$err_handle" "$response" "$error_msg"
+        local err_code=$?
+        [[ $err_code != 0 ]] && exit $err_code # 2 = continue, 3 = exit
+      elif [[ ! "$response" =~ ^[0-9]+$ ]]; then
+        string "[{}] Invalid input! Please enter a number" "$MSG_ERROR"
+        exit 2 # 2 = continue
+      fi
+      echo "$response" >"$result_f"
+      exit 0
+
+    # String option
+    elif [[ "$option" == "string" ]]; then
+      if [[ -n $err_handle ]]; then
+        "$err_handle" "$response" "$error_msg"
+        local err_code=$?
+        [[ $err_code != 0 ]] && exit $err_code # 2 = continue, 3 = exit
+      fi
+      echo "$response" >"$result_f"
+      exit 0
+    fi
+
+  }
+
   do_confirm_action() {
     local result_f="${1:-}" # Temp file to store result
     local prompt="$2"
-    local no_value="$3"
-    local to_value="$4"
-    local err_handle="$5"
-    local error_msg="$6"
+    local option="$3" # "bool" | "number" | "string"
+    local no_value="$4"
+    local to_value="$5"
+    local err_handle="$6"
+    local error_msg="$7"
 
     local timeout="${CONF_TIME_OUT:-999999}" # 999999=永不超时
     local rc
@@ -34,45 +81,13 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
         exit $rc
       fi
 
-      # 选项为 [YyNn]
-      if [[ "$option" == "bool" ]]; then
-        if [[ ! "$response" =~ ^[YyNn]$ ]]; then
-          if [[ -n $err_handle ]]; then
-            "$err_handle" "$response" "$error_msg"
-            local err_code=$?
-            [[ $err_code == 2 ]] && echo && continue # 0 = continue
-            [[ $err_code == 3 ]] && exit 3           # 3 = exit
-          else
-            string "Please enter 'y' for yes, 'n' for no, or press Enter for default"
-            continue
-          fi
-        fi
-        [[ "$response" =~ ^[Yy]$ ]] && exit 0 || exit 1
-
-      # 选项为 数值
-      elif [[ "$option" == "number" ]]; then
-        if [[ -n $err_handle ]]; then
-          "$err_handle" "$response" "$error_msg"
-          local err_code=$?
-          [[ $err_code == 2 ]] && echo && continue # 0 = continue
-          [[ $err_code == 3 ]] && exit 3           # 3 = exit
-        elif [[ ! "$response" =~ ^[0-9]+$ ]]; then
-          string "[{}] Invalid input! Please enter a number" "$MSG_ERROR"
-          continue
-        fi
-        echo "$response" >"$result_f"
-        exit 0
-
-      # 选项为 字符或字符串
-      elif [[ "$option" == "string" ]]; then
-        if [[ -n $err_handle ]]; then
-          "$err_handle" "$response" "$error_msg"
-          local err_code=$?
-          [[ $err_code == 2 ]] && echo && continue # 0 = continue
-          [[ $err_code == 3 ]] && exit 3           # 3 = exit
-        fi
-        echo "$response" >"$result_f"
-        exit 0
+      action_handler "$result_f" "$response" "$option" "$err_handle" "$error_msg"
+      rc=$?
+      if [[ $rc -eq 2 ]]; then
+        echo
+        continue # Continue to prompt again
+      else
+        exit $rc # Exit the function
       fi
     done
 
@@ -86,18 +101,20 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
   #   $2+: callback function name and its arguments
   # Optional parameters:
   #   option="bool | number | string": define action type (default: bool)
-  #   msg="text": one message for above 3 messages (default: "operation is cancelled")
-  #   no_msg="text": custom message for NO (default: "operation is cancelled")
-  #   error_msg="text": custom message for wrong value (default: "operation is cancelled")
-  #   exit_msg="text": custom message for user exit ctrl+C (default: "operation is cancelled")
+  #   msg="text": one message for above 3 messages (default: "Operation cancelled")
+  #   no_msg="text": custom message for NO (default: "Operation cancelled")
+  #   error_msg="text": custom message for wrong value (default: "Operation cancelled")
+  #   exit_msg="text": custom message for user exit ctrl+C (default: "Operation cancelled")
   #   err_handle="0/1 | Function": when error occurs, 1 = exit; 0 = continue
   #   no_value="0=Y|1=N|Others...": default value for Press Enter (default: Y | 0 | None)
   #   to_value="0=Y|1=N|Others...": auto value for Timeout
   # Returns:
   #   0: yes = user entered Y or y; or success = right value
   #   1: no = user entered N or n
-  #   2: User interrupt to exit the program
-  #   3: System exception to exit the program
+  #   2: Error handler: to be continued
+  #   3: Error handler: to exit the program
+  #   130: Ctrl+C SIGNAL to exit the program
+  #   142: Timeout SIGNAL to exit the program
   # ==============================================================================
   confirm_action() {
     local prompt="$1"
@@ -130,12 +147,10 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
     done
 
     # set default messages if not provided
-    msg="${msg:-}"
-    [[ -n "$msg" ]] && no_msg="$msg" error_msg="$msg" exit_msg="$msg"
-    local def_msg=$(_mf "operation is cancelled")
-    no_msg="${no_msg:-${def_msg}}"
-    error_msg="${error_msg:-${def_msg}}"
-    exit_msg="${exit_msg:-${def_msg}}"
+    msg="${msg:-$(_mf "Operation cancelled")}"
+    no_msg="${no_msg:-${msg}}"
+    error_msg="${error_msg:-${msg}}"
+    exit_msg="${exit_msg:-${msg}}"
 
     # Determine default behavior based on def_val parameter
     if [[ "$option" == "bool" ]]; then
@@ -144,7 +159,7 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
     elif [[ "$option" == "number" ]]; then
       no_value="${no_value:-0}" # Default: 0
     elif [[ "$option" == "string" ]]; then
-      no_value="${no_value:-""}" # Default: 空字符串
+      no_value="${no_value:-""}" # Default: blank
     fi
 
     to_value="${to_value:-${no_value}}" # timeout: default value = no_value
@@ -153,23 +168,23 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
     # Use result_f to store the user's input (only for number | string callback)
     local result_f=$([[ $option != "bool" ]] && generate_temp_file || echo "") # Generate a temp file
     set +e
-    (do_confirm_action "$result_f" "$prompt" "$no_value" "$to_value" "$err_handle" "$error_msg")
+    (do_confirm_action "$result_f" "$prompt" "$option" "$no_value" "$to_value" "$err_handle" "$error_msg")
     local rc=$?
     set -e
 
     # echo "ON_EXIT_CODE = $ON_EXIT_CODE"
     if [[ "$rc" -eq 0 ]]; then
       if [[ ${#args[@]} -gt 0 ]]; then
-        if [[ $option != "bool" ]]; then
-          "${args[@]}" "$(<"$result_f")"
-        else
+        if [[ $option == "bool" ]]; then
           "${args[@]}"
+        else
+          "${args[@]}" "$(<"$result_f")"
         fi
         return $?
       fi
     elif [[ "$rc" -eq 1 ]]; then
       warning "$no_msg"
-    elif [[ "$rc" -eq 2 ]]; then
+    elif [[ "$rc" -eq 2 || "$rc" -eq 3 ]]; then
       warning "$error_msg"
     elif [[ "$rc" -eq 130 ]]; then
       echo

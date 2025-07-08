@@ -198,7 +198,7 @@ class NetworkSetup:
 
         prompt = _mf("Would you like to adjust it?")
         no_msg = _mf("Do not modify the network configuration")
-        retVal = confirm_action(prompt, self.setup_octet, nomsg=no_msg, default=default)
+        retVal = confirm_action(prompt, self.setup_octet, no_msg=no_msg, no_value=default)
 
         self.save_env_nw()
         return retVal

@@ -215,9 +215,8 @@ def del_lang_files(langs: List[str], no_prompt: bool = False) -> None:
 
         # 文件存在，提示用户是否删除
         prompt = _mf("Are you sure to delete the {0} language file?", lang_code)
-        confirm_action(
-            prompt, do_del_lang_files, lang_code, lang_files, errmsg=_mf("Action cancelled. File deletion aborted")
-        )
+        err_msg = _mf("Action cancelled. File deletion aborted")
+        confirm_action(prompt, do_del_lang_files, lang_code, lang_files, error_msg=err_msg)
 
 
 def upd_lang_files(langs: List[str], files: List[str], test_run: bool) -> None:

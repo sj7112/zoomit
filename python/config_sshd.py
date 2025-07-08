@@ -110,7 +110,7 @@ class SshSetup:
             login_permit = _mf("root login allowed") if root_login else _mf("root login disabled")
             string(r"Current SSH is running on Port {}, {}", ssh_port, login_permit)
             prompt = _mf("Would you like to reconfigure it?")
-            ret_code = confirm_action(prompt, default=False)
+            ret_code = confirm_action(prompt, no_value=False)
             if ret_code != 0:
                 return 1
 
@@ -133,7 +133,7 @@ class SshSetup:
                 return 2
 
         # 询问是否允许root登录
-        allow_root = confirm_action(_mf("Allow root login via SSH?"), default=root_login)
+        allow_root = confirm_action(_mf("Allow root login via SSH?"), no_value=root_login)
         if allow_root == 0:
             self.modify_config_line("PermitRootLogin", "PermitRootLogin yes")
             print(f"[{MSG_SUCCESS}] {_mf('root login allowed')}")
