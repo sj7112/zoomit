@@ -351,7 +351,7 @@ class MirrorTester:
         prompt = _mf(r"Please enter your choice (0-{}): ", tot_len)
         error_msg = _mf(r"Invalid input! Please enter a number between 0-{}", tot_len)
         confirm_action(
-            prompt, do_choose_mirror, option="number", no_value="0", err_handle=valid_choose_mirror, error_msg=error_msg
+            prompt, do_choose_mirror, option="number", no_value=0, err_handle=valid_choose_mirror, error_msg=error_msg
         )
 
     def print_results(self, results: List[MirrorResult]):

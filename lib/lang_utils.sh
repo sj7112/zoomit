@@ -106,17 +106,33 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
       fi
     done
 
+    local timeout="${CONF_TIME_OUT:-999999}" # 999999=永不超时
+    local rc
     # reset language
     local input_lang
     while true; do
       local prompt=$(_mf -i "$INIT_SHELL_LANG" "$default_lang")
-      read -rp "$prompt" input_lang
+      read -t "$timeout" -rp "$prompt" response
+      rc=$?
+      if [[ $rc -eq 0 ]]; then
+        if [[ -z "$response" ]]; then
+          response=$default_lang # set default value
+        else
+          response="${response// /}" # Remove whitespace characters
+        fi
+      elif [[ $rc -eq 130 ]]; then
+        echo >&2
+        return 130 # 被中断
+      elif [[ $rc -gt 128 ]]; then
+        echo >&2
+        response=$default_lang # 超时或其他信号 (包括142)
+      else
+        echo >&2
+        exit $rc
+      fi
 
       # get input language
-      if [[ -z "$input_lang" ]]; then
-        input_lang="$default_lang" # Use current language
-      fi
-      input_lang="$(normalize_locale "$input_lang")" # format input
+      input_lang="$(normalize_locale "$response")" # format input
       [[ $? -ne 0 ]] && continue
 
       # return the value

@@ -12,7 +12,7 @@ from python.msg_handler import MSG_ERROR, _mf, exiterr, string, warning
 
 # 全局日志配置（放在文件开头）
 LOG_FILE = "/var/log/sj_install.log"
-CONF_TIME_OUT = os.environ.get("CONF_TIME_OUT", 0)  # 0=永不超时
+CONF_TIME_OUT = int(os.environ.get("CONF_TIME_OUT", 0))  # 0=永不超时
 
 
 def action_handler(response: Any, option: str, err_handle: Any, error_msg: str) -> Any:
@@ -86,8 +86,7 @@ def do_confirm_action(prompt: str, option: str, no_value: Any, to_value: Any, er
         return 130, None  # 130 = 128 + 2 (SIGINT)
     except TimeoutError:  # 142 = 128 + 14 (SIGALRM)
         print()
-        response = to_value
-        status, response = action_handler(response, option, err_handle, error_msg)
+        status, response = action_handler(to_value, option, err_handle, error_msg)
         return status, response
     except Exception as e:
         print()

@@ -276,14 +276,31 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   # ==============================================================================
   if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     # Check for --version or -v argument
-    for arg in "$@"; do
-      case "$arg" in
-        --version | -v)
+    TEMP=$(getopt -o vt: --long version,timeout: -n 'script' -- "$@")
+    if [ $? != 0 ]; then
+      echo "Parameter Error!" >&2
+      exit 1
+    fi
+
+    eval set -- "$TEMP"
+
+    while true; do
+      case "$1" in
+        -v | --version)
           show_version
           exit 0
           ;;
-        --timeout=* | -t=*)
-          export CONF_TIME_OUT="${arg#*=}"
+        -t | --timeout)
+          export CONF_TIME_OUT="$2"
+          shift 2
+          ;;
+        --)
+          shift
+          break
+          ;;
+        *)
+          echo "Parameter Error!"
+          exit 1
           ;;
       esac
     done

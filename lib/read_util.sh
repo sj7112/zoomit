@@ -76,15 +76,17 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
       elif [[ $rc -eq 130 ]]; then
         return 130 # 被中断
       elif [[ $rc -gt 128 ]]; then
-        response="$to_value" # 超时或其他信号 (包括142)
+        echo >&2
+        response=$to_value # 超时或其他信号 (包括142)
       else
+        echo >&2
         exit $rc
       fi
 
       action_handler "$result_f" "$response" "$option" "$err_handle" "$error_msg"
       rc=$?
       if [[ $rc -eq 2 ]]; then
-        echo
+        echo >&2
         continue # Continue to prompt again
       else
         exit $rc # Exit the function
