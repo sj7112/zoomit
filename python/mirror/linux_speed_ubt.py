@@ -121,7 +121,7 @@ class UbuntuMirrorTester(MirrorTester):
 
         def valid_fetch_mirror_list(country_code, error_msg):
             """Validate mirror list fetch"""
-            if country_code not in countries:
+            if country_code.upper() not in countries:
                 string(r"国家代码 {} 不存在于列表中！请核对 http://mirrors.ubuntu.com/", country_code)
                 return 2
             return 0
@@ -139,7 +139,7 @@ class UbuntuMirrorTester(MirrorTester):
             prompt, option="string", no_value=self.system_country, err_handle=valid_fetch_mirror_list
         )
         if status == 0:
-            self.mirror_list = f"http://mirrors.ubuntu.com/{country_code}.txt"
+            self.mirror_list = f"http://mirrors.ubuntu.com/{country_code.upper()}.txt"
             super().fetch_mirror_list(limit)
             self.filter_mirrors_by_arch()
 

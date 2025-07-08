@@ -26,13 +26,13 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
 
     # Number option
     elif [[ "$option" == "number" ]]; then
-      if [[ -n $err_handle ]]; then
+      if [[ ! "$response" =~ ^[0-9]+$ ]]; then
+        string "[{}] Invalid input! Please enter a number" "$MSG_ERROR"
+        exit 2 # 2 = continue
+      elif [[ -n $err_handle ]]; then
         "$err_handle" "$response" "$error_msg"
         local err_code=$?
         [[ $err_code != 0 ]] && exit $err_code # 2 = continue, 3 = exit
-      elif [[ ! "$response" =~ ^[0-9]+$ ]]; then
-        string "[{}] Invalid input! Please enter a number" "$MSG_ERROR"
-        exit 2 # 2 = continue
       fi
       echo "$response" >"$result_f"
       exit 0

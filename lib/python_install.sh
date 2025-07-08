@@ -473,11 +473,9 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
       local choice="$1"
       local error_msg="$2"
       # check if input is correct
-      if [[ "$choice" =~ ^[0-9]+$ ]]; then
-        local choice_num=$((choice))
-        if ((choice_num >= 0 && choice_num <= len)); then
-          return 0 # valid input
-        fi
+      local choice_num=$((choice))
+      if ((choice_num >= 0 && choice_num <= len)); then
+        return 0 # valid input
       fi
       # Invalid input
       echo -n "$error_msg" >&2

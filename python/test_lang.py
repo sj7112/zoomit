@@ -69,9 +69,8 @@ def del_lang_files(lang_code: str, no_prompt: bool = False) -> int:
 
     # 文件存在，提示用户是否删除
     prompt = _mf("确定要删除 {0} 语言文件吗?", lang_code)
-    cancel_msg = _mf("操作已取消，文件未删除")
-
-    confirm_action(prompt=prompt, action=do_del_lang_files, exit_msg=cancel_msg)
+    err_msg = _mf("操作已取消，文件未删除")
+    confirm_action(prompt, do_del_lang_files, lang_code, lang_files, error_msg=err_msg)
 
     return 0
 

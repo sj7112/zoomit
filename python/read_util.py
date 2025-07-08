@@ -34,14 +34,17 @@ def action_handler(response: Any, option: str, err_handle: Any, error_msg: str) 
 
     # Number option
     elif option == "number":
+        if isinstance(response, str):
+            if not re.match(r"^[0-9]+$", response):
+                string(r"[{}] Invalid input! Please enter a number", MSG_ERROR)
+                return 2, None  # continue
+            else:
+                response = int(response)  # Convert to integer
         if err_handle:
             err_code = err_handle(response, error_msg)
             if err_code != 0:
                 return err_code, None  # 2 = continue, 3 = exit
-        elif not re.match(r"^[0-9]+$", response):
-            string(r"[{}] Invalid input! Please enter a number", MSG_ERROR)
-            return 2, None  # continue
-        return 0, int(response)
+        return 0, response  # Must be an integer
 
         # String option
     elif option == "string":
@@ -67,7 +70,7 @@ def do_confirm_action(prompt: str, option: str, no_value: Any, to_value: Any, er
     try:
         # Set prompt suffix based on default value
         while True:
-            response = input(f"{prompt} ").strip().lower()
+            response = input(f"{prompt} ").strip()
             signal.alarm(0)  # Cancel the alarm if input is successful
             if response == "":
                 response = no_value
@@ -135,18 +138,21 @@ def confirm_action(prompt: str, callback: Callable[..., Any] = None, *args: Any,
     if status == 0:
         if callback:
             if option == "bool":
-                return callback(*args), None
+                return callback(*args)  # 仅返回code
             else:
                 return callback(*args, response), response
     elif status == 1:
         warning(no_msg)
     elif status == 2 or status == 3:
-        string(error_msg)
+        warning(error_msg)
     elif status == 130:
         print()
-        string(exit_msg)
+        warning(exit_msg)
     else:
         print()
         exiterr(exit_msg)
 
-    return status, response
+    if option == "bool":
+        return status  # 仅返回code
+    else:
+        return status, response

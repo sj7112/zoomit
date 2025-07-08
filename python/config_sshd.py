@@ -114,26 +114,32 @@ class SshSetup:
             if ret_code != 0:
                 return 1
 
+        def valid_configure_sshd(new_port: int, error_msg: str) -> int:
+            if 1 <= new_port <= 65535:
+                return 0
+            else:
+                print(error_msg)
+                return 2  # continue
+
         # Prompt for SSH port
-        while True:
-            try:
-                new_port = input(_mf(r"Enter new SSH port (current: {}): ", ssh_port)).strip()
-                if not new_port:
-                    print(f"[{MSG_SUCCESS}] {_mf('SSH port set to')}: {ssh_port}")
-                    break
-
-                if new_port.isdigit() and 1 <= int(new_port) <= 65535:
-                    self.modify_config_line("Port", f"Port {new_port}")
-                    print(f"[{MSG_SUCCESS}] {_mf('SSH port set to')}: {new_port}")
-                    break
-
-                print(f"[{MSG_ERROR}] {_mf('Failed to set SSH port')}")
-            except KeyboardInterrupt:
-                string("\nOperation cancelled")
-                return 2
+        prompt = _mf(r"Enter new SSH port (current: {}): ", ssh_port)
+        error_msg = f"[{MSG_ERROR}] {_mf('Failed to set SSH port')}"
+        ret_code, new_port = confirm_action(
+            prompt,
+            option="number",
+            no_value=ssh_port,
+            err_handle=valid_configure_sshd,
+            error_msg=error_msg,
+        )
+        # 处理用户输入
+        if ret_code == 0:
+            if new_port != ssh_port:
+                self.modify_config_line("Port", f"Port {new_port}")
+            print(f"[{MSG_SUCCESS}] {_mf('SSH port set to')}: {new_port}")
 
         # 询问是否允许root登录
-        allow_root = confirm_action(_mf("Allow root login via SSH?"), no_value=root_login)
+        prompt = _mf("Allow root login via SSH?")
+        allow_root = confirm_action(prompt, no_value=root_login)
         if allow_root == 0:
             self.modify_config_line("PermitRootLogin", "PermitRootLogin yes")
             print(f"[{MSG_SUCCESS}] {_mf('root login allowed')}")
