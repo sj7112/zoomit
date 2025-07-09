@@ -256,7 +256,12 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     if [[ "$EUID" -ne 0 ]]; then
       load_global_prop # Load global properties (Step 1)
       warning -i "$INIT_SUDO_RUN"
-      exec sudo env REAL_USER="$USER" REAL_HOME="$HOME" "$0" "$@"
+      ENV_VARS_TO_PASS=(
+        REAL_USER="$USER"
+        REAL_HOME="$HOME"
+        CONF_TIME_OUT="$CONF_TIME_OUT"
+      )
+      exec sudo env "${ENV_VARS_TO_PASS[@]}" "$0" "$@"
     else
       [[ -z "${REAL_USER:-}" && -z "${SUDO_USER:-}" ]] && {
         export REAL_USER="$USER"
