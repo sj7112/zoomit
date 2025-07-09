@@ -6,7 +6,9 @@ import random
 import subprocess
 import re
 import sys
+import threading
 import time
+import unicodedata
 
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.path
@@ -15,6 +17,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.pat
 # 全局日志配置（放在文件开头）
 LOG_FILE = "/var/log/sj_install.log"
 TMP_FILE_PREFIX = "sj_temp_"
+CONF_TIME_OUT = os.environ.get("CONF_TIME_OUT")
 
 
 def setup_logging():
@@ -197,6 +200,101 @@ def check_dns():
         logging.error(f"check_dns() failed: {e}")
 
     return ""
+
+
+# get timeout value from file
+def get_time_out():
+    if not CONF_TIME_OUT:
+        return 0  # never timeout
+    try:
+        with open(CONF_TIME_OUT, "r") as f:
+            for line in f:
+                if line.startswith("current="):
+                    return int(line.strip().split("=", 1)[1])
+    except Exception:
+        pass
+    return 0  # never timeout
+
+
+# 交换 current 和 backup
+def toggle_time_out():
+    if not CONF_TIME_OUT:
+        return  # exception handler
+    curr, back = "999999", "60"
+    try:
+        with open(CONF_TIME_OUT, "r") as f:
+            for line in f:
+                if line.startswith("current="):
+                    curr = line.strip().split("=", 1)[1]
+                elif line.startswith("backup="):
+                    back = line.strip().split("=", 1)[1]
+    except Exception:
+        pass
+    with open(CONF_TIME_OUT, "w") as f:
+        f.write(f"current={back}\nbackup={curr}\n")
+
+
+def clear_input():
+    sys.stdout.write("\r\033[K")
+    sys.stdout.flush()
+
+
+def show_ctrl_t_feedback():
+    print("^T", end="", flush=True)
+    threading.Thread(target=lambda: (time.sleep(0.3), print("\b\b  \b\b", end="", flush=True)), daemon=True).start()
+
+
+def safe_backspace(prompt: str, response: str) -> str:
+    if not response:
+        return response
+    # remove last character (handling multibyte is tricky in terminal)
+    sys.stdout.write("\b \b")
+    sys.stdout.flush()
+    return response[:-1]
+
+
+def get_display_width(char):
+    """Calculate the display width of a character in the terminal"""
+    if char == "\t":
+        return 4  # Tabs typically occupy 4 spaces
+
+    # Control characters are usually not displayed
+    if unicodedata.category(char).startswith("C"):
+        return 0
+
+    # East Asian character width determination
+    east_asian_width = unicodedata.east_asian_width(char)
+    if east_asian_width in ("F", "W"):  # Fullwidth, Wide
+        return 2
+    elif east_asian_width in ("H", "Na", "N"):  # Halfwidth, Narrow, Neutral
+        return 1
+    elif east_asian_width == "A":  # Ambiguous - It is 1 in most terminals
+        return 1
+    else:
+        return 1
+
+
+def safe_backspace(response: str) -> str:
+    if not response:
+        return response
+
+    # check if multibyte character
+    last_char = response[-1]
+    new_response = response[:-1]
+    display_width = get_display_width(last_char)
+    for _ in range(display_width):
+        sys.stdout.write("\b \b")  # ASCII: Use backspace-space-backspace sequence
+
+    sys.stdout.flush()
+    return new_response
+
+
+def format_prompt_for_raw_mode(prompt):
+    """
+    将提示符格式化为适合 raw 模式的格式
+    在 raw 模式下，需要使用 \r\n 来正确换行
+    """
+    return prompt.replace("\n", "\r\n")
 
 
 # 在程序启动时调用

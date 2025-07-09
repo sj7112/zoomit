@@ -1,9 +1,19 @@
-import os
 from pathlib import Path
 import re
 import signal
 import sys
+import termios
+import tty
 from typing import Callable, Any
+
+from python.system import (
+    clear_input,
+    format_prompt_for_raw_mode,
+    get_time_out,
+    safe_backspace,
+    show_ctrl_t_feedback,
+    toggle_time_out,
+)
 
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.path
@@ -12,7 +22,7 @@ from python.msg_handler import MSG_ERROR, _mf, exiterr, string, warning
 
 # 全局日志配置（放在文件开头）
 LOG_FILE = "/var/log/sj_install.log"
-CONF_TIME_OUT = int(os.environ.get("CONF_TIME_OUT", 0))  # 0=永不超时
+CONF_TIME_OUT = get_time_out()  # 0=永不超时
 
 
 def action_handler(response: Any, option: str, err_handle: Any, error_msg: str) -> Any:
@@ -25,7 +35,8 @@ def action_handler(response: Any, option: str, err_handle: Any, error_msg: str) 
             if err_handle:
                 return err_handle(response, error_msg), None  # 2 = continue, 3 = exit
             else:
-                string("Please enter 'y' for yes, 'n' for no, or press Enter for default")
+                str = _mf("Please enter 'y' for yes, 'n' for no, or press Enter for default")
+                print(f"\r{str}", end="", flush=True)
                 return 2, None  # 2 = continue
         elif re.match(r"^[Yy]$", response):
             return 0, None
@@ -36,7 +47,8 @@ def action_handler(response: Any, option: str, err_handle: Any, error_msg: str) 
     elif option == "number":
         if isinstance(response, str):
             if not re.match(r"^[0-9]+$", response):
-                string(r"[{}] Invalid input! Please enter a number", MSG_ERROR)
+                str = _mf(r"[{}] Invalid input! Please enter a number", MSG_ERROR)
+                print(f"\r{str}", end="", flush=True)
                 return 2, None  # continue
             else:
                 response = int(response)  # Convert to integer
@@ -63,35 +75,82 @@ def do_confirm_action(prompt: str, option: str, no_value: Any, to_value: Any, er
     def timeout_handler(signum, frame):
         raise TimeoutError
 
-    # Set the signal handler and a timeout of 10 seconds
     signal.signal(signal.SIGALRM, timeout_handler)
-    signal.alarm(CONF_TIME_OUT)
+
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
 
     try:
-        # Set prompt suffix based on default value
+        tty.setraw(fd)
         while True:
-            response = input(f"{prompt} ").strip()
-            signal.alarm(0)  # Cancel the alarm if input is successful
-            if response == "":
-                response = no_value
+            response = ""
+            timeout = get_time_out()
+            clear_input()
+            prompt = format_prompt_for_raw_mode(prompt)
+            print(f"{prompt} ", end="", flush=True)
+            signal.alarm(timeout)
 
-            status, response = action_handler(response, option, err_handle, error_msg)
+            while True:
+                try:
+                    ch = sys.stdin.read(1)
+                except KeyboardInterrupt:
+                    raise
+                except Exception:
+                    continue
+
+                if not ch:
+                    continue
+
+                # Enter
+                if ch in ["\n", "\r"]:
+                    print()
+                    break
+
+                # Ctrl+C
+                if ch == "\x03":
+                    raise KeyboardInterrupt
+
+                # Ctrl+D (EOF)
+                if ch == "\x04":
+                    return 1, None
+
+                # Ctrl+T (toggle timeout)
+                if ch == "\x14":
+                    timeout = toggle_time_out()
+                    show_ctrl_t_feedback()
+                    continue
+
+                # Backspace
+                if ch in ["\x7f", "\b"]:
+                    response = safe_backspace(response)
+                    continue
+
+                # Normal input
+                response += ch
+                sys.stdout.write(ch)
+                sys.stdout.flush()
+
+            response = response.strip() or no_value  # trim spaces
+
+            status, result = action_handler(response, option, err_handle, error_msg)
             if status == 2:
                 print()
-                continue  # Continue to prompt again
+                continue
             else:
-                return status, response
+                return status, result
 
     except KeyboardInterrupt:
-        return 130, None  # 130 = 128 + 2 (SIGINT)
-    except TimeoutError:  # 142 = 128 + 14 (SIGALRM)
+        return 130, None
+    except TimeoutError:
         print()
-        status, response = action_handler(to_value, option, err_handle, error_msg)
-        return status, response
+        status, result = action_handler(to_value, option, err_handle, error_msg)
+        return status, result
     except Exception as e:
-        print()
-        string(r"Input processing error: {}", e)
+        print(f"\r\n[Input error]: {e}")
         return 3, None
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)  # restore tty setup
+        signal.alarm(0)
 
 
 def confirm_action(prompt: str, callback: Callable[..., Any] = None, *args: Any, **kwargs: Any) -> Any:

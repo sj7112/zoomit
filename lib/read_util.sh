@@ -16,36 +16,36 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
       if [[ ! "$response" =~ ^[YyNn]$ ]]; then
         if [[ -n $err_handle ]]; then
           "$err_handle" "$response" "$error_msg"
-          exit $? # 2 = continue, 3 = exit
+          return $? # 2 = continue, 3 = exit
         else
           string "Please enter 'y' for yes, 'n' for no, or press Enter for default"
-          exit 2 # 2 = continue
+          return 2 # 2 = continue
         fi
       fi
-      [[ "$response" =~ ^[Yy]$ ]] && exit 0 || exit 1
+      [[ "$response" =~ ^[Yy]$ ]] && return 0 || return 1
 
     # Number option
     elif [[ "$option" == "number" ]]; then
       if [[ ! "$response" =~ ^[0-9]+$ ]]; then
         string "[{}] Invalid input! Please enter a number" "$MSG_ERROR"
-        exit 2 # 2 = continue
+        return 2 # 2 = continue
       elif [[ -n $err_handle ]]; then
         "$err_handle" "$response" "$error_msg"
         local err_code=$?
-        [[ $err_code != 0 ]] && exit $err_code # 2 = continue, 3 = exit
+        [[ $err_code != 0 ]] && return $err_code # 2 = continue, 3 = exit
       fi
       echo "$response" >"$result_f"
-      exit 0
+      return 0
 
     # String option
     elif [[ "$option" == "string" ]]; then
       if [[ -n $err_handle ]]; then
         "$err_handle" "$response" "$error_msg"
         local err_code=$?
-        [[ $err_code != 0 ]] && exit $err_code # 2 = continue, 3 = exit
+        [[ $err_code != 0 ]] && return $err_code # 2 = continue, 3 = exit
       fi
       echo "$response" >"$result_f"
-      exit 0
+      return 0
     fi
 
   }
@@ -59,29 +59,68 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
     local err_handle="$6"
     local error_msg="$7"
 
-    local timeout="${CONF_TIME_OUT:-999999}" # 999999=永不超时
+    local timeout=$(get_time_out) # 999999=永不超时
     local rc
 
-    trap 'exit 130' INT
+    orig_stty=$(stty -g)
+    trap 'stty "$orig_stty"; exit 130' INT # if tty does not show characters, use `stty echo` or `stty sane`
 
     while true; do
-      read -t "$timeout" -rp "$prompt " response
-      rc=$?
-      if [[ $rc -eq 0 ]]; then
-        if [[ -z "$response" ]]; then
-          response=$no_value # set default value
+      response=""
+      start_time=$(date +%s)
+      clear_input
+      echo -n "$prompt " >&2
+
+      while true; do
+        # Read one character with 0.5s timeout for responsiveness
+        read -rsn1 -t 0.5 key
+        rc=$?
+        if [[ $rc -eq 0 ]]; then
+          if [[ -z "$key" ]]; then # Enter (End of line)
+            echo >&2
+            break
+          elif [[ $key == $'\x14' ]]; then # Ctrl+T (timeout toggle)
+            timeout="$(toggle_time_out)"
+            start_time=$(date +%s)
+            show_ctrl_t_feedback
+          elif [[ $key == $'\x7f' || $key == $'\b' ]]; then # Backspace (ASCII 127 | ASCII 8)
+            response=$(safe_backspace "$prompt" "$response")
+          else # Normal character input
+            response+="$key"
+            echo -n "$key" >&2
+          fi
+        elif [[ $rc -gt 128 || $rc -eq 142 ]]; then # Check timeout if response is empty
+          if [[ -z $response ]] && check_timeout "$start_time" "$timeout"; then
+            echo >&2
+            response=$to_value # Timeout reached, set timeout value
+            break
+          fi
+        elif [[ $rc -eq 1 ]]; then
+          break # Ctrl+D (EOF — End Of File)
+        elif [[ $rc -eq 130 ]]; then
+          exit 130 # Ctrl+C to exit (may not run, because "trap" has higher priority)
         else
-          response="${response// /}" # Remove whitespace characters
+          exit $rc # Exit with the error code
         fi
-      elif [[ $rc -eq 130 ]]; then
-        return 130 # 被中断
-      elif [[ $rc -gt 128 ]]; then
-        echo >&2
-        response=$to_value # 超时或其他信号 (包括142)
+      done
+
+      # read -t "$timeout" -rp "$prompt " response
+      # rc=$?
+      # if [[ $rc -eq 0 ]]; then
+      if [[ -z "$response" ]]; then
+        response=$no_value # set default value
       else
-        echo >&2
-        exit $rc
+        response="${response// /}" # Remove whitespace characters
       fi
+      # elif [[ $rc -eq 130 ]]; then
+      #   return 130 # 被中断
+      # elif [[ $rc -gt 128 ]]; then
+      #   echo >&2
+      #   response=$to_value # 超时或其他信号 (包括142)
+      # else
+      #   echo >&2
+      #   exit $rc
+      # fi
 
       action_handler "$result_f" "$response" "$option" "$err_handle" "$error_msg"
       rc=$?

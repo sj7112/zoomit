@@ -40,6 +40,10 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   DISTRO_OSTYPE=""   # Distribution name
   DISTRO_CODENAME="" # Distribution codename | version number
 
+  PY_INST_DIR="" # Python installation directory
+  VENV_DIR=""    # Python virtual environment directory
+  VENV_BIN=""    # Python virtual environment executable
+
   LOG_FILE="/var/log/sj_install.log"
   ERR_FILE="/var/log/sj_pkg_err.log"
 
@@ -54,6 +58,11 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
 
   # ** Environment parameters: package management | os name **
   initial_os_release() {
+    # setup global variables
+    PY_INST_DIR="$REAL_HOME/.local/python-$PY_VERSION"
+    VENV_DIR="$REAL_HOME/.venv"
+    VENV_BIN="$REAL_HOME/.venv/bin/python"
+
     if [ -f /etc/os-release ]; then
       . /etc/os-release
       DISTRO_OSTYPE="$ID"
@@ -106,7 +115,6 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     initial_os_release    # 初始化发行版信息
     initial_language_utf8 # 初始化语言包以支持utf8
     multi_lang_properties # 加载多语言配置文件
-    string "set LANG to {}" "$LANG"
   }
 
   # ==============================================================================
@@ -220,21 +228,24 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   # Feature 5: Close resources
   # --------------------------
   close_all() {
-    sh_clear_cache
     destroy_temp_files
+    stty sane # Reset terminal settings
+    sh_clear_cache
   }
 
   # ==============================================================================
   # Main Function
   # ==============================================================================
   init_main() {
+    trap 'echo; close_all' EXIT INT TERM
     initial_global # Set environment variables
     echo -e "\n=== $INIT_SYSTEM_START - $PRETTY_NAME ===\n"
     initial_environment # Initialize basic values
     configure_sshd      # Configure SSH
     configure_ip        # Configure static IP
     # docker_compose # Install Docker software
-    close_all # close python cache
+    trap - EXIT # 取消 EXIT trap
+    close_all   # close python cache
     echo -e "\n=== $INIT_SYSTEM_END - $PRETTY_NAME ==="
   }
 
@@ -291,7 +302,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
           exit 0
           ;;
         -t | --timeout)
-          export CONF_TIME_OUT="$2"
+          init_time_out "$2" # Initialize timeout value
           shift 2
           ;;
         --)

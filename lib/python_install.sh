@@ -494,11 +494,6 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
   # Main function: create venv, install pip
   # ==============================================================================
   create_py_venv() {
-    # setup global variables
-    PY_INST_DIR="$REAL_HOME/.local/python-$PY_VERSION"
-    VENV_DIR="$REAL_HOME/.venv"
-    VENV_BIN="$REAL_HOME/.venv/bin/python"
-
     # create ~/.venv; install pip; install third party packages
     if install_py_venv; then
       local INFO_ICON=$([ "$TERM_SUPPORT_UTF8" -eq 0 ] && echo "🌍" || echo "[${MSG_INFO}]")

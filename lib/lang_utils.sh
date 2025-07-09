@@ -106,7 +106,7 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
       fi
     done
 
-    local timeout="${CONF_TIME_OUT:-999999}" # 999999=永不超时
+    local timeout="$(get_time_out)" # 999999=永不超时
     local rc
     # reset language
     local input_lang
@@ -120,12 +120,12 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
         else
           response="${response// /}" # Remove whitespace characters
         fi
-      elif [[ $rc -eq 130 ]]; then
-        echo >&2
-        return 130 # 被中断
       elif [[ $rc -gt 128 ]]; then
         echo >&2
         response=$default_lang # 超时或其他信号 (包括142)
+      elif [[ $rc -eq 130 ]]; then
+        echo >&2
+        return 130 # 被中断
       else
         echo >&2
         exit $rc
@@ -250,6 +250,7 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
     export LANGUAGE="${base}:${short}" # Set LANGUAGE
     load_global_prop                   # Load global properties (Step 2)
 
+    string "$INIT_SHELL_LANG_SETUP" "$LANG"
     new_lang=$(reset_user_locale "$new_lang" "$curr_lang") # Permanently change LANG and LANGUAGE
 
   }
