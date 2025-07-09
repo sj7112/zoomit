@@ -279,12 +279,12 @@ class MirrorTester:
         print()  # return line
 
         # 1 filter：Remove mirrors that are completely inaccessible
-        valid_results = [r for r in fastest_results if r.success_rate > 0 and r.avg_speed > 0]
-        if not valid_results:
+        results = [r for r in fastest_results if r.success_rate > 0 and r.avg_speed > 0]
+        if not results:
             return None
 
         # 2 sort the results
-        top_10 = self.filter_and_rank_mirrors(valid_results)
+        top_10 = self.filter_and_rank_mirrors(results)
 
         # 3 print the result
         self.print_results(top_10)
@@ -379,8 +379,7 @@ class MirrorTester:
             default = True
             prompt = _mf("Would you like to reselect a mirror?")
             if self.curr_mirror:
-                choose = _mf(r"Current {} mirror", self.os_info.package_mgr)
-                prompt = f"{choose}: {self.curr_mirror}\n{prompt}"
+                string(r"Current {} mirror: {}", self.os_info.package_mgr, self.curr_mirror)
                 default = False
 
             # 2. update mirrors

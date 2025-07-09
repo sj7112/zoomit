@@ -100,7 +100,7 @@ class CentosMirrorTester(MirrorTester):
     def check_file(self, file_path):
         """filepath and urls"""
         current_section = None
-        valid_sections = ["Base", "Updates", "Extras"]
+        all_sections = ["Base", "Updates", "Extras"]
 
         with open(file_path, "r", encoding="utf-8") as f:
             for line in f:
@@ -110,7 +110,7 @@ class CentosMirrorTester(MirrorTester):
 
                 # match name=
                 if line.startswith("name="):
-                    for section in valid_sections:
+                    for section in all_sections:
                         if line.endswith(section):
                             current_section = section
                             break
