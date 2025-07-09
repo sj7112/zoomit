@@ -122,7 +122,10 @@ class UbuntuMirrorTester(MirrorTester):
         def valid_fetch_mirror_list(country_code, error_msg):
             """Validate mirror list fetch"""
             if country_code.upper() not in countries:
-                string(r"国家代码 {} 不存在于列表中！请核对 http://mirrors.ubuntu.com/", country_code)
+                string(
+                    r"Country code {} does not exist in the list! Please verify http://mirrors.ubuntu.com/",
+                    country_code,
+                )
                 return 2
             return 0
 
@@ -134,7 +137,7 @@ class UbuntuMirrorTester(MirrorTester):
         countries = re.findall(r'<a href="([A-Z]{2})\.txt', response.text)
         countries = sorted(set(countries))
 
-        prompt = _mf(r"请选择国家/地区代码 (回车使用默认值 '{}'):", self.system_country)
+        prompt = _mf(r"Please select a country/region code (press Enter to use the default '{}'):", self.system_country)
         status, country_code = confirm_action(
             prompt, option="string", no_value=self.system_country, err_handle=valid_fetch_mirror_list
         )

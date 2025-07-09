@@ -237,15 +237,13 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   # Main Function
   # ==============================================================================
   init_main() {
-    trap 'echo; close_all' EXIT INT TERM
     initial_global # Set environment variables
     echo -e "\n=== $INIT_SYSTEM_START - $PRETTY_NAME ===\n"
     initial_environment # Initialize basic values
     configure_sshd      # Configure SSH
     configure_ip        # Configure static IP
     # docker_compose # Install Docker software
-    trap - EXIT # 取消 EXIT trap
-    close_all   # close python cache
+    close_all # close python cache
     echo -e "\n=== $INIT_SYSTEM_END - $PRETTY_NAME ==="
   }
 

@@ -337,11 +337,9 @@ class MirrorTester:
             self.update_pm_file(selected_mirror)  # Update PM configuration file
             return pm_refresh()  # refresh PM configuration
 
-        def valid_choose_mirror(choice: Any, error_msg: str) -> int:
-            if choice.isdigit():
-                choice_num = int(choice)
-                if 0 <= choice_num <= tot_len:
-                    return 0  # valid input
+        def valid_choose_mirror(choice: int, error_msg: str) -> int:
+            if 0 <= choice <= tot_len:
+                return 0  # valid input
 
             print(error_msg)
             return 2  # invalid, continue

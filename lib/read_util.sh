@@ -27,7 +27,7 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
     # Number option
     elif [[ "$option" == "number" ]]; then
       if [[ ! "$response" =~ ^[0-9]+$ ]]; then
-        string "[{}] Invalid input! Please enter a number" "$MSG_ERROR"
+        string "Invalid input! Please enter a number"
         return 2 # 2 = continue
       elif [[ -n $err_handle ]]; then
         "$err_handle" "$response" "$error_msg"
@@ -62,8 +62,7 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
     local timeout=$(get_time_out) # 999999=永不超时
     local rc
 
-    orig_stty=$(stty -g)
-    trap 'stty "$orig_stty"; exit 130' INT # if tty does not show characters, use `stty echo` or `stty sane`
+    trap 'echo >&2; exit 130' INT # if tty does not show characters, use `stty echo` or `stty sane`
 
     while true; do
       response=""
@@ -97,9 +96,8 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
           fi
         elif [[ $rc -eq 1 ]]; then
           break # Ctrl+D (EOF — End Of File)
-        elif [[ $rc -eq 130 ]]; then
-          exit 130 # Ctrl+C to exit (may not run, because "trap" has higher priority)
         else
+          echo >&2
           exit $rc # Exit with the error code
         fi
       done
@@ -188,7 +186,7 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
     done
 
     # set default messages if not provided
-    msg="${msg:-$(_mf "Operation cancelled")}"
+    msg="${msg:-$MSG_OPER_CANCELLED}"
     no_msg="${no_msg:-${msg}}"
     error_msg="${error_msg:-${msg}}"
     exit_msg="${exit_msg:-${msg}}"
@@ -208,10 +206,14 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
 
     # Use result_f to store the user's input (only for number | string callback)
     local result_f=$([[ $option != "bool" ]] && generate_temp_file || echo "") # Generate a temp file
+
+    local orig_stty=$(stty -g)
     set +e
     (do_confirm_action "$result_f" "$prompt" "$option" "$no_value" "$to_value" "$err_handle" "$error_msg")
     local rc=$?
+    clear_input
     set -e
+    stty "$orig_stty"
 
     # echo "ON_EXIT_CODE = $ON_EXIT_CODE"
     if [[ "$rc" -eq 0 ]]; then
@@ -228,10 +230,8 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
     elif [[ "$rc" -eq 2 || "$rc" -eq 3 ]]; then
       warning "$error_msg"
     elif [[ "$rc" -eq 130 ]]; then
-      echo
       warning "$exit_msg"
     else
-      echo
       exiterr "$exit_msg"
     fi
     return $rc

@@ -108,6 +108,14 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
 
     local timeout="$(get_time_out)" # 999999=永不超时
     local rc
+
+    on_exit() {
+      echo >&2
+      warning -i "$MSG_OPER_CANCELLED"
+      exit 130 # Exit with code 130 on Ctrl+C
+    }
+
+    trap 'on_exit' INT
     # reset language
     local input_lang
     while true; do
@@ -123,9 +131,6 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
       elif [[ $rc -gt 128 ]]; then
         echo >&2
         response=$default_lang # 超时或其他信号 (包括142)
-      elif [[ $rc -eq 130 ]]; then
-        echo >&2
-        return 130 # 被中断
       else
         echo >&2
         exit $rc
@@ -140,6 +145,7 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
       return 0
 
     done
+    trap - INT # Reset trap
   }
 
   # Update or add LANG setting to ~/.profile

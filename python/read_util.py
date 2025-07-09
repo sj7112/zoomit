@@ -18,7 +18,7 @@ from python.system import (
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.path
 
-from python.msg_handler import MSG_ERROR, _mf, exiterr, string, warning
+from python.msg_handler import MSG_ERROR, MSG_OPER_CANCELLED, _mf, exiterr, string, warning
 
 # 全局日志配置（放在文件开头）
 LOG_FILE = "/var/log/sj_install.log"
@@ -35,8 +35,7 @@ def action_handler(response: Any, option: str, err_handle: Any, error_msg: str) 
             if err_handle:
                 return err_handle(response, error_msg), None  # 2 = continue, 3 = exit
             else:
-                str = _mf("Please enter 'y' for yes, 'n' for no, or press Enter for default")
-                print(f"\r{str}", end="", flush=True)
+                string("Please enter 'y' for yes, 'n' for no, or press Enter for default")
                 return 2, None  # 2 = continue
         elif re.match(r"^[Yy]$", response):
             return 0, None
@@ -47,8 +46,7 @@ def action_handler(response: Any, option: str, err_handle: Any, error_msg: str) 
     elif option == "number":
         if isinstance(response, str):
             if not re.match(r"^[0-9]+$", response):
-                str = _mf(r"[{}] Invalid input! Please enter a number", MSG_ERROR)
-                print(f"\r{str}", end="", flush=True)
+                string("Invalid input! Please enter a number")
                 return 2, None  # continue
             else:
                 response = int(response)  # Convert to integer
@@ -83,9 +81,9 @@ def do_confirm_action(prompt: str, option: str, no_value: Any, to_value: Any, er
     try:
         tty.setraw(fd)
         while True:
+            clear_input()
             response = ""
             timeout = get_time_out()
-            clear_input()
             prompt = format_prompt_for_raw_mode(prompt)
             print(f"{prompt} ", end="", flush=True)
             signal.alarm(timeout)
@@ -103,7 +101,7 @@ def do_confirm_action(prompt: str, option: str, no_value: Any, to_value: Any, er
 
                 # Enter
                 if ch in ["\n", "\r"]:
-                    print()
+                    print("\r\n", end="", flush=True)
                     break
 
                 # Ctrl+C
@@ -134,21 +132,23 @@ def do_confirm_action(prompt: str, option: str, no_value: Any, to_value: Any, er
 
             status, result = action_handler(response, option, err_handle, error_msg)
             if status == 2:
-                print()
+                print("\r\n", end="", flush=True)
                 continue
             else:
                 return status, result
 
     except KeyboardInterrupt:
+        print("\r\n", end="", flush=True)
         return 130, None
     except TimeoutError:
-        print()
+        print("\r\n", end="", flush=True)
         status, result = action_handler(to_value, option, err_handle, error_msg)
         return status, result
     except Exception as e:
         print(f"\r\n[Input error]: {e}")
         return 3, None
     finally:
+        clear_input()  # Cursor move to the beginning of the line
         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)  # restore tty setup
         signal.alarm(0)
 
@@ -173,7 +173,7 @@ def confirm_action(prompt: str, callback: Callable[..., Any] = None, *args: Any,
     option = kwargs.pop("option", "bool")  # Default option is bool
 
     # set default messages if not provided
-    msg = kwargs.pop("msg", _mf("Operation cancelled"))
+    msg = kwargs.pop("msg", MSG_OPER_CANCELLED)
     no_msg = kwargs.pop("no_msg", msg)
     error_msg = kwargs.pop("error_msg", msg)
     exit_msg = kwargs.pop("exit_msg", msg)
@@ -204,10 +204,8 @@ def confirm_action(prompt: str, callback: Callable[..., Any] = None, *args: Any,
     elif status == 2 or status == 3:
         warning(error_msg)
     elif status == 130:
-        print()
         warning(exit_msg)
     else:
-        print()
         exiterr(exit_msg)
 
     if option == "bool":

@@ -110,7 +110,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     }
 
     # Begin trap (to prevent affecting global scope)
-    trap on_exit INT TERM EXIT
+    trap on_exit INT TERM
 
     local counter=0
     local prev_size=0
@@ -202,7 +202,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     wait "$pid"
 
     # Remove trap (to avoid affecting other code)
-    trap - INT TERM EXIT
+    trap - INT TERM
     local exit_code=$?
     if [ $exit_code -eq 0 ] && [ $ON_EXIT_CODE -ne 0 ]; then
       exit_code=$ON_EXIT_CODE # pass exit code (on_exit cannot directly return code because of BASH limitation)
@@ -486,7 +486,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     confirm_action "$prompt" do_choose_pip_mirror \
       option="number" no_value="0" to_value="1" \
       err_handle="valid_choose_pip_mirror" \
-      error_msg="$(_mf "[{}] Invalid input! Please enter a number between 0 and {}" "$MSG_ERROR" "$len")" \
+      error_msg="$(_mf "Invalid input! Please enter a number between 0 and {}" "$len")" \
       exit_msg="$(_mf "Skipping mirror selection")"
   }
 
