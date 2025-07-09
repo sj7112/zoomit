@@ -19,7 +19,16 @@ from python.system import (
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.path
 
-from python.msg_handler import MSG_ERROR, MSG_OPER_CANCELLED, _mf, exiterr, string, warning
+from python.msg_handler import (
+    MSG_ERROR,
+    MSG_OPER_CANCELLED,
+    MSG_OPER_FAIL_BOOL,
+    MSG_OPER_FAIL_NUMBER,
+    _mf,
+    exiterr,
+    string,
+    warning,
+)
 
 # 全局日志配置（放在文件开头）
 LOG_FILE = "/var/log/sj_install.log"
@@ -35,7 +44,7 @@ def action_handler(response: Any, option: str, err_handle: Any, error_msg: str) 
             if err_handle:
                 return err_handle(response, error_msg), None  # 2 = continue, 3 = exit
             else:
-                string("Please enter 'y' for yes, 'n' for no, or press Enter for default")
+                string(f"{MSG_OPER_FAIL_BOOL}")
                 return 2, None  # 2 = continue
         elif re.match(r"^[Yy]$", response):
             return 0, None
@@ -46,7 +55,7 @@ def action_handler(response: Any, option: str, err_handle: Any, error_msg: str) 
     elif option == "number":
         if isinstance(response, str):
             if not re.match(r"^[0-9]+$", response):
-                string("Invalid input! Please enter a number")
+                string(f"{MSG_OPER_FAIL_NUMBER}")
                 return 2, None  # continue
             else:
                 response = int(response)  # Convert to integer

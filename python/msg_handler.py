@@ -102,6 +102,8 @@ MSG_SUCCESS = os.environ.get("MSG_SUCCESS")
 MSG_WARNING = os.environ.get("MSG_WARNING")
 MSG_INFO = os.environ.get("MSG_INFO")
 MSG_OPER_CANCELLED = os.environ.get("MSG_OPER_CANCELLED")
+MSG_OPER_FAIL_BOOL = os.environ.get("MSG_OPER_FAIL_BOOL")
+MSG_OPER_FAIL_NUMBER = os.environ.get("MSG_OPER_FAIL_NUMBER")
 
 
 # ==============================================================================

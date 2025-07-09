@@ -18,7 +18,7 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
           "$err_handle" "$response" "$error_msg"
           return $? # 2 = continue, 3 = exit
         else
-          string "Please enter 'y' for yes, 'n' for no, or press Enter for default"
+          string "$MSG_OPER_FAIL_BOOL"
           return 2 # 2 = continue
         fi
       fi
@@ -27,7 +27,7 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
     # Number option
     elif [[ "$option" == "number" ]]; then
       if [[ ! "$response" =~ ^[0-9]+$ ]]; then
-        string "Invalid input! Please enter a number"
+        string "$MSG_OPER_FAIL_NUMBER"
         return 2 # 2 = continue
       elif [[ -n $err_handle ]]; then
         "$err_handle" "$response" "$error_msg"
