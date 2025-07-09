@@ -22,7 +22,6 @@ from python.msg_handler import MSG_ERROR, MSG_OPER_CANCELLED, _mf, exiterr, stri
 
 # 全局日志配置（放在文件开头）
 LOG_FILE = "/var/log/sj_install.log"
-CONF_TIME_OUT = get_time_out()  # 0=永不超时
 
 
 def action_handler(response: Any, option: str, err_handle: Any, error_msg: str) -> Any:
@@ -80,10 +79,10 @@ def do_confirm_action(prompt: str, option: str, no_value: Any, to_value: Any, er
 
     try:
         tty.setraw(fd)
+        timeout = get_time_out()
         while True:
             clear_input()
             response = ""
-            timeout = get_time_out()
             prompt = format_prompt_for_raw_mode(prompt)
             print(f"{prompt} ", end="", flush=True)
             signal.alarm(timeout)
