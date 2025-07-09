@@ -259,7 +259,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
       ENV_VARS_TO_PASS=(
         REAL_USER="$USER"
         REAL_HOME="$HOME"
-        CONF_TIME_OUT="${CONF_TIME_OUT:-}"
+        TIMEOUT_FILE="${TIMEOUT_FILE:-}"
       )
       exec sudo env "${ENV_VARS_TO_PASS[@]}" "$0" "$@"
     else
