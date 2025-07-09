@@ -62,13 +62,13 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
     local timeout=$(get_time_out) # 999999=永不超时
     local rc
 
-    trap 'echo >&2; exit 130' INT # if tty does not show characters, use `stty echo` or `stty sane`
+    trap 'printf "\n" >&2; exit 130' INT # if tty does not show characters, use `stty echo` or `stty sane`
 
     while true; do
       response=""
       start_time=$(date +%s)
       clear_input
-      echo -n "$prompt " >&2
+      printf "%s " "$prompt" >&2
 
       while true; do
         # Read one character with 0.5s timeout for responsiveness
@@ -76,28 +76,31 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
         rc=$?
         if [[ $rc -eq 0 ]]; then
           if [[ -z "$key" ]]; then # Enter (End of line)
-            echo >&2
+            response=$(return_feedback "$response" "$no_value")
             break
+
           elif [[ $key == $'\x18' ]]; then # Ctrl+X (timeout toggle)
-            timeout="$(toggle_time_out)"
+            timeout=$(toggle_time_out)
             start_time=$(date +%s)
-            show_ctrl_t_feedback
+
           elif [[ $key == $'\x7f' || $key == $'\b' ]]; then # Backspace (ASCII 127 | ASCII 8)
             response=$(safe_backspace "$prompt" "$response")
+            [[ -z "$response" ]] && start_time=$(date +%s)
+
           else # Normal character input
             response+="$key"
-            echo -n "$key" >&2
+            printf "%s" "$key" >&2
           fi
+
         elif [[ $rc -gt 128 || $rc -eq 142 ]]; then # Check timeout if response is empty
-          if [[ -z $response ]] && check_timeout "$start_time" "$timeout"; then
-            echo >&2
-            response=$to_value # Timeout reached, set timeout value
-            break
-          fi
+          response=$(check_timeout "$response" "$to_value" "$start_time" "$timeout")
+          [[ $? == 0 ]] && break
+
         elif [[ $rc -eq 1 ]]; then
           break # Ctrl+D (EOF — End Of File)
+
         else
-          echo >&2
+          printf "\n" >&2
           exit $rc # Exit with the error code
         fi
       done
@@ -105,25 +108,24 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
       # read -t "$timeout" -rp "$prompt " response
       # rc=$?
       # if [[ $rc -eq 0 ]]; then
-      if [[ -z "$response" ]]; then
-        response=$no_value # set default value
-      else
-        response="${response// /}" # Remove whitespace characters
-      fi
+      # if [[ -z "$response" ]]; then
+      #   response=$no_value # set default value
+      # else
+      #   response="${response// /}" # Remove whitespace characters
+      # fi
       # elif [[ $rc -eq 130 ]]; then
       #   return 130 # 被中断
       # elif [[ $rc -gt 128 ]]; then
-      #   echo >&2
+      #   printf "\n" >&2
       #   response=$to_value # 超时或其他信号 (包括142)
       # else
-      #   echo >&2
+      #   printf "\n" >&2
       #   exit $rc
       # fi
-
       action_handler "$result_f" "$response" "$option" "$err_handle" "$error_msg"
       rc=$?
       if [[ $rc -eq 2 ]]; then
-        echo >&2
+        printf "\n" >&2
         continue # Continue to prompt again
       else
         exit $rc # Exit the function

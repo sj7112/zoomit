@@ -17,7 +17,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.pat
 # 全局日志配置（放在文件开头）
 LOG_FILE = "/var/log/sj_install.log"
 TMP_FILE_PREFIX = "sj_temp_"
-CONF_TIME_OUT = os.environ.get("CONF_TIME_OUT")
+TIMEOUT_FILE = os.environ.get("TIMEOUT_FILE")
 
 
 def setup_logging():
@@ -202,27 +202,49 @@ def check_dns():
     return ""
 
 
-# get timeout value from file
+# ==============================================================================
+# functions to support read_util.py
+# ==============================================================================
+def init_time_out(value: int = 0) -> str:
+    """
+    init timeout value and set the evironment variable
+    This function is used for testing purposes.
+    """
+    tempfile = generate_temp_file()
+    with open(tempfile, "w") as tmp:
+        tmp.write(f"current={value}\n")
+        tmp.write("backup=999999\n")
+    os.environ["TIMEOUT_FILE"] = tempfile
+    global TIMEOUT_FILE
+    TIMEOUT_FILE = tempfile  # Update global variable
+    return tempfile
+
+
 def get_time_out():
-    if not CONF_TIME_OUT:
-        return 0  # never timeout
+    """
+    get timeout value from file
+    """
+    if not TIMEOUT_FILE:
+        return 999999  # never timeout
     try:
-        with open(CONF_TIME_OUT, "r") as f:
+        with open(TIMEOUT_FILE, "r") as f:
             for line in f:
                 if line.startswith("current="):
                     return int(line.strip().split("=", 1)[1])
     except Exception:
         pass
-    return 0  # never timeout
+    return 999999  # never timeout
 
 
-# 交换 current 和 backup
 def toggle_time_out():
-    if not CONF_TIME_OUT:
+    """
+    switch timeout value
+    """
+    if not TIMEOUT_FILE:
         return  # exception handler
     curr, back = "999999", "60"
     try:
-        with open(CONF_TIME_OUT, "r") as f:
+        with open(TIMEOUT_FILE, "r") as f:
             for line in f:
                 if line.startswith("current="):
                     curr = line.strip().split("=", 1)[1]
@@ -230,18 +252,27 @@ def toggle_time_out():
                     back = line.strip().split("=", 1)[1]
     except Exception:
         pass
-    with open(CONF_TIME_OUT, "w") as f:
+    with open(TIMEOUT_FILE, "w") as f:
         f.write(f"current={back}\nbackup={curr}\n")
+
+    def do_erase():
+        time.sleep(0.3)
+        length = 3 + len(back)
+        sequence = "\b" * length + " " * length + "\b" * length
+        print(sequence, end="", flush=True)
+
+    # print ^X and clean after 0.3s
+    print(f"^X={back}", end="", flush=True)
+    threading.Thread(target=do_erase, daemon=True).start()
+    return int(back)
 
 
 def clear_input():
+    """
+    Function to clear the input buffer (incl. Enter, spaces, etc.)
+    """
     sys.stdout.write("\r\033[K")
     sys.stdout.flush()
-
-
-def show_ctrl_t_feedback():
-    print("^X", end="", flush=True)
-    threading.Thread(target=lambda: (time.sleep(0.3), print("\b\b  \b\b", end="", flush=True)), daemon=True).start()
 
 
 def safe_backspace(prompt: str, response: str) -> str:
@@ -254,7 +285,9 @@ def safe_backspace(prompt: str, response: str) -> str:
 
 
 def get_display_width(char):
-    """Calculate the display width of a character in the terminal"""
+    """
+    Calculate the display width of a character in the terminal
+    """
     if char == "\t":
         return 4  # Tabs typically occupy 4 spaces
 
@@ -289,12 +322,13 @@ def safe_backspace(response: str) -> str:
     return new_response
 
 
-def format_prompt_for_raw_mode(prompt):
+def print_prompt_for_raw_mode(prompt):
     """
     将提示符格式化为适合 raw 模式的格式
     在 raw 模式下，需要使用 \r\n 来正确换行
     """
-    return prompt.replace("\n", "\r\n")
+    prompt = prompt.replace("\n", "\r\n")
+    print(f"{prompt} ", end="", flush=True)
 
 
 # 在程序启动时调用

@@ -66,7 +66,7 @@ if [[ -z "${LOADED_SYSTEM:-}" ]]; then
   }
 
   # ==============================================================================
-  # functions to support read -rsn1
+  # functions to support read_util.sh
   # ==============================================================================
   # init timeout value and set the evironment variable
   init_time_out() {
@@ -75,33 +75,43 @@ if [[ -z "${LOADED_SYSTEM:-}" ]]; then
 current=$1
 backup=999999
 EOF
-    export CONF_TIME_OUT="$filename"
+    export TIMEOUT_FILE="$filename"
   }
 
   # get timeout value from file
   get_time_out() {
-    if [[ -z "${CONF_TIME_OUT:-}" || ! -f "$CONF_TIME_OUT" ]]; then
+    if [[ -z "${TIMEOUT_FILE:-}" || ! -f "$TIMEOUT_FILE" ]]; then
       echo "999999" # not set, return default value
     else
-      local val=$(grep '^current=' "$CONF_TIME_OUT" | cut -d'=' -f2)
+      local val=$(grep '^current=' "$TIMEOUT_FILE" | cut -d'=' -f2)
       echo "${val:-999999}" # return value from the file
     fi
   }
 
   # switch timeout value
   toggle_time_out() {
-    if [[ -z "${CONF_TIME_OUT:-}" || ! -f "$CONF_TIME_OUT" ]]; then
-      echo "999999" # not set, return default value
-    else
-      local curr=$(grep '^current=' "$CONF_FILE" | cut -d'=' -f2)
-      local back=$(grep '^backup=' "$CONF_FILE" | cut -d'=' -f2)
-      echo -e "current=$back\nbackup=$curr" >"$CONF_FILE"
-      # Provide default values to prevent incomplete file content
-      curr="${curr:-999999}"
-      back="${back:-60}"
-      echo -e "current=$back\nbackup=$curr" >"$CONF_FILE"
-      echo "$back" # return the new value
+    local timeout="999999" # default value
+    if [[ -n "${TIMEOUT_FILE}" && -f "$TIMEOUT_FILE" ]]; then
+      local curr="999999"
+      local back="60"
+      while IFS='=' read -r key val; do
+        case "$key" in
+          current) curr="$val" ;;
+          backup) back="$val" ;;
+        esac
+      done <"$TIMEOUT_FILE"
+      echo -e "current=$back\nbackup=$curr" >"$TIMEOUT_FILE"
+      timeout="$back" # switch to backup value
     fi
+    echo "$timeout" # return the new value
+
+    # print ^X and clean after 0.3s
+    printf "^X=%s" "$timeout" >&2
+    (
+      sleep 0.3
+      len=$((3 + ${#timeout}))
+      printf -- '\b%.0s %.0s\b%.0s' $(seq 1 $len) $(seq 1 $len) $(seq 1 $len) >&2
+    ) &
   }
 
   # Function to clear the input buffer (incl. Enter, spaces, etc.)
@@ -110,13 +120,15 @@ EOF
     while read -r -t 0.01 dummy; do :; done 2>/dev/null
   }
 
-  show_ctrl_t_feedback() {
-    printf "^X" >&2
-    # 后台进程，0.3秒后清除
-    (
-      sleep 0.3
-      printf "\b\b  \b\b" >&2
-    ) &
+  return_feedback() {
+    local response="$1" # current input
+    local no_value="$2"
+    if [[ -z "$response" ]]; then
+      echo "$no_value" # set default value
+    else
+      echo "${response// /}" # Remove whitespace characters
+    fi
+    printf "\n" >&2
   }
 
   safe_backspace() {
@@ -134,9 +146,9 @@ EOF
 
     new_response="${response%?}"
     if [[ $byte_length -gt 1 ]]; then
-      echo -ne "\r$prompt $new_response\033[K" >&2 # multibyte character: Redraw the entire line
+      printf "\r%s %s\033[K" "$prompt" "$new_response" >&2 # multibyte character: Redraw the entire line
     else
-      echo -ne "\b \b" >&2 # ASCII: Use backspace-space-backspace sequence
+      printf "\b \b" >&2 # ASCII: Use backspace-space-backspace sequence
     fi
 
     echo "$new_response"
@@ -144,9 +156,19 @@ EOF
 
   # Check if timeout is reached
   check_timeout() {
-    local start_time=$1
-    local timeout=$2
-    (($(date +%s) - start_time >= timeout))
+    local response="$1"
+    local to_value="$2"
+    local start_time="$3"
+    local timeout="$4"
+
+    if [[ -z $response && $(($(date +%s) - start_time)) -ge timeout ]]; then
+      echo "$to_value"
+      printf "%s\n" "$to_value" >&2
+      return 0
+    fi
+
+    echo "$response"
+    return 1
   }
 
 fi

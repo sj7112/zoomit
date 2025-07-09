@@ -1,5 +1,6 @@
 from pathlib import Path
 import re
+import select
 import signal
 import sys
 import termios
@@ -8,10 +9,10 @@ from typing import Callable, Any
 
 from python.system import (
     clear_input,
-    format_prompt_for_raw_mode,
+    print_prompt_for_raw_mode,
     get_time_out,
+    init_time_out,
     safe_backspace,
-    show_ctrl_t_feedback,
     toggle_time_out,
 )
 
@@ -73,61 +74,66 @@ def do_confirm_action(prompt: str, option: str, no_value: Any, to_value: Any, er
         raise TimeoutError
 
     signal.signal(signal.SIGALRM, timeout_handler)
-
     fd = sys.stdin.fileno()
     old_settings = termios.tcgetattr(fd)
 
+    # init_time_out(5) # Testing: Initialize timeout to 5 seconds
+    timeout = get_time_out()
+
     try:
         tty.setraw(fd)
-        timeout = get_time_out()
         while True:
             clear_input()
             response = ""
-            prompt = format_prompt_for_raw_mode(prompt)
-            print(f"{prompt} ", end="", flush=True)
+            print_prompt_for_raw_mode(prompt)
             signal.alarm(timeout)
 
             while True:
                 try:
-                    ch = sys.stdin.read(1)
-                except KeyboardInterrupt:
-                    raise
-                except Exception:
-                    continue
+                    # Use select to prevent read() fully blocking
+                    ready, _, _ = select.select([sys.stdin], [], [], 0.5)  # 0.5s timeout
+                    if ready:
+                        ch = sys.stdin.read(1)
+                        if not ch:
+                            continue
 
-                if not ch:
-                    continue
+                        # Enter
+                        if ch in ["\n", "\r"]:
+                            response = response.strip() or no_value  # trim spaces
+                            print("\r\n", end="", flush=True)
+                            break
 
-                # Enter
-                if ch in ["\n", "\r"]:
+                        # Ctrl+C
+                        if ch == "\x03":
+                            raise KeyboardInterrupt
+
+                        # Ctrl+D (EOF)
+                        if ch == "\x04":
+                            break
+
+                        # Ctrl+X (toggle timeout)
+                        if ch == "\x18":
+                            timeout = toggle_time_out()
+                            signal.alarm(timeout)
+                            continue
+
+                        # Backspace
+                        if ch in ["\x7f", "\b"]:
+                            response = safe_backspace(response)
+                            if not response:
+                                signal.alarm(timeout)
+                            continue
+
+                        # Normal input
+                        response += ch
+                        signal.alarm(0)  # Reset timeout
+                        sys.stdout.write(ch)
+                        sys.stdout.flush()
+
+                except TimeoutError:
+                    response = to_value  # Use timeout default value
                     print("\r\n", end="", flush=True)
                     break
-
-                # Ctrl+C
-                if ch == "\x03":
-                    raise KeyboardInterrupt
-
-                # Ctrl+D (EOF)
-                if ch == "\x04":
-                    return 1, None
-
-                # Ctrl+X (toggle timeout)
-                if ch == "\x18":
-                    timeout = toggle_time_out()
-                    show_ctrl_t_feedback()
-                    continue
-
-                # Backspace
-                if ch in ["\x7f", "\b"]:
-                    response = safe_backspace(response)
-                    continue
-
-                # Normal input
-                response += ch
-                sys.stdout.write(ch)
-                sys.stdout.flush()
-
-            response = response.strip() or no_value  # trim spaces
 
             status, result = action_handler(response, option, err_handle, error_msg)
             if status == 2:
@@ -139,13 +145,11 @@ def do_confirm_action(prompt: str, option: str, no_value: Any, to_value: Any, er
     except KeyboardInterrupt:
         print("\r\n", end="", flush=True)
         return 130, None
-    except TimeoutError:
-        print("\r\n", end="", flush=True)
-        status, result = action_handler(to_value, option, err_handle, error_msg)
-        return status, result
+
     except Exception as e:
-        print(f"\r\n[Input error]: {e}")
+        print(f"\r\n[{MSG_ERROR}]: {e}")
         return 3, None
+
     finally:
         clear_input()  # Cursor move to the beginning of the line
         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)  # restore tty setup
