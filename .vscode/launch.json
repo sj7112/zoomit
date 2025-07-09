@@ -26,6 +26,7 @@
             // "program": "${workspaceFolder}/bin/deb/init_debian.sh",
             // "program": "${workspaceFolder}/bin/cos/init_centos.sh",
             "args": [
+                //"--timeout=500"
                 // "--version"
             ],
             "env": {
@@ -158,10 +159,10 @@
             "request": "launch",
             "program": "${workspaceFolder}/myshell.py",
             "args": [
-                "sh_fix_ip",
+                // "sh_fix_ip",
                 // "sh_configure_sshd",
                 // ""
-                // "sh_update_source",
+                "sh_update_source",
                 "debian",
                 // "ubuntu",
                 // "centos",

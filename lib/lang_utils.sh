@@ -129,6 +129,7 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
           response="${response// /}" # Remove whitespace characters
         fi
       elif [[ $rc -gt 128 ]]; then
+        echo "hahahah" >&2
         echo >&2
         response=$default_lang # 超时或其他信号 (包括142)
       else

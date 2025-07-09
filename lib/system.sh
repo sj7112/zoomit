@@ -144,7 +144,8 @@ EOF
 
   # Check if timeout is reached
   check_timeout() {
-    local start_time=$1 timeout=$2
+    local start_time=$1
+    local timeout=$2
     (($(date +%s) - start_time >= timeout))
   }
 
