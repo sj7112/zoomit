@@ -112,8 +112,8 @@ def do_confirm_action(prompt: str, option: str, no_value: Any, to_value: Any, er
                 if ch == "\x04":
                     return 1, None
 
-                # Ctrl+T (toggle timeout)
-                if ch == "\x14":
+                # Ctrl+X (toggle timeout)
+                if ch == "\x18":
                     timeout = toggle_time_out()
                     show_ctrl_t_feedback()
                     continue

@@ -240,7 +240,7 @@ def clear_input():
 
 
 def show_ctrl_t_feedback():
-    print("^T", end="", flush=True)
+    print("^X", end="", flush=True)
     threading.Thread(target=lambda: (time.sleep(0.3), print("\b\b  \b\b", end="", flush=True)), daemon=True).start()
 
 

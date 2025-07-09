@@ -78,7 +78,7 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
           if [[ -z "$key" ]]; then # Enter (End of line)
             echo >&2
             break
-          elif [[ $key == $'\x14' ]]; then # Ctrl+T (timeout toggle)
+          elif [[ $key == $'\x18' ]]; then # Ctrl+X (timeout toggle)
             timeout="$(toggle_time_out)"
             start_time=$(date +%s)
             show_ctrl_t_feedback
@@ -205,7 +205,7 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
     err_handle="${err_handle:-}"        # default: no error handler
 
     # Use result_f to store the user's input (only for number | string callback)
-    local result_f=$([[ $option != "bool" ]] && generate_temp_file || echo "") # Generate a temp file
+    local result_f=$([[ $option != "bool" ]] && generate_temp_file || echo) # Generate a temp file
 
     local orig_stty=$(stty -g)
     set +e

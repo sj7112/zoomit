@@ -111,11 +111,11 @@ EOF
   }
 
   show_ctrl_t_feedback() {
-    printf "^T"
+    printf "^X" >&2
     # 后台进程，0.3秒后清除
     (
       sleep 0.3
-      printf "\b\b  \b\b"
+      printf "\b\b  \b\b" >&2
     ) &
   }
 
