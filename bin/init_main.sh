@@ -110,11 +110,10 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   # Initial environment variables
   # ==============================================================================
   initial_global() {
-    load_global_prop      # Load global properties (Step 1)
-    initial_log_file      # 初始化日志文件
-    initial_os_release    # 初始化发行版信息
-    initial_language_utf8 # 初始化语言包以支持utf8
-    multi_lang_properties # 加载多语言配置文件
+    load_global_prop   # Load global properties (Step 1)
+    initial_os_release # 初始化发行版信息
+    initial_language   # 初始化语言包以支持utf8
+    initial_log_file   # 初始化日志文件
   }
 
   # ==============================================================================

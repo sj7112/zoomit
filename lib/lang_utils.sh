@@ -53,9 +53,11 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
 
   # Check UTF-8 support
   normalize_code_upper() {
-    lang=$1
-    normalize=$(echo "$lang" | cut -d. -f1)   # e.g., en_US
-    encoding=$(echo "$lang" | cut -s -d. -f2) # e.g., utf8
+    # Use LANG if not provided
+    local lang=${1:-"${LC_ALL:-${LANG:-C}}"} # Use LANG if not provided
+
+    local normalize=$(echo "$lang" | cut -d. -f1)   # e.g., en_US
+    local encoding=$(echo "$lang" | cut -s -d. -f2) # e.g., utf8
 
     case "$encoding" in
       utf8) echo "${normalize}.UTF-8" ;;
@@ -118,12 +120,8 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
       option="string" no_value="$default_lang" result_f="$result_f" \
       err_handle="valid_reset_language"
 
-    # normalize language and return the value
-    local new_lang="$(normalize_locale "$(<"$result_f")")" # format input
-    local curr_lang="${LC_ALL:-${LANG:-C}}"                # save the current language
-    new_lang=$(reset_user_locale "$new_lang" "$curr_lang") # Permanently change LANG and LANGUAGE
-    # return the value
-    echo "$new_lang"
+    local result=$(normalize_code_upper "$(<"$result_f")")
+    echo "$result"
     return 0
   }
 
@@ -198,12 +196,12 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
 
   # Permanently change LANG and LANGUAGE
   reset_user_locale() {
-    local new_lang="$(normalize_code_upper "$1")"
-    local curr_lang="$(normalize_code_upper "$2")" # Read user language settings
+    local new_lang="$1"
+    local curr_lang="$2"
     local profile_file="$REAL_HOME/.profile"
 
     if [ "$curr_lang" != "$new_lang" ]; then
-      local prompt=$(_mf -i "$INIT_SHELL_LANG_CHANGE" "$curr_lang" "$new_lang")
+      local prompt=$(_mf "Change script language from [{}] to [{}]?" "$curr_lang" "$new_lang")
       if confirm_action "$prompt" no_value="N"; then
         if [ -n "$profile_file" ]; then
           set_user_lang_profile "$new_lang" # 优先设置 ~/.profile
@@ -216,12 +214,12 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
         fi
       fi
     fi
-    echo "$new_lang"
   }
 
   # Attempts to fix the locale settings to ensure UTF-8 compatibility
-  initial_language_utf8() {
-    local new_lang
+  initial_language() {
+    local curr_lang="$(normalize_code_upper)" # Read user language settings
+    local new_lang=""
     if ! test_terminal_display; then
       echo "Terminal does not support UTF-8" >&2
       new_lang="en_US.UTF-8" # Terminal does not support UTF-8, use default value
@@ -233,8 +231,10 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
     local short="${base%_*}"
     export LANGUAGE="${base}:${short}" # Set LANGUAGE
     load_global_prop                   # Load global properties (Step 2)
-    string "$INIT_SHELL_LANG_SETUP" "$LANG"
-    printf "\n" >&2
+    multi_lang_properties              # 加载多语言配置文件
+    string "set LANG to {}" "$LANG"
+
+    reset_user_locale "$new_lang" "$curr_lang" # Permanently change LANG and LANGUAGE
   }
 
   # Get the path to the message language file

@@ -4,50 +4,70 @@
 if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
   LOADED_BASH_UTILS=1
 
-  action_handler() {
-    local result_f="${1:-}" # Temp file to store result
+  # ==============================================================================
+  # Function: error handler
+  # Returns:
+  #   0 = NO ERROR | NOT EXIST: Error handler does not exist
+  #       new_response: The user can return a new response
+  #   2 = CONTINUE: to be continued
+  #   3 = EXIT: to exit the program
+  # ==============================================================================
+  error_handler() {
+    local result_f="$1" # Temp file to store result
     local response="$2"
-    local option="$3" # "bool" | "number" | "string"
-    local err_handle="$4"
-    local error_msg="$5"
+    local err_handle="$3"
+    local error_msg="$4"
 
-    # Boolean option [YyNn]
-    if [[ "$option" == "bool" ]]; then
-      if [[ ! "$response" =~ ^[YyNn]$ ]]; then
-        if [[ -n $err_handle ]]; then
-          "$err_handle" "$response" "$error_msg"
-          return $? # 2 = continue, 3 = exit
-        else
-          string "$MSG_OPER_FAIL_BOOL"
-          return 2 # 2 = continue
-        fi
-      fi
-      [[ "$response" =~ ^[Yy]$ ]] && return 0 || return 1
+    [[ -z "$err_handle" ]] && return 0 # 0 = no error
 
-    # Number option
-    elif [[ "$option" == "number" ]]; then
-      if [[ ! "$response" =~ ^[0-9]+$ ]]; then
-        string "$MSG_OPER_FAIL_NUMBER"
-        return 2 # 2 = continue
-      elif [[ -n $err_handle ]]; then
-        "$err_handle" "$response" "$error_msg"
-        local err_code=$?
-        [[ $err_code != 0 ]] && return $err_code # 2 = continue, 3 = exit
+    local new_response=$("$err_handle" "$response" "$error_msg")
+    local err_code=$?
+    if [[ $err_code == 0 ]]; then
+      if [[ -n "$new_response" ]]; then
+        echo "$new_response" >"$result_f" # Update response
+      else
+        echo "$response" >"$result_f" # Return the response value
       fi
-      echo "$response" >"$result_f"
-      return 0
+    fi
+    return $err_code # 0 = no error 2 = continue, 3 = exit
+  }
 
-    # String option
-    elif [[ "$option" == "string" ]]; then
-      if [[ -n $err_handle ]]; then
-        "$err_handle" "$response" "$error_msg"
-        local err_code=$?
-        [[ $err_code != 0 ]] && return $err_code # 2 = continue, 3 = exit
-      fi
-      echo "$response" >"$result_f"
-      return 0
+  # Boolean option [YyNn]
+  bool_handler() {
+    local response="$1"
+
+    if [[ ! "$response" =~ ^[YyNn]$ ]]; then
+      string "$MSG_OPER_FAIL_BOOL"
+      return 2 # 2 = continue
+    fi
+    [[ "$response" =~ ^[Yy]$ ]] && return 0 || return 1
+  }
+
+  # Number option
+  number_handler() {
+    local result_f="$1" # Temp file to store result
+    local response="$2"
+    local err_handle="$3"
+    local error_msg="$4"
+
+    if [[ ! "$response" =~ ^[0-9]+$ ]]; then
+      string "$MSG_OPER_FAIL_NUMBER"
+      return 2 # 2 = continue
     fi
 
+    error_handler "$result_f" "$response" "$err_handle" "$error_msg"
+    return $? # 0 = no error 2 = continue, 3 = exit
+  }
+
+  # String option
+  string_handler() {
+    local result_f="$1" # Temp file to store result
+    local response="$2"
+    local err_handle="$3"
+    local error_msg="$4"
+
+    error_handler "$result_f" "$response" "$err_handle" "$error_msg"
+    return $? # 0 = no error 2 = continue, 3 = exit
   }
 
   do_confirm_action() {
@@ -139,7 +159,13 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
       #   printf "\n" >&2
       #   exit $rc
       # fi
-      action_handler "$result_f" "$response" "$option" "$err_handle" "$error_msg"
+      if [[ "$option" == "bool" ]]; then
+        bool_handler "$response"
+      elif [[ "$option" == "number" ]]; then
+        number_handler "$result_f" "$response" "$err_handle" "$error_msg"
+      elif [[ "$option" == "string" ]]; then
+        string_handler "$result_f" "$response" "$err_handle" "$error_msg"
+      fi
       rc=$?
       if [[ $rc -eq 2 ]]; then
         printf "\n" >&2

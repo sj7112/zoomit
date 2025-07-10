@@ -34,44 +34,67 @@ from python.msg_handler import (
 LOG_FILE = "/var/log/sj_install.log"
 
 
-def action_handler(response: Any, option: str, err_handle: Any, error_msg: str) -> Any:
+def error_handler(response, err_handle=None, error_msg=None):
     """
-    get status and response
+    Error handler function
+
+    Returns:
+        0 = NO ERROR | NOT EXIST: Error handler does not exist
+            new_response: The user can return a new response
+        2 = CONTINUE: to be continued
+        3 = EXIT: to exit the program
+
+    Returns:
+        tuple: (error_code, new_response)
     """
-    # Boolean option
-    if option == "bool":
-        if not re.match(r"^[YyNn]$", response):
-            if err_handle:
-                return err_handle(response, error_msg), None  # 2 = continue, 3 = exit
-            else:
-                string(f"{MSG_OPER_FAIL_BOOL}")
-                return 2, None  # 2 = continue
-        elif re.match(r"^[Yy]$", response):
-            return 0, None
-        else:
-            return 1, None
-
-    # Number option
-    elif option == "number":
-        if isinstance(response, str):
-            if not re.match(r"^[0-9]+$", response):
-                string(f"{MSG_OPER_FAIL_NUMBER}")
-                return 2, None  # continue
-            else:
-                response = int(response)  # Convert to integer
-        if err_handle:
-            err_code = err_handle(response, error_msg)
-            if err_code != 0:
-                return err_code, None  # 2 = continue, 3 = exit
-        return 0, response  # Must be an integer
-
-        # String option
-    elif option == "string":
-        if err_handle:
-            err_code = err_handle(response, error_msg)
-            if err_code != 0:
-                return err_code, None  # 2 = continue, 3 = exit
+    # If no error handler provided, return 0 (no error)
+    if err_handle is None:
         return 0, response
+
+    # Call the error handler function
+    result = err_handle(response, error_msg)
+    if isinstance(result, int):
+        if result != 0:
+            return result, None  # 2 = continue, 3 = exit
+        return 0, response  # Must be an integer | string
+
+    rc, new_response = result
+    if rc != 0:
+        return rc, None  # 2 = continue, 3 = exit
+    if new_response is None:
+        return 0, response  # Must be an integer | string
+    return 0, new_response  # Must be an integer | string
+
+
+def bool_handler(response: Any) -> Any:
+    """Boolean option"""
+
+    if not re.match(r"^[YyNn]$", response):
+        string(f"{MSG_OPER_FAIL_BOOL}")
+        return 2, None  # 2 = continue
+    elif re.match(r"^[Yy]$", response):
+        return 0, None
+    else:
+        return 1, None
+
+
+def number_handler(response: Any, err_handle: Any, error_msg: str) -> Any:
+    """Number option"""
+
+    if isinstance(response, str):
+        if not re.match(r"^[0-9]+$", response):
+            string(f"{MSG_OPER_FAIL_NUMBER}")
+            return 2, None  # continue
+        else:
+            response = int(response)  # Convert to integer
+
+    return error_handler(response, err_handle, error_msg)
+
+
+def string_handler(response: Any, err_handle: Any, error_msg: str) -> Any:
+    """String option"""
+
+    return error_handler(response, err_handle, error_msg)
 
 
 def do_confirm_action(prompt: str, option: str, no_value: Any, to_value: Any, err_handle: Any, error_msg: str) -> Any:
@@ -144,12 +167,23 @@ def do_confirm_action(prompt: str, option: str, no_value: Any, to_value: Any, er
                     print("\r\n", end="", flush=True)
                     break
 
-            status, result = action_handler(response, option, err_handle, error_msg)
-            if status == 2:
+            # Boolean option [YyNn]
+            if option == "bool":
+                rc, result = bool_handler(response)
+
+            # Number option
+            elif option == "number":
+                rc, result = number_handler(response, err_handle, error_msg)
+
+            # String option
+            elif option == "string":
+                rc, result = string_handler(response, err_handle, error_msg)
+
+            if rc == 2:
                 print("\r\n", end="", flush=True)
                 continue
             else:
-                return status, result
+                return rc, result
 
     except KeyboardInterrupt:
         print("\r\n", end="", flush=True)
