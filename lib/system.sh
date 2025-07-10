@@ -117,7 +117,7 @@ EOF
   # Function to clear the input buffer (incl. Enter, spaces, etc.)
   clear_input() {
     local dummy
-    while read -r -t 0.01 dummy; do :; done 2>/dev/null
+    while read -rs -t 0 dummy; do :; done
   }
 
   return_feedback() {

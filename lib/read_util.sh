@@ -59,8 +59,13 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
     local err_handle="$6"
     local error_msg="$7"
 
+    local last_key_time
     local timeout=$(get_time_out) # 999999=永不超时
     local rc
+    local now
+    local elapsed
+    local start_time
+    local key
 
     trap 'printf "\n" >&2; exit 130' INT # if tty does not show characters, use `stty echo` or `stty sane`
 
@@ -72,20 +77,32 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
 
       while true; do
         # Read one character with 0.5s timeout for responsiveness
+        last_key_time=0
         read -rsn1 -t 0.5 key
         rc=$?
+        now=$(date +%s%3N) # 毫秒
+        elapsed=$((now - last_key_time))
+        # handle key
         if [[ $rc -eq 0 ]]; then
           if [[ -z "$key" ]]; then # Enter (End of line)
             response=$(return_feedback "$response" "$no_value")
             break
 
           elif [[ $key == $'\x18' ]]; then # Ctrl+X (timeout toggle)
-            timeout=$(toggle_time_out)
-            start_time=$(date +%s)
+            if ((elapsed > 250)); then     # 250ms to prevent flickering
+              last_key_time=$now
+              timeout=$(toggle_time_out)
+              start_time=$(date +%s)
+              clear_input # Clear input buffer
+            fi
 
           elif [[ $key == $'\x7f' || $key == $'\b' ]]; then # Backspace (ASCII 127 | ASCII 8)
-            response=$(safe_backspace "$prompt" "$response")
-            [[ -z "$response" ]] && start_time=$(date +%s)
+            if ((elapsed > 150)); then                      # 150ms to prevent flickering
+              last_key_time=$now
+              response=$(safe_backspace "$prompt" "$response")
+              [[ -z "$response" ]] && start_time=$(date +%s)
+              clear_input # Clear input buffer
+            fi
 
           else # Normal character input
             response+="$key"
@@ -149,6 +166,7 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
   #   err_handle="0/1 | Function": when error occurs, 1 = exit; 0 = continue
   #   no_value="0=Y|1=N|Others...": default value for Press Enter (default: Y | 0 | None)
   #   to_value="0=Y|1=N|Others...": auto value for Timeout
+  #   result_f="temp_file": temporary file to store the result (default: empty)
   # Returns:
   #   0: yes = user entered Y or y; or success = right value
   #   1: no = user entered N or n
@@ -182,6 +200,7 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
         err_handle=*) err_handle="${1#err_handle=}" ;;
         no_value=*) no_value="${1#no_value=}" ;;
         to_value=*) to_value="${1#to_value=}" ;;
+        result_f=*) result_f="${1#result_f=}" ;;
         *) args+=("$1") ;;
       esac
       shift
@@ -207,7 +226,10 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
     err_handle="${err_handle:-}"        # default: no error handler
 
     # Use result_f to store the user's input (only for number | string callback)
-    local result_f=$([[ $option != "bool" ]] && generate_temp_file || echo) # Generate a temp file
+    result_f="${result_f:-}" # default: empty
+    if [[ $option != "bool" && -z "$result_f" ]]; then
+      result_f=$(generate_temp_file) # Generate a temp file
+    fi
 
     local orig_stty=$(stty -g)
     set +e
@@ -223,9 +245,9 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
         if [[ $option == "bool" ]]; then
           "${args[@]}"
         else
-          "${args[@]}" "$(<"$result_f")"
+          "${args[@]}" "$(<"$result_f")" # Read response
         fi
-        return $?
+        rc=$?
       fi
     elif [[ "$rc" -eq 1 ]]; then
       warning "$no_msg"

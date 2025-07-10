@@ -191,7 +191,10 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
       chown -fR "$REAL_USER:$REAL_USER" "$t"    # change owner
       [[ -n "$mode" ]] && chmod -R "$mode" "$t" # change mode
     done
-    [[ "$showinfo" -eq 0 ]] && string "{} ownership changed to {}" "${targets[*]}" "$REAL_USER"
+    if [[ "$showinfo" -eq 0 ]]; then
+      printf "%s: %s\n" "$INIT_CHMOD_FILENAME" "${targets[*]}"
+      printf "%s: %s\n" "$INIT_CHMOD_USERNAME" "$REAL_USER"
+    fi
     return 0
   }
 fi

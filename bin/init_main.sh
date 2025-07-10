@@ -266,6 +266,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
       [[ -z "${REAL_USER:-}" && -z "${SUDO_USER:-}" ]] && {
         export REAL_USER="$USER"
         export REAL_HOME="$HOME"
+        export TIMEOUT_FILE="${TIMEOUT_FILE:-}"
       }
     fi
     # Ensure old process is terminated

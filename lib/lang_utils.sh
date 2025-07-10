@@ -106,71 +106,25 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
       fi
     done
 
-    local timeout="$(get_time_out)" # 999999=永不超时
-    local prompt=$(_mf -i "$INIT_SHELL_LANG" "$default_lang")
-    local rc
-
-    on_exit() {
-      printf "\n" >&2
-      warning -i "$MSG_OPER_CANCELLED"
-      exit 130 # Exit with code 130 on Ctrl+C
+    # check if input is correct
+    valid_reset_language() {
+      normalize_locale "$1" && return 0 || return 2 # 0= valid, 2=invalid
     }
 
-    trap 'on_exit' INT
-    # reset language
-    local input_lang
-    while true; do
-      response=""
-      start_time=$(date +%s)
-      clear_input
-      printf "%s " "$prompt" >&2
+    # Prompt user for input
+    local prompt=$(_mf -i "$INIT_SHELL_LANG" "$default_lang")
+    local result_f=$(generate_temp_file)
+    confirm_action "$prompt" \
+      option="string" no_value="$default_lang" result_f="$result_f" \
+      err_handle="valid_reset_language"
 
-      while true; do
-        # Read one character with 0.5s timeout for responsiveness
-        read -rsn1 -t 0.5 key
-        rc=$?
-        if [[ $rc -eq 0 ]]; then
-          if [[ -z "$key" ]]; then # Enter (End of line)
-            response=$(return_feedback "$response" "$default_lang")
-            break
-
-          elif [[ $key == $'\x18' ]]; then # Ctrl+X (timeout toggle)
-            timeout=$(toggle_time_out)
-            start_time=$(date +%s)
-
-          elif [[ $key == $'\x7f' || $key == $'\b' ]]; then # Backspace (ASCII 127 | ASCII 8)
-            response=$(safe_backspace "$prompt" "$response")
-            [[ -z "$response" ]] && start_time=$(date +%s)
-
-          else # Normal character input
-            response+="$key"
-            printf "%s" "$key" >&2
-          fi
-
-        elif [[ $rc -gt 128 || $rc -eq 142 ]]; then # Check timeout if response is empty
-          response=$(check_timeout "$response" "$default_lang" "$start_time" "$timeout")
-          [[ $? == 0 ]] && break
-
-        elif [[ $rc -eq 1 ]]; then
-          break # Ctrl+D (EOF — End Of File)
-
-        else
-          printf "\n" >&2
-          exit $rc # Exit with the error code
-        fi
-      done
-
-      # get input language
-      input_lang="$(normalize_locale "$response")" # format input
-      [[ $? -ne 0 ]] && continue
-
-      # return the value
-      echo "$input_lang"
-      clear_input
-      return 0
-
-    done
-    trap - INT # Reset trap
+    # normalize language and return the value
+    local new_lang="$(normalize_locale "$(<"$result_f")")" # format input
+    local curr_lang="${LC_ALL:-${LANG:-C}}"                # save the current language
+    new_lang=$(reset_user_locale "$new_lang" "$curr_lang") # Permanently change LANG and LANGUAGE
+    # return the value
+    echo "$new_lang"
+    return 0
   }
 
   # Update or add LANG setting to ~/.profile
@@ -274,17 +228,13 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
     else
       new_lang=$(reset_language)
     fi
-    curr_lang="${LC_ALL:-${LANG:-C}}" # save the current language
-    export LANG="$new_lang"           # Set LANG
+    export LANG="$new_lang" # Set LANG
     local base="${new_lang%.*}"
     local short="${base%_*}"
     export LANGUAGE="${base}:${short}" # Set LANGUAGE
     load_global_prop                   # Load global properties (Step 2)
-
     string "$INIT_SHELL_LANG_SETUP" "$LANG"
     printf "\n" >&2
-    new_lang=$(reset_user_locale "$new_lang" "$curr_lang") # Permanently change LANG and LANGUAGE
-
   }
 
   # Get the path to the message language file
