@@ -37,6 +37,19 @@ def is_cloud_manufacturer(manufacturer):
     return None
 
 
+def nmcli_dns_check(dns_str):
+    lines = dns_str.splitlines()
+    dns_list = []
+    for line in lines:
+        if "IP4.DNS" in line.upper():
+            # 格式一般是 IP4.DNS[1]: 8.8.8.8
+            # 取冒号后面的地址，去空格
+            dns_ip = line.split(":", 1)[1].strip()
+            dns_list.append(dns_ip)
+
+    return dns_list
+
+
 class NetworkSetup:
     """
     Network Setup class
@@ -47,6 +60,9 @@ class NetworkSetup:
     CONF_DIR = (PARENT_DIR / "config/network").resolve()
     env_nw = {}
 
+    # ==============================================================================
+    # (0) Function Tools
+    # ==============================================================================
     def save_env_nw(self, backup=True):
         """
         retrieve network parameters, save to .env file
@@ -65,6 +81,33 @@ class NetworkSetup:
             # Write network parameters
             for key, value in self.env_nw.items():
                 f.write(f"{key}={value}\n")
+
+    def find_ip4_dns(self):
+        """
+        Find all IPv4 DNS server
+        """
+        nm_type = self.env_nw.get("CURR_NM")
+        main_interface = self.env_nw.get("MAIN_IFACE")
+        if nm_type == "NetworkManager":
+            dns_servers = nmcli_dns_check(cmd_ex_str(f"nmcli device show {main_interface}"))
+            if dns_servers:
+                return " ".join(dns_servers)
+
+        # elif nm_type == "systemd-networkd":
+        #     # systemd-networkd 使用 resolv.conf
+        #     resolv_path = "/run/systemd/resolve/resolv.conf"
+        #     if os.path.exists(resolv_path):
+        #         with open(resolv_path, "r") as f:
+        #             dns_servers = re.findall(r"nameserver (\d+\.\d+\.\d+\.\d+)", f.read())
+        #             return " ".join(dns_servers)
+
+        # elif nm_type in ["networking", "wicked", "network"]:
+        #     # 其他网络服务通常也使用 /etc/resolv.conf
+        #     return check_dns_from_resolv()
+
+        # if no DNS found, use the default DNS servers
+        dns_servers = check_dns()
+        return " ".join(dns_servers)
 
     # ==============================================================================
     # (1) Check Network Environment
@@ -111,7 +154,7 @@ class NetworkSetup:
                     self.env_nw["HAS_STATIC"] = "pending"  # IP is not fixed
 
         # Retrieve DNS server (use default if empty)
-        if dns_servers := check_dns():
+        if dns_servers := self.find_ip4_dns():
             self.env_nw["DNS_SERVERS"] = dns_servers
 
     # ==============================================================================
