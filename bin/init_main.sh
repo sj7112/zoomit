@@ -149,9 +149,9 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     if ! (systemctl is-active ssh &>/dev/null || systemctl is-active sshd &>/dev/null); then
       info "sshd is not installed, installing now..."
       if [[ "$DISTRO_PM" = "zypper" || "$DISTRO_PM" = "pacman" ]]; then
-        install_base_pkg "openssh" "sshd|ssh" # two ways of check
+        install_base_pkg "openssh" "" "sshd|ssh" # two ways of check
       else
-        install_base_pkg "openssh-server" "sshd|ssh" # two ways of check
+        install_base_pkg "openssh-server" "" "sshd|ssh" # two ways of check
       fi
       systemctl enable "$ssh_service"
       # systemctl start "$ssh_service"
@@ -184,8 +184,8 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     info "在 {} 上安装 Docker 与 Docker Compose..." "$DISTRO"
 
     # 安装依赖
-    install_base_pkg "ca-certificates" "" # no check needed
-    install_base_pkg "gnupg" "gpg|gpg2"   # two ways of check
+    install_base_pkg "ca-certificates" ""  # no check needed
+    install_base_pkg "gnupg" "" "gpg|gpg2" # two ways of check
 
     apt-get update
     apt-get install -y \

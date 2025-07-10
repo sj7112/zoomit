@@ -4,9 +4,14 @@
 if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
   LOADED_CMD_HANDLER=1
 
+  # ==============================================================================
   # check if package has already installed
+  # 0 = file exist: may installed
+  # 1 = file not exist: may not installed
+  # 2 = no file check!
+  # ==============================================================================
   check_pkg_installed() {
-    local chk_cmd="${2-$1}"       # allow blank string ("")
+    local chk_cmd="$1"            # allow blank string ("")
     [ -z "$chk_cmd" ] && return 2 # chk_cmd is blank (program may not installed)
     IFS="|" read -ra cmds <<<"$chk_cmd"
     for cmd in "${cmds[@]}"; do
@@ -21,10 +26,14 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
   # Check if the command exists, if not, install it automatically
   # ==============================================================================
   install_base_pkg() {
-    check_pkg_installed "$@" && return 0 # program already installed
+    local lnx_cmd="$1"
+    local chk_bf_inst="${2-$1}"           # before install check command
+    local chk_af_inst="${3-$chk_bf_inst}" # after install check command
+
+    check_pkg_installed "$chk_bf_inst" && return 0 # program already installed
 
     # Install command based on different Linux distributions
-    local lnx_cmd="$1"
+
     if [ "$DISTRO_PM" = "pacman" ]; then # arch Linux
       cmd=("pacman -Sy --noconfirm $lnx_cmd")
     elif [ "$DISTRO_PM" = "apt" ]; then # debian | ubuntu
@@ -44,7 +53,7 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
     set -e
 
     if [[ $ret_code -eq 0 ]]; then
-      check_pkg_installed "$@"
+      check_pkg_installed "$chk_af_inst"
       if [ $? -ne 1 ]; then
         success "{} installation successful" "$lnx_cmd"
         return 0 # program already installed
