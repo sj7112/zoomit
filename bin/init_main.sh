@@ -33,6 +33,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   source "$LIB_DIR/python_bridge.sh"
   source "$LIB_DIR/update_env.sh"
   source "$LIB_DIR/network.sh"
+  source "$LIB_DIR/docker_install.sh"
   source "$LIB_DIR/docker.sh"
 
   # Global variables
@@ -149,9 +150,9 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     if ! (systemctl is-active ssh &>/dev/null || systemctl is-active sshd &>/dev/null); then
       info "sshd is not installed, installing now..."
       if [[ "$DISTRO_PM" = "zypper" || "$DISTRO_PM" = "pacman" ]]; then
-        install_base_pkg "openssh" "" "sshd|ssh" # two ways of check
+        install_base_pkg "openssh" "sshd|ssh.service" # two steps of check
       else
-        install_base_pkg "openssh-server" "" "sshd|ssh" # two ways of check
+        install_base_pkg "openssh-server" "sshd|ssh.service" # two steps of check
       fi
       systemctl enable "$ssh_service"
       # systemctl start "$ssh_service"
@@ -174,44 +175,23 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   # --------------------------
   configure_ip() {
     echo
-    if sh_fix_ip; then # python adds-on: config network as fix ip
+    if sh_configure_nw; then # python adds-on: config network as fix ip
       init_env_nw
       network_config
     fi
   }
 
   install_docker() {
-    info "在 {} 上安装 Docker 与 Docker Compose..." "$DISTRO"
-
-    # 安装依赖
-    install_base_pkg "ca-certificates" ""  # no check needed
-    install_base_pkg "gnupg" "" "gpg|gpg2" # two ways of check
-
-    apt-get update
-    apt-get install -y \
-      ca-certificates \
-      curl \
-      gnupg \
-      lsb-release \
-      apt-transport-https
-
-    # 添加 Docker 仓库 GPG（可选，但推荐）
-    install -m 0755 -d /etc/apt/keyrings
-    curl -fsSL https://download.docker.com/linux/$DISTRO/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-    chmod a+r /etc/apt/keyrings/docker.gpg
-
-    # 添加 Docker 仓库源
-    echo \
-      "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/$DISTRO \
-      $(lsb_release -cs) stable" >/etc/apt/sources.list.d/docker.list
-
-    # 安装 Docker
-    apt-get update
-    apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-
-    # 验证安装
-    docker --version
-    docker compose version
+    init_docker_setup
+    if sh_check_docker; then
+      local url=$(get_docker_setup)
+      if [[ -n $url ]]; then
+        install_docker_official
+      else
+        install_docker_pm
+      fi
+    fi
+    check_docker
   }
 
   # --------------------------
@@ -219,8 +199,8 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   # --------------------------
   docker_compose() {
     install_docker
-    infra_setup
-    apps_setup
+    # infra_setup
+    # apps_setup
   }
 
   # --------------------------
@@ -238,10 +218,12 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   init_main() {
     initial_global # Set environment variables
     echo -e "\n=== $INIT_SYSTEM_START - $PRETTY_NAME ===\n"
-    initial_environment # Initialize basic values
-    configure_sshd      # Configure SSH
-    configure_ip        # Configure static IP
-    # docker_compose # Install Docker software
+    trap 'close_all' EXIT
+    # initial_environment # Initialize basic values
+    # configure_sshd      # Configure SSH
+    # configure_ip        # Configure static IP
+    docker_compose # Install Docker software
+    trap - EXIT
     close_all # close python cache
     echo -e "\n=== $INIT_SYSTEM_END - $PRETTY_NAME ==="
   }
