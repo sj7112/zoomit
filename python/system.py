@@ -46,12 +46,6 @@ def generate_temp_file() -> str:
     Create an empty file to reserve the filename.
     Returns the full file path as a string.
     """
-    # Try nanosecond-level timestamp if supported, fallback to seconds-level timestamp
-    try:
-        timestamp = time.time_ns()
-    except AttributeError:
-        timestamp = int(time.time() * 1e9)
-
     # Choose temp directory: /dev/shm preferred if available and writable
     if os.path.isdir("/dev/shm") and os.access("/dev/shm", os.W_OK):
         tmpdir = "/dev/shm"
@@ -59,9 +53,30 @@ def generate_temp_file() -> str:
         tmpdir = "/tmp"
 
     # Generate unique filename with prefix, timestamp, and random number
-    filename = f"{TMP_FILE_PREFIX}{timestamp}{random.randint(0, 32767)}"
+    filename = f"{TMP_FILE_PREFIX}{int(time.time())}{random.randint(0, 32767)}"
     tmpfile = os.path.join(tmpdir, filename)
     return tmpfile
+
+
+def write_temp_file(path, lines, mode="w"):
+    """Write content to file.
+
+    Args:
+        path (str): File path.
+        lines (list or dict): Lines to write.
+        mode (str): 'w' for overwrite (default), 'a' for append.
+    """
+
+    if lines:
+        with open(path, mode, encoding="utf-8") as f:
+            if isinstance(lines, dict):
+                for key, value in lines.items():
+                    f.write(f"{key}={value}\n")
+            elif isinstance(lines, list):
+                for line in lines:
+                    f.write(f"{line}\n")
+            else:
+                f.write(f"{line}\n")
 
 
 # ==============================================================================

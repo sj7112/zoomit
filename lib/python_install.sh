@@ -242,7 +242,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
     if [[ $ret_code -eq 0 ]]; then
       # Extract to the installation directory
       info "Installing Python to {}..." "$PY_INST_DIR"
-      mkdir -p "$PY_INST_DIR" # Ensure the installation directory exists
+      install -m 0755 -d "$PY_INST_DIR" # Ensure the installation directory exists
       if ! tar -zxf "$PY_GZ_FILE" -C "$PY_INST_DIR" --strip-components=1; then
         exiterr "Extraction and installation failed"
       else

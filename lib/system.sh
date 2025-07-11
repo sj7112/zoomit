@@ -30,14 +30,11 @@ if [[ -z "${LOADED_SYSTEM:-}" ]]; then
   # Generate a unique temporary file path (pass data from a sub-shell to a parent)
   # ==============================================================================
   generate_temp_file() {
-    # If nanoseconds not supported, fallback to second-level timestamp
-    local timestamp="$(date +%s%N 2>/dev/null || date +%s)"
-
     # Prefer /dev/shm if it exists and is writable, otherwise fallback to /tmp
     local tmpdir="/tmp"
     [[ -d /dev/shm && -w /dev/shm ]] && tmpdir="/dev/shm"
     # Generate a unique file id with timestamp and random number
-    local tmpfile="${tmpdir}/${TMP_FILE_PREFIX}${timestamp}${RANDOM}"
+    local tmpfile="${tmpdir}/${TMP_FILE_PREFIX}$(date +%s)${RANDOM}"
     # shellcheck disable=SC2188
     >"$tmpfile" || {
       echo "Error: Unable to create temp file $tmpfile" >&2
@@ -63,6 +60,27 @@ if [[ -z "${LOADED_SYSTEM:-}" ]]; then
 
     # Remove all files starting with sj_temp_ in the tmpdir
     rm -f "${tmpdir}/${TMP_FILE_PREFIX}"* 2>/dev/null || true
+  }
+
+  # ==============================================================================
+  # functions to support temp files
+  # ==============================================================================
+  init_docker_setup() {
+    local filename=$(generate_temp_file)
+    export DOCKER_SETUP_FILE="$filename"
+  }
+
+  # get timeout value from file
+  get_docker_setup() {
+    if [[ -n "${DOCKER_SETUP_FILE:-}" && -f "$DOCKER_SETUP_FILE" ]]; then
+      # 判断是否有 official 或 available
+      if grep -Eq '^official=' "$DOCKER_SETUP_FILE"; then
+        local url=$(grep -E '^url=' "$DOCKER_SETUP_FILE" | cut -d'=' -f2)
+        echo "$url"
+        return
+      fi
+    fi
+    echo ""
   }
 
   # ==============================================================================
