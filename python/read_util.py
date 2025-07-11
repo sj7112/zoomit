@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 import re
 import select
@@ -48,7 +49,8 @@ def error_handler(response, err_handle=None, error_msg=None):
         tuple: (error_code, new_response)
     """
     # If no error handler provided, return 0 (no error)
-    if err_handle is None:
+    print(f"response={response}; err_handle={err_handle}; error_msg={error_msg}")
+    if not err_handle:
         return 0, response
 
     # Call the error handler function
@@ -80,7 +82,6 @@ def bool_handler(response: Any) -> Any:
 
 def number_handler(response: Any, err_handle: Any, error_msg: str) -> Any:
     """Number option"""
-
     if isinstance(response, str):
         if not re.match(r"^[0-9]+$", response):
             string(f"{MSG_OPER_FAIL_NUMBER}")
@@ -142,6 +143,16 @@ def do_confirm_action(prompt: str, option: str, no_value: Any, to_value: Any, er
                         # Ctrl+D (EOF)
                         if ch == "\x04":
                             break
+
+                        # Ctrl+Z
+                        if ch == "\x1a":
+                            print("Suspending...")
+                            os.kill(0, signal.SIGTSTP)  # 0 = current process group
+
+                        # Ctrl+\ (SIGQUIT)
+                        if ch == "\x1c":
+                            print("Quit signal received...")
+                            os.kill(0, signal.SIGQUIT)
 
                         # Ctrl+X (toggle timeout)
                         if ch == "\x18":
@@ -235,7 +246,7 @@ def confirm_action(prompt: str, callback: Callable[..., Any] = None, *args: Any,
         no_value = kwargs.pop("no_value", "")  # Default: blank
 
     to_value = kwargs.pop("to_value", no_value)  # timeout: default value = no_value
-    err_handle = kwargs.pop("err_handle", "")  # default: no error handler
+    err_handle = kwargs.pop("err_handle", None)  # default: no error handler
 
     # Set prompt suffix based on default value
     status, response = do_confirm_action(prompt, option, no_value, to_value, err_handle, error_msg)

@@ -201,7 +201,7 @@ class NetworkSetup:
     # ==============================================================================
     # Main Program
     # ==============================================================================
-    def fix_ip(self):
+    def configure_nw(self):
         """
         need a static IP?
         Return values:

@@ -169,7 +169,7 @@ class CentosMirrorTester(MirrorTester):
         one block for each suite, separated by empty lines.
         """
         codename = self.os_info.codename
-        arch = platform.machine()
+        arch = platform.machine().lower()
         lines = []
         suites = [
             ("Base", url, f"{codename}/os/"),

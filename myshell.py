@@ -14,6 +14,7 @@ from python.mirror.linux_speed_deb import DebianMirrorTester
 from python.mirror.linux_speed_suse import OpenSUSEMirrorTester
 from python.mirror.linux_speed_ubt import UbuntuMirrorTester
 from python.network_util import NetworkSetup
+from python.docker.docker_setup import DockerSetup
 from python.cache.lang_cache import LangCache
 
 
@@ -48,8 +49,13 @@ def main():
             sys.exit(exit_code)
 
         # Check if the server is using a static IP (user interactive)
-        case "sh_fix_ip":
-            exit_code = NetworkSetup().fix_ip()
+        case "sh_configure_nw":
+            exit_code = NetworkSetup().configure_nw()
+            sys.exit(exit_code)
+
+        # clear cache (diskcache for language messages)
+        case "sh_check_docker":
+            exit_code = DockerSetup().check_docker()
             sys.exit(exit_code)
 
         # clear cache (diskcache for language messages)

@@ -88,6 +88,8 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
     local key
 
     trap 'printf "\n" >&2; exit 130' INT # if tty does not show characters, use `stty echo` or `stty sane`
+    trap 'printf "\n" >&2; exit 131' QUIT
+    trap 'printf "\n" >&2; exit 143' TERM
 
     while true; do
       response=""
@@ -175,7 +177,7 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
       fi
     done
 
-    trap - INT
+    trap - INT QUIT TERM
   }
 
   # ==============================================================================

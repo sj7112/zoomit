@@ -36,8 +36,8 @@ files_map = {
         "7.9.2009/os/x86_64/repodata/5319616dde574d636861a6e632939f617466a371e59b555cf816cf1f52f3e873-filelists.xml.gz",
     ],
     "rhel": ["repodata/repomd.xml", "RPM-GPG-KEY-redhat-release"],
-    "arch": ["core/os/x86_64/core.db.tar.gz", "extra/os/x86_64/extra.db.tar.gz"],
     "opensuse": ["distribution/leap/15.5/repo/oss/ls-lR.gz", "distribution/leap/15.5/repo/oss/INDEX.gz"],
+    "arch": ["core/os/x86_64/core.db.tar.gz", "extra/os/x86_64/extra.db.tar.gz"],
 }
 
 
@@ -95,6 +95,7 @@ class MirrorTester:
         self.is_debug = os.environ.get("DEBUG") == "0"  # debug flag
 
     def fetch_mirror_list(self, limit: int = None) -> None:
+        print()
         string(r"{} Mirror Speed Testing Tool", self.os_info.ostype)
         print("=" * 80)
         try:

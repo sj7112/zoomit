@@ -27,9 +27,17 @@ if [[ -z "${LOADED_PYTHON_BRIDGE:-}" ]]; then
     return $ret_code
   }
   # User interaction, cannot use subshells like $(...), use configuration file to pass data
-  sh_fix_ip() {
+  sh_configure_nw() {
     set +e
-    py_exec "$ROOT_DIR/myshell.py" sh_fix_ip
+    py_exec "$ROOT_DIR/myshell.py" sh_configure_nw
+    local ret_code=$?
+    set -e
+    return $ret_code
+  }
+
+  sh_check_docker() {
+    set +e
+    py_exec "$ROOT_DIR/myshell.py" sh_check_docker
     local ret_code=$?
     set -e
     return $ret_code

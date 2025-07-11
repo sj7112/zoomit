@@ -159,10 +159,11 @@
             "request": "launch",
             "program": "${workspaceFolder}/myshell.py",
             "args": [
-                // "sh_fix_ip",
+                // "sh_configure_nw",
                 // "sh_configure_sshd",
                 // ""
-                "sh_update_source",
+                // "sh_update_source",
+                "sh_check_docker",
                 "debian",
                 // "ubuntu",
                 // "centos",

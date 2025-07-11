@@ -147,7 +147,7 @@ class UbuntuMirrorTester(MirrorTester):
             self.filter_mirrors_by_arch()
 
     def filter_mirrors_by_arch(self) -> list[str]:
-        arch = platform.machine()
+        arch = platform.machine().lower()
 
         if arch in ("x86_64", "amd64", "i386"):
             # main stream → /ubuntu/
