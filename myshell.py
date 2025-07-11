@@ -14,7 +14,7 @@ from python.mirror.linux_speed_deb import DebianMirrorTester
 from python.mirror.linux_speed_suse import OpenSUSEMirrorTester
 from python.mirror.linux_speed_ubt import UbuntuMirrorTester
 from python.network_util import NetworkSetup
-from python.docker.docker_setup import DockerSetup
+from python.docker.docker_install import DockerSetup
 from python.cache.lang_cache import LangCache
 
 
