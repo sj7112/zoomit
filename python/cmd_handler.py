@@ -44,6 +44,11 @@ def cmd_exec(cmd, **kwargs) -> Tuple[bool, Any]:
         cmd = cmd.split()
 
     try:
+        # Whether to output error messages
+        noex = kwargs.get("noex")
+        if noex:
+            kwargs.pop("noex")
+
         # Provide default values, allow overriding via kwargs
         run_args = {
             "stdout": subprocess.PIPE,
@@ -58,11 +63,13 @@ def cmd_exec(cmd, **kwargs) -> Tuple[bool, Any]:
         return True, result  # Original object
     except subprocess.TimeoutExpired:
         error_msg = f"[{MSG_ERROR}] {_mf('Command execution timeout')} : {' '.join(cmd)}"
-        print(error_msg)
+        if not noex:
+            print(error_msg, file=sys.stderr)
         return False, error_msg
     except Exception as e:
         error_msg = f"[{MSG_ERROR}] {_mf('Command execution error')} : {e}"
-        print(error_msg)
+        if not noex:
+            print(error_msg, file=sys.stderr)
         return False, str(e)
 
 

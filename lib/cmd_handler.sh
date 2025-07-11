@@ -5,21 +5,51 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
   LOADED_CMD_HANDLER=1
 
   # ==============================================================================
-  # check if package has already installed
-  # 0 = file exist: may installed
-  # 1 = file not exist: may not installed
-  # 2 = no file check!
+  # check if package has already been installed
+  # 0 = file exist | command exist | service is running
+  # 1 = file not exist | command not exist | service does not exist
+  # 2 = service exists (but is not running)
   # ==============================================================================
   check_pkg_installed() {
-    local chk_cmd="$1"            # allow blank string ("")
-    [ -z "$chk_cmd" ] && return 2 # chk_cmd is blank (program may not installed)
+    local chk_cmd="$1"
+    [[ -z $chk_cmd ]] && return 0 # NO CHECK NEEDED
+
+    # check if file exist
+    if [[ "$chk_cmd" == /* ]]; then
+      IFS="|" read -ra cmds <<<"$chk_cmd"
+      for cmd in "${cmds[@]}"; do
+        [ -e "$chk_cmd" ] && {
+          return 0 # file exist
+        }
+      done
+      return 1 # file not exist
+    fi
+
+    # check if service is running
+    if [[ "$chk_cmd" == *.service ]]; then
+      local found=1
+      IFS='|' read -ra service_names <<<"$chk_cmd"
+      for name in "${service_names[@]}"; do
+        [[ "$name" != *.service ]] && name="${name}.service"
+
+        if systemctl is-enabled "$name" &>/dev/null; then
+          found=2 # service exist
+          if systemctl is-active --quiet "$name"; then
+            return 0 # 0=running
+          fi
+        fi
+      done
+      return $found # 1=not found | 2=not running
+    fi
+
+    # check if program exist and executable
     IFS="|" read -ra cmds <<<"$chk_cmd"
     for cmd in "${cmds[@]}"; do
       command -v "$cmd" &>/dev/null && {
-        return 0 # program installed
+        return 0 # command exist
       }
     done
-    return 1 # program may not installed
+    return 1 # command not exist
   }
 
   # ==============================================================================
@@ -27,10 +57,9 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
   # ==============================================================================
   install_base_pkg() {
     local lnx_cmd="$1"
-    local chk_bf_inst="${2-$1}"           # before install check command
-    local chk_af_inst="${3-$chk_bf_inst}" # after install check command
+    local chk_cmd="${2-$1}" # install check command
 
-    check_pkg_installed "$chk_bf_inst" && return 0 # program already installed
+    [[ -n $chk_cmd ]] && check_pkg_installed "$chk_cmd" && return 0 # program already installed
 
     # Install command based on different Linux distributions
 
@@ -53,10 +82,14 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
     set -e
 
     if [[ $ret_code -eq 0 ]]; then
-      check_pkg_installed "$chk_af_inst"
-      if [ $? -ne 1 ]; then
+      [[ -z $chk_cmd ]] || check_pkg_installed "$chk_cmd"
+      local rc=$?
+      if [ $rc -eq 0 ]; then
         success "{} installation successful" "$lnx_cmd"
-        return 0 # program already installed
+        return 0 # program installed
+      elif [ $rc -eq 2 ]; then
+        warning "{} installation successful, but service is not running" "$lnx_cmd"
+        return 2 # service is not running
       fi
     fi
 
