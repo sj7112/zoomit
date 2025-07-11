@@ -381,17 +381,17 @@ def msg_parse_param(options, *args):
     caller_name = inspect.currentframe().f_back.f_code.co_name
 
     if caller_name in ["exiterr", "error"]:
-        print(f"{RED}{ERROR_ICON} {MSG_ERROR}: {template}{NC}")
+        print(f"{RED}{ERROR_ICON} {MSG_ERROR}: {template}{NC}", file=sys.stderr)
         return 1  # 报错
     if caller_name == "success":
-        print(f"{GREEN}{SUCC_ICON} {MSG_SUCCESS}: {template}{NC}")
+        print(f"{GREEN}{SUCC_ICON} {MSG_SUCCESS}: {template}{NC}", file=sys.stderr)
         return 0  # 成功
     if caller_name == "warning":
-        print(f"{YELLOW}{WARN_ICON} {MSG_WARNING}: {template}{NC}")
+        print(f"{YELLOW}{WARN_ICON} {MSG_WARNING}: {template}{NC}", file=sys.stderr)
     elif caller_name == "info":
-        print(f"{LIGHT_BLUE}{INFO_ICON} {MSG_INFO}: {template}{NC}")
+        print(f"{LIGHT_BLUE}{INFO_ICON} {MSG_INFO}: {template}{NC}", file=sys.stderr)
     if caller_name == "string":
-        print(template)  # 转换 normal text (no color)
+        print(template, file=sys.stderr)  # 转换 normal text (no color)
     if caller_name == "_mf":
         return template  # 转换 normal text (no color)
 
