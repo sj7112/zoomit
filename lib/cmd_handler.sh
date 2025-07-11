@@ -62,7 +62,7 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
     [[ -n $chk_cmd ]] && check_pkg_installed "$chk_cmd" && return 0 # program already installed
 
     # Install command based on different Linux distributions
-
+    local cmd
     if [ "$DISTRO_PM" = "pacman" ]; then # arch Linux
       cmd=("pacman -Sy --noconfirm $lnx_cmd")
     elif [ "$DISTRO_PM" = "apt" ]; then # debian | ubuntu
@@ -73,7 +73,7 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
 
     # message for debug
     if [[ "${DEBUG:-1}" == "0" ]]; then
-      string "Automatically installing {} ..." "$lnx_cmd"
+      printf '%q ' "${cmd[@]}"
     fi
 
     set +e
@@ -96,6 +96,40 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
     # Check again if the installation was successful
     exiterr "{} installation failed, please install manually. Log: {} [{}]" \
       "$lnx_cmd" "$LOG_FILE" "$(date "+%Y-%m-%d %H:%M:%S")"
+  }
+
+  # ==============================================================================
+  # Automatically install all packages (No check, will exit if any error occurs)
+  # ==============================================================================
+  install_base_pkgs() {
+    local cmd
+    # Install command based on different Linux distributions
+    if [ "$DISTRO_PM" = "pacman" ]; then # arch Linux
+      cmd="pacman -Sy --noconfirm $*"
+    elif [ "$DISTRO_PM" = "apt" ]; then # debian | ubuntu
+      cmd="apt-get install -y $*"
+    else # centos | rhel | openSUSE
+      cmd="$DISTRO_PM install -y $*"
+    fi
+
+    # message for debug
+    if [[ "${DEBUG:-1}" == "0" ]]; then
+      printf '%s\n' "$cmd"
+    fi
+
+    set +e
+    cmd_exec "$cmd"
+    local ret_code=$?
+    set -e
+
+    if [[ $ret_code -eq 0 ]]; then
+      success "{} installation successful" "$*"
+      return 0 # program installed
+    fi
+
+    # Check again if the installation was successful
+    exiterr "{} installation failed, please install manually. Log: {} [{}]" \
+      "$*" "$LOG_FILE" "$(date "+%Y-%m-%d %H:%M:%S")"
   }
 
   # ==============================================================================

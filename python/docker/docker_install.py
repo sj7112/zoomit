@@ -200,7 +200,6 @@ class DockerSetup:
             return 1  # keep current setup
 
         rc = self.install_choose()
-        print(f"rc={rc}")
         if rc == 0:
             write_temp_file(self.conf_file, self.lines)
 

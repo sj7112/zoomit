@@ -22,7 +22,7 @@ if [[ -z "${LOADED_DOCKER_INSTALL:-}" ]]; then
   check_docker() {
     # Check docker
     docker_ver=$(docker --version 2>/dev/null | awk '{print $3}' | sed 's/,//')
-    [[ -n "$docker_ver" ]] || exiterr "Docker 安装失败"
+    [[ -n "$docker_ver" ]] || exiterr "Docker installation failure"
 
     # Check docker compose (try v2 first)
     if docker compose version &>/dev/null; then
@@ -30,11 +30,11 @@ if [[ -z "${LOADED_DOCKER_INSTALL:-}" ]]; then
     elif command -v docker-compose &>/dev/null; then
       compose_ver="v1"
     else
-      exiterr "Docker Compose 安装失败，请尝试手动安装 \
-路径: {}" "$(get_docker_compose_url)"
+      exiterr "Docker Compose installation failure，please try manual installation \
+Github Path: {}" "$(get_docker_compose_url)"
     fi
 
-    string "Docker ({}) 与 Docker Compose ({}) 已安装" "$docker_ver" "$compose_ver"
+    string "Docker ({}) and Docker Compose ({}) are installed" "$docker_ver" "$compose_ver"
   }
 
   # ==============================================================================
@@ -79,14 +79,10 @@ if [[ -z "${LOADED_DOCKER_INSTALL:-}" ]]; then
   install_docker_off_apt() {
     remove_docker_apt # remove original version if exists
 
-    info "在 {} 上安装 Docker 与 Docker Compose..." "$DISTRO_OSTYPE"
+    info "Installing Docker and Docker Compose on {}..." "$DISTRO_OSTYPE"
 
     # 安装依赖
-    install_base_pkg "ca-certificates" "/etc/ssl/certs/|/etc/pki/tls/|/etc/ssl/cert.pem"
-    install_base_pkg "curl"
-    install_base_pkg "gnupg" ""               # no need to check
-    install_base_pkg "lsb-release" ""         # no need to check
-    install_base_pkg "apt-transport-https" "" # no need to check (obsoleted)
+    install_base_pkgs "ca-certificates" "curl" "gnupg" "lsb-release" "apt-transport-https"
 
     # 添加 Docker 仓库 GPG（可选，但推荐）
     install -m 0755 -d /etc/apt/keyrings
@@ -102,10 +98,6 @@ if [[ -z "${LOADED_DOCKER_INSTALL:-}" ]]; then
     # 安装 Docker
     apt-get update
     apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-
-    # # 验证 Docker 是否成功安装
-    # docker --version &>/dev/null || exiterr "Docker 安装失败"
-    # docker compose version &>/dev/null || exiterr "Docker compose v2 插件安装失败"
   }
 
   install_docker_off_rpm() {
@@ -114,9 +106,7 @@ if [[ -z "${LOADED_DOCKER_INSTALL:-}" ]]; then
     info "Installing Docker and Docker Compose on {}..." "$DISTRO_OSTYPE"
 
     # 安装依赖
-    install_base_pkg "yum-utils" ""                     # no need to check
-    install_base_pkg "device-mapper-persistent-data" "" # no need to check
-    install_base_pkg "lvm2" ""                          # no need to check (obsoleted)
+    install_base_pkgs "yum-utils" "device-mapper-persistent-data" "lvm2"
 
     # 添加 Docker YUM 仓库
     yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
@@ -126,27 +116,21 @@ if [[ -z "${LOADED_DOCKER_INSTALL:-}" ]]; then
 
     # 启动 Docker 并设置开机启动
     systemctl enable --now docker
-
-    # # 验证 Docker 是否成功安装
-    # docker --version &>/dev/null || exiterr "Docker installation failed"
-    # docker compose version &>/dev/null || exiterr "Docker Compose v2 plugin installation failed"
   }
 
   # ==============================================================================
   # use package management to install docker
   # ==============================================================================
   install_docker_pm() {
-    info "在 {} 上安装 Docker 与 Docker Compose..." "$DISTRO_OSTYPE"
+    remove_docker_rpm # remove original version if exists
+
+    info "Installing Docker and Docker Compose on {}..." "$DISTRO_OSTYPE"
 
     case "$DISTRO_OSTYPE" in
       debian | ubuntu)
-        echo "test1"
         remove_docker_apt # remove original version if exists
-        echo "test2"
         install_base_pkg docker.io ""
-        echo "test3"
         install_base_pkg docker-compose ""
-        echo "test4"
         ;;
       centos | rhel)
         remove_docker_rpm # remove original version if exists
@@ -167,27 +151,6 @@ if [[ -z "${LOADED_DOCKER_INSTALL:-}" ]]; then
     esac
     systemctl enable --now docker
     # systemctl start docker
-
-    # # 验证 Docker 是否成功安装
-    # docker --version &>/dev/null || exiterr "Docker 安装失败"
-
-    # # 检查是否已包含 docker compose 插件（v2）
-    # if ! check_compose_v2; then
-    #   COMPOSE_PLUGIN_DIR="/usr/lib/docker/cli-plugins"
-    #   mkdir -p "$COMPOSE_PLUGIN_DIR"
-
-    #   curl -sSL https://github.com/docker/compose/releases/download/v2.24.6/docker-compose-linux-x86_64 \
-    #     -o "$COMPOSE_PLUGIN_DIR/docker-compose"
-    #   sudo chmod +x "$COMPOSE_PLUGIN_DIR/docker-compose"
-    # fi
-
-    # # 验证 Compose 是否就绪
-    # if ! docker compose version &>/dev/null; then
-    #   error "Docker Compose 安装失败"
-    #   return 1
-    # fi
-
-    # success "Docker 与 Docker Compose 安装完成！"
   }
 
   # ==============================================================================
