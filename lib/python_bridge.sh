@@ -15,7 +15,6 @@ if [[ -z "${LOADED_PYTHON_BRIDGE:-}" ]]; then
 
   # ===== 调用 myshell.py 中的命令 =====
   sh_update_source() {
-    echo
     py_exec "$ROOT_DIR/myshell.py" sh_update_source "$DISTRO_OSTYPE"
   }
 

@@ -74,11 +74,9 @@ if [[ -z "${LOADED_SYSTEM:-}" ]]; then
   get_docker_setup() {
     if [[ -n "${DOCKER_SETUP_FILE:-}" && -f "$DOCKER_SETUP_FILE" ]]; then
       # 判断是否有 official 或 available
-      if grep -Eq '^official=' "$DOCKER_SETUP_FILE"; then
-        local url=$(grep -E '^url=' "$DOCKER_SETUP_FILE" | cut -d'=' -f2)
-        echo "$url"
-        return
-      fi
+      url=$(awk -F= '$1=="url"{print $2}' "$DOCKER_SETUP_FILE")
+      echo "${url:-""}"
+      return
     fi
     echo ""
   }

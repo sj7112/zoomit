@@ -252,10 +252,7 @@ def confirm_action(prompt: str, callback: Callable[..., Any] = None, *args: Any,
     status, response = do_confirm_action(prompt, option, no_value, to_value, err_handle, error_msg)
     if status == 0:
         if callback:
-            if option == "bool":
-                return callback(*args)  # 仅返回code
-            else:
-                return callback(*args, response), response
+            status = callback(*args) if option == "bool" else callback(*args, response)  # change status
     elif status == 1:
         warning(no_msg)
     elif status == 2 or status == 3:
@@ -265,7 +262,4 @@ def confirm_action(prompt: str, callback: Callable[..., Any] = None, *args: Any,
     else:
         exiterr(exit_msg)
 
-    if option == "bool":
-        return status  # 仅返回code
-    else:
-        return status, response
+    return status if option == "bool" else (status, response)  # option="bool": only return status

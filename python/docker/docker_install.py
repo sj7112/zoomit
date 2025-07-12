@@ -17,11 +17,16 @@ env = os.environ.copy()
 env["LANG"] = "C"
 
 
+urls_map = {
+    "global": "https://download.docker.com/linux",
+    "aliyun": "https://mirrors.aliyun.com/docker-ce/linux/{ostype}",
+}
+
 paths_map = {
-    "debian": "{ostype}/dists/{codename}/pool/stable/{arch}/",
-    "ubuntu": "{ostype}/dists/{codename}/pool/stable/{arch}/",
-    "centos": "{ostype}/{version}/{arch}/stable/Packages/",
-    "rhel": "{ostype}/{version}/{arch}/stable/Packages/",
+    "debian": "dists/{codename}/pool/stable/{arch}/",
+    "ubuntu": "dists/{codename}/pool/stable/{arch}/",
+    "centos": "{version}/{arch}/stable/Packages/",
+    "rhel": "{version}/{arch}/stable/Packages/",
     "opensuse": None,  # openSUSE Linux usually uses zypper repo, no official path
     "arch": None,  # Arch Linux usually uses pacman repo, no official path
 }
@@ -34,7 +39,7 @@ class DockerSetup:
         self.lines = {}
         self.os_info = OSInfoCache.get_instance().get()
 
-    def get_official_version_url(self):
+    def get_official_version_url(self, location):
         """Choose the path rule"""
         ostype = self.os_info.ostype
         pm = self.os_info.package_mgr
@@ -59,19 +64,20 @@ class DockerSetup:
         path_template = paths_map.get(ostype)
 
         if not path_template:
-            return None
+            return None, None
 
         # For distros without codename, you may need to define `version` instead
         url_path = path_template.format(
             ostype=ostype, codename=codename, version=codename, arch=arch  # Reuse codename as version if needed
         )
 
-        return f"https://download.docker.com/linux/{url_path}"
+        base_url = urls_map.get(location).format(ostype=ostype)
+        return base_url, f"{base_url}/{url_path}"
 
     def get_docker_version(self):
         try:
             result = cmd_ex_str("docker version --format {{.Server.Version}}", noex=True)
-            version = result.stdout.strip()
+            version = result.strip()
             if version:
                 return version
         except Exception:
@@ -100,21 +106,21 @@ class DockerSetup:
 
         return None
 
-    def get_official_version(self):
+    def get_official_version(self, location):
         """
         Return latest available Docker CE version and the corresponding apt repo URL
         """
-        base_url = self.get_official_version_url()
-        if base_url:
+        base_url, full_url = self.get_official_version_url(location)
+        if full_url:
             try:
-                response = requests.get(base_url, timeout=10)
+                response = requests.get(full_url, timeout=10)
                 if response.status_code == 200:
                     matches = re.findall(r"docker-ce_(\d+\.\d+\.\d+)[\w~+:. -]*\.(?:deb|rpm)", response.text)
                     latest_version = sorted(matches, key=lambda v: list(map(int, v.split("."))), reverse=True)[0]
                     return latest_version, base_url
             except Exception:
                 pass
-            print(f"Error fetching official version from {base_url}", file=sys.stderr)
+            print(f"Error fetching official version from {full_url}", file=sys.stderr)
         return None, None
 
     def compare_versions(self, v1, v2):
@@ -123,7 +129,7 @@ class DockerSetup:
 
         return normalize(v1) >= normalize(v2)
 
-    def install_ask(self):
+    def install_ask(self) -> bool:
         min_ver = self.min_ver
         rc = 0
 
@@ -139,71 +145,82 @@ class DockerSetup:
                 if rc == 1:
                     sys.exit(1)  # stop running
 
-        return rc
+        return rc == 0
 
     def install_choose(self) -> bool:
         min_ver = self.min_ver
         v1_inst_str = _mf(r"Install system-provided Docker")
         v2_inst_str = _mf(r"Install official-provided Docker")
         lines = self.lines
-        rc = 0
 
         pm = self.os_info.package_mgr
         v1 = self.get_available_version()
         if v1:
             if self.compare_versions(v1, min_ver):
-                lines["available"] = v1
-                v1_inst_str = _mf(r"Install system-provided Docker")
+                lines["available"] = {"version": v1}
             else:
                 info(r"Requires Docker version {}+, {} only supports {}", min_ver, pm, v1)
 
         version = _mf("Version")
-        v2, url = self.get_official_version()
+        v2, url = self.get_official_version("global")
         if v2:
             if self.compare_versions(v2, min_ver):
-                lines["official"] = v2
-                v2_inst_str = _mf(r"Install official-provided Docker")
-            else:
-                info(r"Requires Docker version {}+, official website only supports {}", min_ver, v2)
+                lines["official"] = {"version": v2, "url": url}
+
+        v2, url = self.get_official_version("aliyun")
+        if v2:
+            if self.compare_versions(v2, min_ver):
+                lines["official_cn"] = {"version": v2, "url": url}
 
         if not lines:
             sys.exit(1)  # stop running
 
-        print()
-        if v1 and v2:
-            print(f" 1)  {version}={v1:<11}{v1_inst_str}")
-            print(f" 2)  {version}={v2:<11}{v2_inst_str}")
-            print()
+        line_size = len(lines)
+        if line_size > 1:
+            index = 1
+            for key, value in lines.items():
+                key_desc = ""
+                match key:
+                    case "available":
+                        key_desc = v1_inst_str
+                    case "official":
+                        key_desc = v2_inst_str
+                    case "official_cn":
+                        key_desc = v2_inst_str + f" (aliyun)"
+                print(f" {index})  {version}={value['version']:<11}{key_desc}")
+                index += 1
+            print()  # print blank line
 
-            to_value = 2 if self.os_info.package_mgr == "apt" else 1
-            prompt = _mf("Please select a version to install (1-2). Enter 0 to skip:")
-            rc, result = confirm_action(prompt, option="number", no_value=0, to_value=to_value)
+            prompt = _mf(r"Please select a version to install (1-{}). Enter 0 to skip:", line_size)
+            rc, result = confirm_action(prompt, option="number", no_value=0, to_value=line_size)
             if result == 0:
-                return 1  # keep current setup
-            if result == 1:
-                del lines["official"]
-            elif result == 2:
-                del lines["available"]
-                lines["url"] = url
-        elif v1:
-            rc = confirm_action(f"{v1_inst_str} ({version}={v1}):", no_value=True)
-        elif v2:
-            rc = confirm_action(f"{v2_inst_str} ({version}={v2}):", no_value=True)
-            if rc == 0:
-                lines["url"] = url
+                return False  # keep current setup
+            else:
+                line = list(lines.values())[result - 1]
+                write_temp_file(self.conf_file, line)  # add version and base_url in temp file
+        else:
+            line = lines[0]
+            key, value = line
+            match key:
+                case "available":
+                    key_desc = v1_inst_str
+                case "official":
+                    key_desc = v2_inst_str
+                case "official_cn":
+                    key_desc = v2_inst_str + f" (aliyun)"
+            rc = confirm_action(f"{version}={value['version']:<11}{key_desc}:", no_value=True)
+            if rc == 1:
+                return False  # keep current setup
+            else:
+                write_temp_file(self.conf_file, line)  # store version and base_url in temp file
 
-        return rc
+        return True
 
     def check_docker(self):
-        rc = self.install_ask()
-        if rc == 1:
+        if self.install_ask() and self.install_choose():
+            return 0  # install/re-install docker
+        else:
             return 1  # keep current setup
-
-        rc = self.install_choose()
-        if rc == 0:
-            write_temp_file(self.conf_file, self.lines)
-
-        return rc  # keep current setup
 
 
 # Example usage:

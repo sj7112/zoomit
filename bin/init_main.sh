@@ -127,6 +127,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     sh_update_source
     # 3. Install basic packages
     install_base_pkgs "sudo" "wget" "curl" "jq" "make"
+    printf "\n" >&2
     # 4. Load JSON environment variables
     # META_Command=$(json_load_data "cmd_meta") # Parse command JSON
   }
@@ -139,7 +140,6 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   # Return Value: None (directly modifies /etc/ssh/sshd_config and restarts sshd)
   # ==============================================================================
   configure_sshd() {
-    echo
     local ssh_service=$([[ $DISTRO_OSTYPE == "ubuntu" ]] && echo ssh || echo sshd)
 
     # Check if sshd is installed
@@ -163,6 +163,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
       else
         warning "systemctl restart {} failed, please execute manually" "$ssh_service"
       fi
+      echo
     fi
   }
 
@@ -170,7 +171,6 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   # Feature 3: Configure static IP
   # --------------------------
   configure_ip() {
-    echo
     if sh_configure_nw; then # python adds-on: config network as fix ip
       init_env_nw
       network_config
@@ -182,7 +182,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     if sh_check_docker; then
       local url=$(get_docker_setup)
       if [[ -n $url ]]; then
-        install_docker_official
+        install_docker_official "$url"
       else
         install_docker_pm
       fi
@@ -215,10 +215,10 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     initial_global # Set environment variables
     echo -e "\n=== $INIT_SYSTEM_START - $PRETTY_NAME ===\n"
     trap 'close_all' EXIT
-    # initial_environment # Initialize basic values
-    # configure_sshd      # Configure SSH
-    # configure_ip        # Configure static IP
-    docker_compose # Install Docker software
+    initial_environment # Initialize basic values
+    configure_sshd      # Configure SSH
+    configure_ip        # Configure static IP
+    docker_compose      # Install Docker software
     trap - EXIT
     close_all # close python cache
     echo -e "\n=== $INIT_SYSTEM_END - $PRETTY_NAME ==="

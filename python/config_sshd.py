@@ -114,41 +114,53 @@ class SshSetup:
             if ret_code != 0:
                 return 1
 
-        def valid_configure_sshd(new_port: int, error_msg: str) -> int:
+        def valid_configure_sshd_port(new_port: int, error_msg: str) -> int:
             if 1 <= new_port <= 65535:
                 return 0
             else:
                 print(error_msg)
                 return 2  # continue
 
-        # Prompt for SSH port
-        prompt = _mf(r"Enter new SSH port (current: {}): ", ssh_port)
-        error_msg = f"[{MSG_ERROR}] {_mf('Failed to set SSH port')}"
-        ret_code, new_port = confirm_action(
-            prompt,
-            option="number",
-            no_value=ssh_port,
-            err_handle=valid_configure_sshd,
-            error_msg=error_msg,
-        )
-        # 处理用户输入
-        if ret_code == 0:
+        def do_configure_sshd_port(new_port: int):
             if new_port != ssh_port:
                 self.modify_config_line("Port", f"Port {new_port}")
             print(f"[{MSG_SUCCESS}] {_mf('SSH port set to')}: {new_port}")
-        else:
+            return 0
+
+        # Prompt for SSH port
+        prompt = _mf(r"Enter new SSH port (current: {}): ", ssh_port)
+        error_msg = f"[{MSG_ERROR}] {_mf('Failed to set SSH port')}"
+        ret_code, _ = confirm_action(
+            prompt,
+            do_configure_sshd_port,
+            option="number",
+            no_value=ssh_port,
+            err_handle=valid_configure_sshd_port,
+            error_msg=error_msg,
+        )
+        if ret_code != 0:
             return ret_code
 
-        # 询问是否允许root登录
+        def do_configure_sshd_root(ret_code: int):
+            if ret_code == 0:
+                self.modify_config_line("PermitRootLogin", "PermitRootLogin yes")
+                print(f"[{MSG_SUCCESS}] {_mf('root login allowed')}")
+            elif ret_code == 1:
+                self.modify_config_line("PermitRootLogin", "PermitRootLogin no")
+                print(f"[{MSG_SUCCESS}] {_mf('root login disabled')}")
+            return ret_code
+
+        # Ask whether to allow root login
         prompt = _mf("Allow root login via SSH?")
-        ret_code = confirm_action(prompt, no_value=root_login)
-        if ret_code == 0:
-            self.modify_config_line("PermitRootLogin", "PermitRootLogin yes")
-            print(f"[{MSG_SUCCESS}] {_mf('root login allowed')}")
-        elif ret_code == 1:
-            self.modify_config_line("PermitRootLogin", "PermitRootLogin no")
-            print(f"[{MSG_SUCCESS}] {_mf('root login disabled')}")
-        else:
+        ret_code = confirm_action(prompt, do_configure_sshd_root, no_value=root_login)
+        if ret_code != 0 and ret_code != 1:
+            # if ret_code == 0:
+            #     self.modify_config_line("PermitRootLogin", "PermitRootLogin yes")
+            #     print(f"[{MSG_SUCCESS}] {_mf('root login allowed')}")
+            # elif ret_code == 1:
+            #     self.modify_config_line("PermitRootLogin", "PermitRootLogin no")
+            #     print(f"[{MSG_SUCCESS}] {_mf('root login disabled')}")
+            # else:
             return ret_code
 
         # write file

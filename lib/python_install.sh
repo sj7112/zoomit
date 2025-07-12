@@ -267,13 +267,12 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
       if ! confirm_action "$prompt" no_value="$default"; then
         echo
         local pip_url=$("$VENV_BIN" -m pip config get global.index-url 2>/dev/null)
-        local mirror_str=""
         if [[ -n $pip_url ]]; then
-          mirror_str="$(_mf "Current pip mirror:") ${pip_url}"$'\n'
+          echo "$(_mf "Current pip mirror:") ${pip_url}"
         else
           default="Y"
         fi
-        prompt=$(_mf "{}Reinstall pip and the required Python libraries?" "$mirror_str")
+        prompt=$(_mf "Reinstall pip and the required Python libraries?")
         confirm_action "$prompt" no_value="$default" msg="$(_mf "Skipping virtual environment creation")"
         return $?
       else
@@ -519,6 +518,7 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
         user_file_permit "$VENV_DIR"
       fi
     fi
+    echo
   }
 
   # ==============================================================================
