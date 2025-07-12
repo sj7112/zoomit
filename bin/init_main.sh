@@ -126,7 +126,11 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     # 2. Select and update package manager
     sh_update_source
     # 3. Install basic packages
-    install_base_pkgs "sudo" "wget" "curl" "jq" "make"
+    install_base_pkg "sudo"
+    install_base_pkg "wget"
+    install_base_pkg "curl"
+    install_base_pkg "jq"
+    install_base_pkg "make"
     printf "\n" >&2
     # 4. Load JSON environment variables
     # META_Command=$(json_load_data "cmd_meta") # Parse command JSON
