@@ -18,6 +18,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.pat
 LOG_FILE = "/var/log/sj_install.log"
 TMP_FILE_PREFIX = "sj_temp_"
 TIMEOUT_FILE = os.environ.get("TIMEOUT_FILE")
+PARAM_FILE = os.environ.get("PARAM_FILE")
 
 
 def setup_logging():
@@ -344,6 +345,25 @@ def print_prompt_for_raw_mode(prompt):
     """
     prompt = prompt.replace("\n", "\r\n")
     print(f"{prompt} ", end="", flush=True)
+
+
+# ==============================================================================
+# functions to support auto run parameter
+# ==============================================================================
+def get_param_fixip():
+    """
+    get parameter value from file
+    """
+    if not PARAM_FILE:
+        return 0  # no value
+    try:
+        with open(PARAM_FILE, "r") as f:
+            for line in f:
+                if line.startswith("ip_last_octet="):
+                    return int(line.strip().split("=", 1)[1])
+    except Exception:
+        pass
+    return 0  # no value
 
 
 # 在程序启动时调用

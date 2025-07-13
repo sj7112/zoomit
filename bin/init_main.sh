@@ -230,6 +230,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
         REAL_USER="$USER"
         REAL_HOME="$HOME"
         TIMEOUT_FILE="${TIMEOUT_FILE:-}"
+        PARAM_FILE="${PARAM_FILE:-}"
       )
       exec sudo env "${ENV_VARS_TO_PASS[@]}" "$0" "$@"
     else
@@ -237,6 +238,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
         export REAL_USER="$USER"
         export REAL_HOME="$HOME"
         export TIMEOUT_FILE="${TIMEOUT_FILE:-}"
+        export PARAM_FILE="${PARAM_FILE:-}"
       }
     fi
     # Ensure old process is terminated
@@ -258,10 +260,13 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
 
   # ==============================================================================
   # Main Function
+  # -v | --version      show version info.
+  # -t5 | --timeout=5   5 seconds timeout
+  # --fixip=110         last octet of fix IP
   # ==============================================================================
   if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     # Check for --version or -v argument
-    TEMP=$(getopt -o vt: --long version,timeout: -n 'script' -- "$@")
+    TEMP=$(getopt -o vt: --long version,timeout,fixip: -n 'script' -- "$@")
     if [ $? != 0 ]; then
       echo "Parameter Error!" >&2
       exit 1
@@ -277,6 +282,10 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
           ;;
         -t | --timeout)
           init_time_out "$2" # Initialize timeout value
+          shift 2
+          ;;
+        --fixip)
+          init_param_fixip "$2" # Fixed IP address
           shift 2
           ;;
         --)

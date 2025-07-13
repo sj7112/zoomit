@@ -10,7 +10,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.pat
 
 from python.file_util import read_env_file
 from python.cmd_handler import cmd_ex_str, cmd_ex_pat
-from python.system import get_network_service, get_static_ip, check_dns
+from python.system import get_network_service, get_param_fixip, get_static_ip, check_dns
 from python.read_util import confirm_action
 from python.msg_handler import _mf, exiterr, info, string
 from python.debug_tool import print_array
@@ -188,7 +188,11 @@ class NetworkSetup:
 
         prompt = _mf(r"Please enter the last octet of the static IP address (1–255) [default: {}]: ", curr_last_octet)
         ret_code, new_last_octet = confirm_action(
-            prompt, option="number", no_value=curr_last_octet, err_handle=valid_setup_octet
+            prompt,
+            option="number",
+            no_value=curr_last_octet,
+            to_value=get_param_fixip(),
+            err_handle=valid_setup_octet,
         )
 
         if ret_code == 0:

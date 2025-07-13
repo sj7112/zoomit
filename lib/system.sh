@@ -187,4 +187,31 @@ EOF
     return 1
   }
 
+  # ==============================================================================
+  # functions to support auto run parameter
+  # ==============================================================================
+  init_param_fixip() {
+    if [[ -z "${PARAM_FILE:-}" || ! -f "$PARAM_FILE" ]]; then
+      local filename=$(generate_temp_file)
+      cat >"$filename" <<EOF
+ip_last_octet=$1
+EOF
+      export PARAM_FILE="$filename"
+    else
+      local filename=$PARAM_FILE
+      cat >>"$filename" <<EOF
+ip_last_octet=$1
+EOF
+    fi
+  }
+
+  get_param_fixip() {
+    if [[ -z "${PARAM_FILE:-}" || ! -f "$PARAM_FILE" ]]; then
+      echo "0" # not set, return default value
+    else
+      local val=$(grep '^ip_last_octet=' "$PARAM_FILE" | cut -d'=' -f2)
+      echo "${val:-1}" # return value from the file
+    fi
+  }
+
 fi
