@@ -11,6 +11,8 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
   #       new_response: The user can return a new response
   #   2 = CONTINUE: to be continued
   #   3 = EXIT: to exit the program
+  # Use temp file to pass response data, because
+  #   it's hard to pass both code and response for TRUE/FALSE/ERRORS/Ctrl+C, etc.
   # ==============================================================================
   error_handler() {
     local result_f="$1" # Temp file to store result
@@ -18,18 +20,20 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
     local err_handle="$3"
     local error_msg="$4"
 
-    [[ -z "$err_handle" ]] && return 0 # 0 = no error
-
-    local new_response=$("$err_handle" "$response" "$error_msg")
-    local err_code=$(tuple_code "$new_response") # code
-    [[ $err_code == 0 ]] || return "$err_code"   # 0 = no error 2 = continue, 3 = exit
-
-    new_response=$(tuple_result "$new_response") # new_response
-    if [[ -n "$new_response" ]]; then
-      echo "$new_response" >"$result_f" # Update response
-    else
+    local err_code=0
+    [[ -n "$err_handle" ]] && {
+      # check the result: (error code) OR (error code + \x1F + changed response)
+      local new_response
+      new_response=$("$err_handle" "$response" "$error_msg") # get unpdated response
+      err_code=$?                                            # get error code
+      if [[ -n "$new_response" ]]; then
+        response="$new_response" # response is updated
+      fi
+    }
+    if [[ $err_code == 0 ]]; then
       echo "$response" >"$result_f" # Return the response value
     fi
+    return "$err_code" # 0 = no error, 2 = continue, 3 = exit
   }
 
   # Boolean option [YyNn]

@@ -78,7 +78,7 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
       norm_lang="${lang_prefix}_${lang_suffix}"
     else
       string -i "$INIT_SHELL_LANG_FOMAT_ERROR"
-      printf "%s" 2 && return # Invalid format
+      return 2
     fi
 
     # Convert charset to uppercase (e.g., UTF-8 / ISO-8859-1)
@@ -88,10 +88,11 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
     # Check with [ locale -a ]
     locale -a | grep -Fxq "$lang"
     if [[ $? -ne 0 ]]; then
-      string -i "$INIT_SHELL_LANG_NOT_IN_LIST"
-      printf "%s" 2 && return # Format does not exist
+      string -i "$INIT_SHELL_LANG_NOT_IN_LIST" "$lang"
+      return 2
     fi
-    tuple_callback 0 "${lang}" # combine as tuple (code + response)
+    echo "${lang}" # update response
+    return 0
   }
 
   # reset language(C or POSIX is not allowed)

@@ -478,7 +478,6 @@ if [[ -z "${LOADED_PYTHON_INSTALL:-}" ]]; then
       fi
       # Invalid input
       printf "%s\n" "$error_msg" >&2
-      # echo -n "$error_msg" >&2
       return 2 # continue
     }
 
