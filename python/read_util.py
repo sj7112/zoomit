@@ -174,6 +174,7 @@ def do_confirm_action(prompt: str, option: str, no_value: Any, to_value: Any, er
 
                 except TimeoutError:
                     response = to_value  # Use timeout default value
+                    print(to_value)
                     print("\r\n", end="", flush=True)
                     break
 

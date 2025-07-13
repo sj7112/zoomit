@@ -186,7 +186,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   docker_compose() {
     init_docker_setup
     if sh_check_docker; then
-      install_dock
+      install_docker
     fi
     # infra_setup
     # apps_setup
