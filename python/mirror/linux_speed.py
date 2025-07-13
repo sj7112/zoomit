@@ -388,8 +388,7 @@ class MirrorTester:
                 default = False
 
             # 2. update mirrors
-            ret_code = confirm_action(prompt, self.choose_mirror, no_value=default)
-            # default = ret_code == 0
+            confirm_action(prompt, self.choose_mirror, no_value=default)
         except Exception as e:
             print()
             string(r"An error occurred during program execution: {}", e)
@@ -401,4 +400,4 @@ class MirrorTester:
             # 3. upgrade PM configuration
             print()
             prompt = _mf("Would you like to upgrade the packages immediately?")
-            confirm_action(prompt, pm_upgrade, no_value=default)
+            confirm_action(prompt, pm_upgrade, no_value=True)
