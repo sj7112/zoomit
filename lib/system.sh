@@ -193,12 +193,12 @@ EOF
   }
 
   # Using \x1F as delimiter, to extract the code part
-  turple_code() {
+  tuple_code() {
     printf "%s" "${1%%$'\x1F'*}"
   }
 
   # Extracts the result part
-  turple_result() {
+  tuple_result() {
     local response=$1
     # Check if \x1F delimiter exists in the string
     if [[ "$response" == *$'\x1F'* ]]; then
@@ -206,6 +206,11 @@ EOF
     else
       printf ""
     fi
+  }
+
+  # check if contain delimiter \x1F
+  tuple_check() {
+    [[ "$1" == *$'\x1F'* ]]
   }
 
 fi
