@@ -389,7 +389,7 @@ class MirrorTester:
 
             # 2. update mirrors
             ret_code = confirm_action(prompt, self.choose_mirror, no_value=default)
-            default = ret_code == 0
+            # default = ret_code == 0
         except Exception as e:
             print()
             string(r"An error occurred during program execution: {}", e)
