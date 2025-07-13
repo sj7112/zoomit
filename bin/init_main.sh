@@ -210,10 +210,10 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     initial_global # Set environment variables
     echo -e "\n=== $INIT_SYSTEM_START - $PRETTY_NAME ===\n"
     trap 'close_all' EXIT
-    # initial_environment # Initialize basic values
-    # configure_sshd      # Configure SSH
-    # configure_ip        # Configure static IP
-    docker_compose # Install Docker software
+    initial_environment # Initialize basic values
+    configure_sshd      # Configure SSH
+    configure_ip        # Configure static IP
+    docker_compose      # Install Docker software
     trap - EXIT
     close_all # close python cache
     echo -e "\n=== $INIT_SYSTEM_END - $PRETTY_NAME ==="
@@ -235,7 +235,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
       )
       exec sudo env "${ENV_VARS_TO_PASS[@]}" "$0" "$@"
     else
-      [[ -z "${REAL_USER:-}" && -z "${SUDO_USER:-}" ]] && {
+      [[ -z "${REAL_USER:-}" ]] && {
         export REAL_USER="$USER"
         export REAL_HOME="$HOME"
         export TIMEOUT_FILE="${TIMEOUT_FILE:-}"

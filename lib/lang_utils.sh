@@ -66,7 +66,7 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
     esac
   }
 
-  # Normalize locale format
+  # Normalize locale format (0= valid, 2=invalid)
   normalize_locale() {
     input="$1"
 
@@ -78,7 +78,7 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
       norm_lang="${lang_prefix}_${lang_suffix}"
     else
       string -i "$INIT_SHELL_LANG_FOMAT_ERROR"
-      return 1 # Invalid format
+      printf "%s" 2 && return # Invalid format
     fi
 
     # Convert charset to uppercase (e.g., UTF-8 / ISO-8859-1)
@@ -89,10 +89,9 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
     locale -a | grep -Fxq "$lang"
     if [[ $? -ne 0 ]]; then
       string -i "$INIT_SHELL_LANG_NOT_IN_LIST"
-      return 1 # Format does not exist
+      printf "%s" 2 && return # Format does not exist
     fi
-    echo "${lang}"
-    return 0
+    tuple_callback 0 "${lang}" # combine as tuple (code + response)
   }
 
   # reset language(C or POSIX is not allowed)
@@ -108,17 +107,12 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
       fi
     done
 
-    # check if input is correct
-    valid_reset_language() {
-      normalize_locale "$1" && return 0 || return 2 # 0= valid, 2=invalid
-    }
-
     # Prompt user for input
     local prompt=$(_mf -i "$INIT_SHELL_LANG" "$default_lang")
     local result_f=$(generate_temp_file)
     confirm_action "$prompt" \
       option="string" no_value="$default_lang" result_f="$result_f" \
-      err_handle="valid_reset_language"
+      err_handle="normalize_locale" # dynamically update response!!
 
     local result=$(normalize_code_upper "$(<"$result_f")")
     echo "$result"

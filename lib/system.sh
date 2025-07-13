@@ -187,4 +187,25 @@ EOF
     return 1
   }
 
+  # Using \x1F as delimiter, to separate code and result string
+  tuple_callback() {
+    printf "%s\x1F%s" "$1" "$2" # use printf to safely export \x1F
+  }
+
+  # Using \x1F as delimiter, to extract the code part
+  turple_code() {
+    printf "%s" "${1%%$'\x1F'*}"
+  }
+
+  # Extracts the result part
+  turple_result() {
+    local response=$1
+    # Check if \x1F delimiter exists in the string
+    if [[ "$response" == *$'\x1F'* ]]; then
+      printf "%s" "${response#*$'\x1F'}"
+    else
+      printf ""
+    fi
+  }
+
 fi

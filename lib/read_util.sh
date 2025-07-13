@@ -21,15 +21,15 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
     [[ -z "$err_handle" ]] && return 0 # 0 = no error
 
     local new_response=$("$err_handle" "$response" "$error_msg")
-    local err_code=$?
-    if [[ $err_code == 0 ]]; then
-      if [[ -n "$new_response" ]]; then
-        echo "$new_response" >"$result_f" # Update response
-      else
-        echo "$response" >"$result_f" # Return the response value
-      fi
+    local err_code=$(turple_code "$new_response") # code
+    [[ $err_code == 0 ]] || return "$err_code"    # 0 = no error 2 = continue, 3 = exit
+
+    new_response=$(turple_result "$new_response") # new_response
+    if [[ -n "$new_response" ]]; then
+      echo "$new_response" >"$result_f" # Update response
+    else
+      echo "$response" >"$result_f" # Return the response value
     fi
-    return $err_code # 0 = no error 2 = continue, 3 = exit
   }
 
   # Boolean option [YyNn]
