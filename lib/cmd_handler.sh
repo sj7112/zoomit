@@ -57,9 +57,10 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
   # ==============================================================================
   install_base_pkg() {
     local lnx_cmd="$1"
-    local chk_cmd="${2-$1}" # install check command
+    local chk_cmd_bf="${2-$1}"        # install check command before install
+    local chk_cmd_af="${3-${2-${1}}}" # install check command after install
 
-    [[ -n $chk_cmd ]] && check_pkg_installed "$chk_cmd" && return 0 # program already installed
+    [[ -n $chk_cmd_bf ]] && check_pkg_installed "$chk_cmd_bf" && return 0 # program already installed
 
     # Install command based on different Linux distributions
     local cmd
@@ -82,7 +83,7 @@ if [[ -z "${LOADED_CMD_HANDLER:-}" ]]; then
     set -e
 
     if [[ $ret_code -eq 0 ]]; then
-      [[ -z $chk_cmd ]] || check_pkg_installed "$chk_cmd"
+      [[ -z $chk_cmd_af ]] || check_pkg_installed "$chk_cmd_af"
       local rc=$?
       if [ $rc -eq 0 ]; then
         success "{} installation successful" "$lnx_cmd"

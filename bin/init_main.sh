@@ -150,13 +150,11 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     if ! (systemctl is-active ssh &>/dev/null || systemctl is-active sshd &>/dev/null); then
       info "sshd is not installed, installing now..."
       if [[ "$DISTRO_PM" = "zypper" || "$DISTRO_PM" = "pacman" ]]; then
-        install_base_pkg "openssh" "sshd|ssh.service" # two steps of check
+        install_base_pkg "openssh" "sshd|ssh.service" "" # two steps of check
       else
-        install_base_pkg "openssh-server" "sshd|ssh.service" # two steps of check
+        install_base_pkg "openssh-server" "sshd|ssh.service" "" # two steps of check
       fi
-      systemctl enable "$ssh_service"
-      # systemctl start "$ssh_service"
-      systemctl restart "$ssh_service"
+      systemctl enable --now "$ssh_service"
     fi
 
     if sh_configure_sshd; then # python adds-on: config /etc/ssh/sshd_config
