@@ -6,7 +6,7 @@ import requests
 
 from python.cache.os_info import OSInfoCache
 from python.cmd_handler import cmd_ex_pat, cmd_ex_str
-from python.msg_handler import _mf, info
+from python.msg_handler import _mf, info, string, warning
 from python.read_util import confirm_action
 from python.system import generate_temp_file, write_temp_file
 
@@ -77,9 +77,9 @@ class DockerSetup:
     def get_docker_version(self):
         try:
             result = cmd_ex_str("docker version --format {{.Server.Version}}", noex=True)
-            version = result.strip()
-            if version:
-                return version
+            match = re.search(r"\d+\.\d+\.\d+", result)
+            if match:
+                return match.group(0)
         except Exception:
             pass
         return None
@@ -120,7 +120,8 @@ class DockerSetup:
                     return latest_version, base_url
             except Exception:
                 pass
-            print(f"Error fetching official version from {full_url}", file=sys.stderr)
+            string(r"Error fetching official version from {}", full_url)
+            print()
         return None, None
 
     def compare_versions(self, v1, v2):
@@ -129,7 +130,7 @@ class DockerSetup:
 
         return normalize(v1) >= normalize(v2)
 
-    def install_ask(self) -> bool:
+    def install_check(self) -> bool:
         min_ver = self.min_ver
         rc = 0
 
@@ -137,14 +138,15 @@ class DockerSetup:
         if ver:
             prompt = _mf("Do you want to re-install Docker?")
             if self.compare_versions(ver, min_ver):
-                info(r"Docker version {} is installed and running", ver)
+                string(r"Docker version {} is installed and running", ver)
                 rc = confirm_action(prompt, no_value=False)
+                if rc == 0:
+                    print()  # print blank line
             else:
-                info(r"Docker requires version {}+, now it's {}", ver)
+                warning(r"Docker requires version {}+, now it's {}", ver)
                 rc = confirm_action(prompt, no_value=True)
                 if rc == 1:
                     sys.exit(1)  # stop running
-
         return rc == 0
 
     def install_choose(self) -> bool:
@@ -194,12 +196,13 @@ class DockerSetup:
             prompt = _mf(r"Please select a version to install (1-{}). Enter 0 to skip:", line_size)
             rc, result = confirm_action(prompt, option="number", no_value=0, to_value=line_size)
             if result == 0:
+                warning("Skip Docker installation")
                 return False  # keep current setup
             else:
                 line = list(lines.values())[result - 1]
                 write_temp_file(self.conf_file, line)  # add version and base_url in temp file
         else:
-            line = lines[0]
+            line = list(lines.items())[0]
             key, value = line
             match key:
                 case "available":
@@ -208,16 +211,17 @@ class DockerSetup:
                     key_desc = v2_inst_str
                 case "official_cn":
                     key_desc = v2_inst_str + f" (aliyun)"
-            rc = confirm_action(f"{version}={value['version']:<11}{key_desc}:", no_value=True)
+            prompt = f"{version}={value['version']:<10}{key_desc}:"
+            rc = confirm_action(prompt, no_value=True, no_msg=f"{_mf('Skip Docker installation')}")
             if rc == 1:
                 return False  # keep current setup
             else:
-                write_temp_file(self.conf_file, line)  # store version and base_url in temp file
+                write_temp_file(self.conf_file, value)  # store version and base_url in temp file
 
         return True
 
     def check_docker(self):
-        if self.install_ask() and self.install_choose():
+        if self.install_check() and self.install_choose():
             return 0  # install/re-install docker
         else:
             return 1  # keep current setup

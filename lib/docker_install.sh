@@ -188,4 +188,17 @@ Github Path: {}" "$(get_docker_compose_url)"
     esac
   }
 
+  # ==============================================================================
+  # install docker (package management | official website)
+  # ==============================================================================
+  install_docker() {
+    local url=$(get_docker_setup)
+    if [[ -n $url ]]; then
+      install_docker_official "$url"
+    else
+      install_docker_pm
+    fi
+    check_docker
+  }
+
 fi

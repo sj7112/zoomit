@@ -49,7 +49,6 @@ def error_handler(response, err_handle=None, error_msg=None):
         tuple: (error_code, new_response)
     """
     # If no error handler provided, return 0 (no error)
-    print(f"response={response}; err_handle={err_handle}; error_msg={error_msg}")
     if not err_handle:
         return 0, response
 

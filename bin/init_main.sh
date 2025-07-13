@@ -167,8 +167,8 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
       else
         warning "systemctl restart {} failed, please execute manually" "$ssh_service"
       fi
-      echo
     fi
+    echo
   }
 
   # --------------------------
@@ -179,28 +179,19 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
       init_env_nw
       network_config
     fi
-  }
-
-  install_docker() {
-    init_docker_setup
-    if sh_check_docker; then
-      local url=$(get_docker_setup)
-      if [[ -n $url ]]; then
-        install_docker_official "$url"
-      else
-        install_docker_pm
-      fi
-    fi
-    check_docker
+    echo
   }
 
   # --------------------------
   # Feature 4: Install docker composer
   # --------------------------
   docker_compose() {
-    install_docker
-    infra_setup
-    apps_setup
+    init_docker_setup
+    if sh_check_docker; then
+      install_dock
+    fi
+    # infra_setup
+    # apps_setup
   }
 
   # --------------------------
@@ -219,10 +210,10 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     initial_global # Set environment variables
     echo -e "\n=== $INIT_SYSTEM_START - $PRETTY_NAME ===\n"
     trap 'close_all' EXIT
-    initial_environment # Initialize basic values
-    configure_sshd      # Configure SSH
-    configure_ip        # Configure static IP
-    docker_compose      # Install Docker software
+    # initial_environment # Initialize basic values
+    # configure_sshd      # Configure SSH
+    # configure_ip        # Configure static IP
+    docker_compose # Install Docker software
     trap - EXIT
     close_all # close python cache
     echo -e "\n=== $INIT_SYSTEM_END - $PRETTY_NAME ==="
