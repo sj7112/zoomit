@@ -111,8 +111,9 @@ if [[ -z "${LOADED_LANG_UTILS:-}" ]]; then
     # Prompt user for input
     local prompt=$(_mf -i "$INIT_SHELL_LANG" "$default_lang")
     local result_f=$(generate_temp_file)
-    confirm_action "$prompt" \
-      option="string" no_value="$default_lang" result_f="$result_f" \
+    local to_value=$(get_param_lang)
+    confirm_action "$prompt" option="string" result_f="$result_f" \
+      no_value="$default_lang" to_value="${to_value:-$default_lang}" \
       err_handle="normalize_locale" # dynamically update response!!
 
     local result=$(normalize_code_upper "$(<"$result_f")")

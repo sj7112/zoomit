@@ -28,13 +28,20 @@ if [[ -z "${LOADED_SYSTEM:-}" ]]; then
 
   # ==============================================================================
   # Generate a unique temporary file path (pass data from a sub-shell to a parent)
+  # shellcheck disable=SC2120
   # ==============================================================================
   generate_temp_file() {
+    local tempfile="${1:-}" # Temp file to store result
+    if [[ -n "$tempfile" ]]; then
+      echo "$tempfile"
+      return 0
+    fi
+
     # Prefer /dev/shm if it exists and is writable, otherwise fallback to /tmp
     local tmpdir="/tmp"
     [[ -d /dev/shm && -w /dev/shm ]] && tmpdir="/dev/shm"
     # Generate a unique file id with timestamp and random number
-    local tmpfile="${tmpdir}/${TMP_FILE_PREFIX}$(date +%s)${RANDOM}"
+    tmpfile="${tmpdir}/${TMP_FILE_PREFIX}$(date +%s)${RANDOM}"
     # shellcheck disable=SC2188
     >"$tmpfile" || {
       echo "Error: Unable to create temp file $tmpfile" >&2
@@ -190,6 +197,30 @@ EOF
   # ==============================================================================
   # functions to support auto run parameter
   # ==============================================================================
+  init_param_lang() {
+    if [[ -z "${PARAM_FILE:-}" || ! -f "$PARAM_FILE" ]]; then
+      local filename=$(generate_temp_file)
+      cat >"$filename" <<EOF
+shell_language=$1
+EOF
+      export PARAM_FILE="$filename"
+    else
+      local filename=$PARAM_FILE
+      cat >>"$filename" <<EOF
+shell_language=$1
+EOF
+    fi
+  }
+
+  get_param_lang() {
+    if [[ -z "${PARAM_FILE:-}" || ! -f "$PARAM_FILE" ]]; then
+      echo "" # not set, return default value
+    else
+      local val=$(grep '^shell_language=' "$PARAM_FILE" | cut -d'=' -f2)
+      echo "${val:-}" # return value from the file
+    fi
+  }
+
   init_param_fixip() {
     if [[ -z "${PARAM_FILE:-}" || ! -f "$PARAM_FILE" ]]; then
       local filename=$(generate_temp_file)

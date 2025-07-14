@@ -219,6 +219,7 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
     local err_handle    # default: empty
     local no_value      # default: Y | 0 | None
     local to_value      # default: no_value
+    local result_f      # filename to store response
 
     # Parse optional parameters
     local args=()
@@ -258,9 +259,8 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
     err_handle="${err_handle:-}"        # default: no error handler
 
     # Use result_f to store the user's input (only for number | string callback)
-    result_f="${result_f:-}" # default: empty
-    if [[ $option != "bool" && -z "$result_f" ]]; then
-      result_f=$(generate_temp_file) # Generate a temp file
+    if [[ $option != "bool" ]]; then
+      result_f=$(generate_temp_file "$result_f") # Generate a temp file
     fi
 
     local orig_stty=$(stty -g)

@@ -188,8 +188,8 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
     if sh_check_docker; then
       install_docker
     fi
-    # infra_setup
-    # apps_setup
+    infra_setup
+    apps_setup
   }
 
   # --------------------------
@@ -266,7 +266,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   # ==============================================================================
   if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     # Check for --version or -v argument
-    TEMP=$(getopt -o vt: --long version,timeout,fixip: -n 'script' -- "$@")
+    TEMP=$(getopt -o vt: --long version,timeout:,lang:,fixip: -n 'script' -- "$@")
     if [ $? != 0 ]; then
       echo "Parameter Error!" >&2
       exit 1
@@ -282,6 +282,10 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
           ;;
         -t | --timeout)
           init_time_out "$2" # Initialize timeout value
+          shift 2
+          ;;
+        --lang)
+          init_param_lang "$2" # Default shell language
           shift 2
           ;;
         --fixip)

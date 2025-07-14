@@ -125,13 +125,6 @@ if [[ -z "${LOADED_DEBUGTOOL:-}" ]]; then
     done
   }
 
-  # 打印数组
-  # print_array() {
-  #   local -n arr=$1 # 引用传递数组参数
-  #   for key in "${!arr[@]}"; do
-  #     echo "$key: ${arr[$key]}" >&2
-  #   done
-  # }
   # 打印数组（兼容 Bash 4.2）
   print_array() {
     local arr_name="$1"
@@ -146,21 +139,6 @@ if [[ -z "${LOADED_DEBUGTOOL:-}" ]]; then
     done
   }
 
-  # write_array() {
-  #   local arr_name="$1" # 数组名
-  #   local filename="$2"   # 文件名
-
-  #   # 使用 nameref 方式引用传入的数组名（需要 Bash 4.3+）
-  #   local -n arr="$arr_name"
-
-  #   # 创建或清空目标文件
-  #   : >"$filename" || return 1
-
-  #   # 遍历数组并写入文件
-  #   for item in "${arr[@]}"; do
-  #     printf '%s\n' "$item" >>"$filename"
-  #   done
-  # }
   # 打印数组到文件（兼容 Bash 4.2）
   write_array() {
     local arr_name="$1"
