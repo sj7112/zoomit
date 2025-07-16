@@ -26,8 +26,10 @@
             // "program": "${workspaceFolder}/bin/deb/init_debian.sh",
             // "program": "${workspaceFolder}/bin/cos/init_centos.sh",
             "args": [
-                //"--timeout=500"
                 // "--version"
+                //"--timeout=500"
+                //"--lang=en_us"
+                //"--fixip=113"
             ],
             "env": {
                 "DEBUG": "0"
@@ -69,9 +71,9 @@
         },
         {
             "type": "debugpy",
-            "name": "Python: 启动 config_sshd.py",
+            "name": "Python: 启动 docker_run.py",
             "request": "launch",
-            "program": "${workspaceFolder}/python/config_sshd.py",
+            "program": "${workspaceFolder}/python/docker/docker_run.py",
             "args": [],
             "env": {
                 "DEBUG": "0"
@@ -162,8 +164,9 @@
                 // "sh_configure_nw",
                 // "sh_configure_sshd",
                 // ""
-                // "sh_update_source",
-                "sh_check_docker",
+                "sh_update_source",
+                // "sh_check_docker_install",
+                // "sh_check_docker_run",
                 "debian",
                 // "ubuntu",
                 // "centos",
