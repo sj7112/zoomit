@@ -1,8 +1,11 @@
+from pathlib import Path
 import platform
 import sys
 import os
 import re
 import requests
+
+sys.path.append(str(Path(__file__).resolve().parent.parent.parent))  # add root sys.path
 
 from python.cache.os_info import OSInfoCache
 from python.cmd_handler import cmd_ex_pat, cmd_ex_str
@@ -220,7 +223,7 @@ class DockerSetup:
 
         return True
 
-    def check_docker(self):
+    def run(self):
         if self.install_check() and self.install_choose():
             return 0  # install/re-install docker
         else:
@@ -230,5 +233,5 @@ class DockerSetup:
 # Example usage:
 if __name__ == "__main__":
     docker = DockerSetup()
-    docker.check_docker()
+    docker.run()
     print(f"Docker version saved in: {docker.conf_file}")

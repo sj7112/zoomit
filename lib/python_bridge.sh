@@ -34,9 +34,17 @@ if [[ -z "${LOADED_PYTHON_BRIDGE:-}" ]]; then
     return $ret_code
   }
 
-  sh_check_docker() {
+  sh_check_docker_install() {
     set +e
-    py_exec "$ROOT_DIR/myshell.py" sh_check_docker
+    py_exec "$ROOT_DIR/myshell.py" sh_check_docker_install
+    local ret_code=$?
+    set -e
+    return $ret_code
+  }
+
+  sh_check_docker_run() {
+    set +e
+    py_exec "$ROOT_DIR/myshell.py" sh_check_docker_run
     local ret_code=$?
     set -e
     return $ret_code

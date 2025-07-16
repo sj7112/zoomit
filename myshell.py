@@ -15,6 +15,7 @@ from python.mirror.linux_speed_suse import OpenSUSEMirrorTester
 from python.mirror.linux_speed_ubt import UbuntuMirrorTester
 from python.network_util import NetworkSetup
 from python.docker.docker_install import DockerSetup
+from python.docker.docker_run import DockerRun
 from python.cache.lang_cache import LangCache
 
 
@@ -53,9 +54,14 @@ def main():
             exit_code = NetworkSetup().configure_nw()
             sys.exit(exit_code)
 
-        # clear cache (diskcache for language messages)
-        case "sh_check_docker":
-            exit_code = DockerSetup().check_docker()
+        # check dock (get current version and available versions to choose)
+        case "sh_check_docker_install":
+            exit_code = DockerSetup().run()
+            sys.exit(exit_code)
+
+        # check dock (get current version and available versions to choose)
+        case "sh_check_docker_run":
+            exit_code = DockerRun().run()
             sys.exit(exit_code)
 
         # clear cache (diskcache for language messages)

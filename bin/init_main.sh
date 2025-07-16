@@ -34,7 +34,7 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   source "$LIB_DIR/update_env.sh"
   source "$LIB_DIR/network.sh"
   source "$LIB_DIR/docker_install.sh"
-  source "$LIB_DIR/docker.sh"
+  source "$LIB_DIR/read_multi_util.sh"
 
   # Global variables
   DISTRO_PM=""       # Package manager
@@ -185,11 +185,13 @@ if [[ -z "${LOADED_INIT_MAIN:-}" ]]; then
   # --------------------------
   docker_compose() {
     init_docker_setup
-    if sh_check_docker; then
+    if sh_check_docker_install; then
       install_docker
     fi
-    infra_setup
-    apps_setup
+    if sh_check_docker_run; then
+      infra_setup
+      apps_setup
+    fi
   }
 
   # --------------------------
