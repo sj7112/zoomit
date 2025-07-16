@@ -17,7 +17,7 @@ if [[ -z "${LOADED_DOCKER:-}" ]]; then
   # Usage example:
   #   User input: 1 4 5 (space-separated component numbers)
   # ==============================================================================
-  multi_select_options() {
+  print_options() {
     local options_var="$1"                               # option values
     eval "local -a _options=(\"\${${options_var}[@]}\")" # Get array contents using eval
     local per_line="${2:-1}"                             # Number of items per line, default=1
@@ -43,18 +43,24 @@ if [[ -z "${LOADED_DOCKER:-}" ]]; then
     done
   }
 
-  multi_select_tips() {
+  print_tips() {
     # ANSI color
     local BG_BLUE="\033[44m"
     local NC="\033[0m" # reset color
 
-    local str=$(_mf "多选组件：格式如 1 2 3；再次选择相同项目可取消选择，回车结束")
+    local str="多选组件：格式如 1 2 3；再次选择相同项目可取消选择，回车结束"
     echo
     echo -e "${BG_BLUE} ${str} ${NC}"
     echo
   }
 
-  check_options() {
+  print_current_selection() {
+    local curr_opt="$1" # option values
+    printf "– 当前选择: %s\n\n" "${curr_opt:-无}" >&2
+    echo "$curr_opt"
+  }
+
+  toggle_selection() {
     local options_var="$1"                               # option values
     eval "local -a _options=(\"\${${options_var}[@]}\")" # Get array contents using eval
     local _def_opts="$2"                                 # default values
@@ -100,22 +106,19 @@ if [[ -z "${LOADED_DOCKER:-}" ]]; then
       echo >&2
     fi
 
-    local new_opt="${new_opts[*]}"
-    printf "– 当前选择: %s\n\n" "${new_opt:-无}" >&2
-
-    echo "$new_opt"
+    print_current_selection "${new_opts[*]}"
   }
 
-  multi_selects() {
+  multiple_select() {
     local options_var="$1"                                 # 数组变量名
     eval "local -a _options=(\"\${${options_var}[@]}\")"   # 使用 eval 取出数组内容
     local def_opts_var="$2"                                # 数组变量名
     eval "local -a _def_opts=(\"\${${def_opts_var}[@]}\")" # 使用 eval 取出数组内容
     local result_f=$3                                      # Temp file to store result
 
-    multi_select_options "$1" "${4:-1}" # Number of items per line, default=1
-    multi_select_tips
-    local curr_opts=$(check_options "$1" "${_def_opts[*]}")
+    print_options "$1" "${4:-1}" # Number of items per line, default=1
+    print_tips
+    local curr_opts=$(print_current_selection "${_def_opts[*]}")
 
     valid_selections=()
     while true; do
@@ -139,7 +142,7 @@ if [[ -z "${LOADED_DOCKER:-}" ]]; then
         continue
       fi
 
-      curr_opts=$(check_options "$1" "$curr_opts" "$input")
+      curr_opts=$(toggle_selection "$1" "$curr_opts" "$input")
     done
     _def_opts=($curr_opts)         # change the result
     echo "$curr_opts" >"$result_f" # add to the file
@@ -154,15 +157,15 @@ if [[ -z "${LOADED_DOCKER:-}" ]]; then
 
     echo
     prompt="请选择要启用的基础设施组件 (多选)："
-    string "$prompt"
+    echo "$prompt"
 
     local OPTIONS=("NGINX" "MARIADB" "POSTGRES" "REDIS" "MINIO")
     local DEF_OPTS=("NGINX" "MARIADB")
     PER_LINE=3
-    multi_selects OPTIONS DEF_OPTS "$result_f" "$PER_LINE"
+    multiple_select OPTIONS DEF_OPTS "$result_f" "$PER_LINE"
 
     # 写入 .env 文件
-    info "⏎ 选择完成，正在保存配置到 .env 文件..."
+    echo "⏎ 选择完成，正在保存配置到 .env 文件..."
     # declare -A SELECTED
     # save_env_docker SELECTED
   }
@@ -176,14 +179,14 @@ if [[ -z "${LOADED_DOCKER:-}" ]]; then
 
     echo
     prompt="请选择要启用的应用组件 (多选)："
-    string "$prompt"
+    echo "$prompt"
 
     local OPTIONS=("VAULTWARDEN" "NEXTCLOUD")
     local DEF_OPTS=() # 初始化关联数组
     PER_LINE=5
-    multi_selects OPTIONS DEF_OPTS "$result_f" "$PER_LINE"
+    multiple_select OPTIONS DEF_OPTS "$result_f" "$PER_LINE"
     # 写入 .env 文件
-    info "⏎ 选择完成，正在保存配置到 .env 文件..."
+    echo "⏎ 选择完成，正在保存配置到 .env 文件..."
     # declare -A SELECTED
     # save_env_docker SELECTED
   }
