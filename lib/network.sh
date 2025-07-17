@@ -184,7 +184,8 @@ EOF
   }
 
   # ==============================================================================
-  # 配置静态IP（systemd_networkd）
+  # Config fixed IP (systemd_networkd)
+  # check DNS: networkctl status | grep -A 4 DNS
   # ==============================================================================
   config_systemd_networkd() {
     IFACE="${ENV_NETWORK["MAIN_IFACE"]}"  # Network interface name
