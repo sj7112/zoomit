@@ -9,12 +9,39 @@ if [[ -z "${LOADED_DOCKER_INSTALL:-}" ]]; then
 
   LOG_FILE="/var/log/sj_install.log"
 
+  # target json file
+
+  # mirrors to be added for china user
+  docker_config_mirror() {
+    local CONFDIR="/etc/docker"
+    mkdir -p "$CONFDIR"
+
+    # create new config file
+    local DAEMON_JSON="/etc/docker/daemon.json"
+    cat >"$DAEMON_JSON" <<EOF
+{
+  "registry-mirrors": [
+    "https://ydy27efm.mirror.aliyuncs.com",
+    "https://hub-mirror.c.163.com",
+    "https://mirror.ccs.tencentyun.com",
+    "https://docker.mirrors.ustc.edu.cn",
+    "https://docker.cn-north-1.amazonaws.com.cn"
+  ]
+}
+EOF
+
+    echo "✅ 配置完成，正在重启 Docker..."
+    systemctl daemon-reload
+    systemctl restart docker
+    echo "✅ Docker 已重启"
+  }
+
   # Detect system architecture and distribution
   get_docker_compose_url() {
     local arch=$(uname -m) # Detect architecture
     case "$arch" in
-      aarch64 | arm64) arch="aarch64" ;;
-      armv7l) arch="armv7" ;;
+    aarch64 | arm64) arch="aarch64" ;;
+    armv7l) arch="armv7" ;;
     esac
     echo "https://github.com/docker/compose/releases/download/v2.36.2/docker-compose-linux-${arch}"
   }
@@ -126,8 +153,8 @@ Github Path: {}" "$(get_docker_compose_url)"
 
     # 添加 Docker 仓库 GPG（可选，但推荐）
     install -m 0755 -d /etc/apt/keyrings
-    curl -fsSL $url/gpg \
-      | gpg --dearmor --yes -o /etc/apt/keyrings/docker.gpg
+    curl -fsSL $url/gpg |
+      gpg --dearmor --yes -o /etc/apt/keyrings/docker.gpg
     chmod a+r /etc/apt/keyrings/docker.gpg
 
     # 添加 Docker 仓库源
@@ -167,11 +194,11 @@ Github Path: {}" "$(get_docker_compose_url)"
   # ==============================================================================
   install_docker_pm() {
     case "$DISTRO_OSTYPE" in
-      debian | ubuntu) install_docker_apt ;;
-      centos | rhel) install_docker_rpm ;;
-      opensuse) install_docker_zypper ;;
-      arch) install_docker_pacman ;;
-      *) exiterr -i "$INIT_LINUX_UNSUPPORT: $ID ($PRETTY_NAME)" ;;
+    debian | ubuntu) install_docker_apt ;;
+    centos | rhel) install_docker_rpm ;;
+    opensuse) install_docker_zypper ;;
+    arch) install_docker_pacman ;;
+    *) exiterr -i "$INIT_LINUX_UNSUPPORT: $ID ($PRETTY_NAME)" ;;
     esac
     # Enable and start Docker
     systemctl enable --now docker &>/dev/null
@@ -183,9 +210,12 @@ Github Path: {}" "$(get_docker_compose_url)"
   install_docker_official() {
     url=$1
     case "$DISTRO_PM" in
-      apt) install_docker_apt_office "$url" ;;       # Debian | Ubuntu
-      yum | dnf) install_docker_rpm_office "$url" ;; # CentOS | RHEL
+    apt) install_docker_apt_office "$url" ;;       # Debian | Ubuntu
+    yum | dnf) install_docker_rpm_office "$url" ;; # CentOS | RHEL
     esac
+    if [[ "$url" == *"/aliyun/"* ]]; then
+      docker_config_mirror
+    fi
   }
 
   # ==============================================================================

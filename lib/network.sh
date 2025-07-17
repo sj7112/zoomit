@@ -138,6 +138,9 @@ EOF
     local NETDIR="/etc/systemd/network"
     local NET_FILE="$NETDIR/10-$IFACE.network"
 
+    # shellcheck disable=SC2086
+    local DNS_CONFIG=$(printf 'DNS=%s\n' $DNS)
+
     # Create the script - Main part
     cat >>"$SWITCH_FILE" <<EOF
 # ----------- Part 1: comment ifupdown -----------
@@ -165,7 +168,7 @@ Name=$IFACE
 DHCP=no
 Address=$IP_ADDR/$PREFIX
 Gateway=$GATEWAY
-DNS=$DNS
+$DNS_CONFIG
 EOL
 # ----------- Part 3: switch systemd-networkd -----------
 systemctl stop networking
@@ -191,6 +194,10 @@ EOF
     DNS="${ENV_NETWORK["DNS_SERVERS"]}"   # DNS servers, separated by spaces
     local NETDIR="/etc/systemd/network"
     local NET_FILE="$NETDIR/10-$IFACE.network" # 例如：/etc/systemd/network/10-ens192.network
+
+    # shellcheck disable=SC2086
+    local DNS_CONFIG=$(printf 'DNS=%s\n' $DNS)
+
     # Create the script - Main part
     cat >>"$SWITCH_FILE" <<EOF
 # ----------- Part 2: config systemd-networkd -----------
@@ -200,6 +207,8 @@ else
   mkdir -p "$NETDIR"
 fi
 
+DNS_CONFIG=\$(printf "DNS=%s\\n" \$DNS)
+
 cat > "$NET_FILE" <<EOL
 [Match]
 Name=$IFACE
@@ -208,7 +217,7 @@ Name=$IFACE
 DHCP=no
 Address=$IP_ADDR/$PREFIX
 Gateway=$GATEWAY
-DNS=$DNS
+$DNS_CONFIG
 EOL
 # ----------- Part 3: switch systemd-networkd -----------
 systemctl enable systemd-resolved

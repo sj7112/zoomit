@@ -4,6 +4,7 @@ from pathlib import Path
 import os
 import shutil
 import sys
+from typing import List
 
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))  # add root sys.path
@@ -18,6 +19,9 @@ from python.debug_tool import print_array
 # Set the default path
 PARENT_DIR = Path(__file__).resolve().parent.parent
 CONF_DIR = (PARENT_DIR / "config/network").resolve()
+
+DEF_DNS8 = "8.8.8.8"
+DEF_DNS1 = "1.1.1.1"
 
 
 def is_cloud_manufacturer(manufacturer):
@@ -41,13 +45,16 @@ def is_cloud_manufacturer(manufacturer):
     return None
 
 
-def nmcli_dns_check(dns_str):
+def nmcli_dns_check(dns_str: str) -> List[str]:
+    """
+    Parse DNS entries from `nmcli` command output
+    """
     lines = dns_str.splitlines()
     dns_list = []
     for line in lines:
         if "IP4.DNS" in line.upper():
-            # 格式一般是 IP4.DNS[1]: 8.8.8.8
-            # 取冒号后面的地址，去空格
+            # Typical format: IP4.DNS[1]: 8.8.8.8
+            # Extract the IP address after the colon and strip whitespace
             dns_ip = line.split(":", 1)[1].strip()
             dns_list.append(dns_ip)
 
@@ -93,8 +100,6 @@ class NetworkSetup:
         main_interface = self.env.get("MAIN_IFACE")
         if nm_type == "NetworkManager":
             dns_servers = nmcli_dns_check(cmd_ex_str(f"nmcli device show {main_interface}"))
-            if dns_servers:
-                return " ".join(dns_servers)
 
         # elif nm_type == "systemd-networkd":
         #     # systemd-networkd 使用 resolv.conf
@@ -109,7 +114,15 @@ class NetworkSetup:
         #     return check_dns_from_resolv()
 
         # if no DNS found, use the default DNS servers
-        dns_servers = check_dns()
+        else:
+            dns_servers = check_dns()
+
+        # add default DNS for international websites 8.8.8.8 | 1.1.1.1
+        if DEF_DNS8 not in dns_servers:
+            dns_servers.append(DEF_DNS8)
+        if DEF_DNS1 not in dns_servers:
+            dns_servers.append(DEF_DNS1)
+
         return " ".join(dns_servers)
 
     # ==============================================================================

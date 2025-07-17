@@ -8,6 +8,7 @@ import re
 import sys
 import threading
 import time
+from typing import List
 import unicodedata
 
 
@@ -203,19 +204,17 @@ def get_static_ip(nm_type):
     return None
 
 
-def check_dns():
+def check_dns() -> List[str]:
     """
-    获取DNS服务器，不存在返回空串
+    Retrieve DNS server IP addresses from /etc/resolv.conf
     """
     try:
-        # 获取DNS服务器(为空时，采取默认值)
+        # Read /etc/resolv.conf and extract IPv4 DNS addresses
         with open("/etc/resolv.conf", "r") as f:
-            dns_servers = re.findall(r"nameserver (\d+\.\d+\.\d+\.\d+)", f.read())
-            return " ".join(dns_servers)
+            return re.findall(r"nameserver (\d+\.\d+\.\d+\.\d+)", f.read())
     except Exception as e:
         logging.error(f"check_dns() failed: {e}")
-
-    return ""
+        return []
 
 
 # ==============================================================================
