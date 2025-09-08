@@ -219,22 +219,22 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
     local err_handle    # default: empty
     local no_value      # default: Y | 0 | None
     local to_value      # default: no_value
-    local result_f      # filename to store response
+    local result_f=""   # filename to store response
 
     # Parse optional parameters
     local args=()
     while [[ $# -gt 0 ]]; do
       case "$1" in
-        option=*) option="${1#option=}" ;;
-        msg=*) msg="${1#msg=}" ;;
-        no_msg=*) no_msg="${1#no_msg=}" ;;
-        error_msg=*) error_msg="${1#error_msg=}" ;;
-        exit_msg=*) exit_msg="${1#exit_msg=}" ;;
-        err_handle=*) err_handle="${1#err_handle=}" ;;
-        no_value=*) no_value="${1#no_value=}" ;;
-        to_value=*) to_value="${1#to_value=}" ;;
-        result_f=*) result_f="${1#result_f=}" ;;
-        *) args+=("$1") ;;
+      option=*) option="${1#option=}" ;;
+      msg=*) msg="${1#msg=}" ;;
+      no_msg=*) no_msg="${1#no_msg=}" ;;
+      error_msg=*) error_msg="${1#error_msg=}" ;;
+      exit_msg=*) exit_msg="${1#exit_msg=}" ;;
+      err_handle=*) err_handle="${1#err_handle=}" ;;
+      no_value=*) no_value="${1#no_value=}" ;;
+      to_value=*) to_value="${1#to_value=}" ;;
+      result_f=*) result_f="${1#result_f=}" ;;
+      *) args+=("$1") ;;
       esac
       shift
     done
@@ -260,7 +260,7 @@ if [[ -z "${LOADED_BASH_UTILS:-}" ]]; then
 
     # Use result_f to store the user's input (only for number | string callback)
     if [[ $option != "bool" ]]; then
-      result_f=$(generate_temp_file "$result_f") # Generate a temp file
+      result_f=$(generate_temp_file "${result_f:-}") # Generate a temp file
     fi
 
     local orig_stty=$(stty -g)

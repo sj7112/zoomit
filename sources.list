@@ -1,8 +1,0 @@
-# Debian packages for bookworm
-deb http://mirrors.ustc.edu.cn/debian/ bookworm main contrib
-# Uncomment the deb-src line if you want 'apt-get source'
-# to work with most packages.
-# deb-src http://mirrors.ustc.edu.cn/debian/ bookworm main contrib
-
-# Security updates for stable
-# deb http://security.debian.org/ stable/updates main contrib
